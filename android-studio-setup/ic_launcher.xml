@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Simple Workforce Management Icon -->
+    <path
+        android:fillColor="#2196F3"
+        android:pathData="M54,20c-2.8,0-5,2.2-5,5c0,2.8,2.2,5,5v8c0,2.8,2.2,5,5h8c2.8,0,5-2.2,5-5v-8c0-2.8-2.2-5-5-5H54z"/>
+    
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M54,35h8v8h-8V35z"/>
+    
+    <path
+        android:fillColor="#FF9800"
+        android:pathData="M54,50h8v8h-8V50z"/>
+    
+    <path
+        android:fillColor="#F44336"
+        android:pathData="M54,65h8v8h-8V65z"/>
+    
+    <!-- Clock icon for time management -->
+    <circle
+        android:fillColor="#9C27B0"
+        android:cx="58"
+        android:cy="78"
+        android:r="6"/>
+    
+    <path
+        android:fillColor="#9C27B0"
+        android:strokeColor="#9C27B0"
+        android:strokeWidth="1"
+        android:pathData="M58,72v12"/>
+    
+    <path
+        android:fillColor="#9C27B0"
+        android:pathData="M62,78l2-2l-2,2l4,4l4-4l-2-2z"/>
+    
+</vector>

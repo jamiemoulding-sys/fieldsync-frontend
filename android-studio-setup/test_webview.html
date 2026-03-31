@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Workforce Management - Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #2196F3;
+            margin-bottom: 20px;
+        }
+        .status {
+            font-size: 18px;
+            margin: 10px 0;
+            padding: 10px;
+            background: #e8f5e8;
+            border-radius: 5px;
+        }
+        .success {
+            background: #4CAF50;
+            color: white;
+        }
+        .error {
+            background: #f44336;
+            color: white;
+        }
+        button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        button:hover {
+            background: #1976D2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Workforce Management</h1>
+        <div class="status success" id="status">
+            ✅ WebView Test Successful
+        </div>
+        <p>If you can see this page, the WebView is working correctly!</p>
+        <button onclick="testJavaScript()">Test JavaScript</button>
+        <button onclick="loadReactApp()">Load React App</button>
+    </div>
+
+    <script>
+        function updateStatus(message, isError = false) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = message;
+            statusDiv.className = isError ? 'status error' : 'status success';
+        }
+
+        function testJavaScript() {
+            updateStatus('✅ JavaScript is working!');
+        }
+
+        function loadReactApp() {
+            updateStatus('🔄 Loading React App...');
+            // In a real app, this would load the React build
+            setTimeout(() => {
+                updateStatus('✅ React App Loaded Successfully!');
+            }, 2000);
+        }
+
+        // Auto-load React app after 2 seconds
+        setTimeout(loadReactApp, 2000);
+    </script>
+</body>
+</html>
