@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import BackButton from '../components/BackButton';
 import { locationAPI } from '../services/api';
@@ -95,5 +96,6 @@ function AddLocation() {
     </div>
   );
 }
+
 
 export default AddLocation;

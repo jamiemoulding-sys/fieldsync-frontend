@@ -7,7 +7,7 @@ function BackButton() {
   return (
     <button
       onClick={() => navigate(-1)}
-      className="mb-4 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg"
+      className="mb-4 text-sm text-blue-400 hover:text-blue-300"
     >
       ← Back
     </button>

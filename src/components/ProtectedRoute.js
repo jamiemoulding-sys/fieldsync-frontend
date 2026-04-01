@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 function ProtectedRoute({ children, requireManager = false }) {
   const { user } = useAuth();
 
+  // ❌ Not logged in
   if (!user) {
     return <Navigate to="/login" />;
   }
@@ -13,6 +14,7 @@ function ProtectedRoute({ children, requireManager = false }) {
     return <Navigate to="/dashboard" />;
   }
 
+  // ✅ Allow access
   return children;
 }
 

@@ -15,7 +15,7 @@ import Dashboard from './pages/Dashboard';
 import Onboarding from './pages/Onboarding';
 import WorkSession from './pages/WorkSession';
 import Profile from './pages/Profile';
-import Tasks from './pages/Tasks';
+import Tasks from './pages/tasks';
 import Locations from './pages/Locations';
 import Employees from './pages/Employees';
 import Reports from './pages/Reports';
@@ -27,16 +27,11 @@ import ManagerMap from './pages/ManagerMap';
 import AddLocation from './pages/AddLocation';
 import Admin from './pages/Admin';
 
-//
-// 🔐 SIMPLE + SAFE ROUTE GUARD
-//
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
 
-  // wait for auth to finish
   if (loading) return <div />;
 
-  // not logged in → go login
   if (!user) {
     return <Navigate to="/login" />;
   }
@@ -44,20 +39,19 @@ function PrivateRoute({ children }) {
   return children;
 }
 
-//
-// 🔥 ROUTES
-//
 function AppRoutes() {
   return (
     <Routes>
 
       {/* PUBLIC */}
-      <Route path="/" element={<Navigate to="/dashboard" />} />
+      <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
+
+      {/* onboarding = signup */}
+      <Route path="/onboarding" element={<Onboarding />} />
 
       {/* PRIVATE */}
       <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-      <Route path="/onboarding" element={<PrivateRoute><Onboarding /></PrivateRoute>} />
       <Route path="/work-session" element={<PrivateRoute><WorkSession /></PrivateRoute>} />
       <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
       <Route path="/tasks" element={<PrivateRoute><Tasks /></PrivateRoute>} />
@@ -67,19 +61,20 @@ function AppRoutes() {
       <Route path="/billing" element={<PrivateRoute><Billing /></PrivateRoute>} />
       <Route path="/timesheet" element={<PrivateRoute><TimeSheet /></PrivateRoute>} />
       <Route path="/holiday-requests" element={<PrivateRoute><HolidayRequests /></PrivateRoute>} />
+
+      {/* OPTIONAL */}
       <Route path="/manager" element={<ManagerDashboard />} />
-      {/* 🚨 IMPORTANT: REMOVE DASHBOARD REDIRECT LOOP */}
-      <Route path="*" element={<Navigate to="/" />} />
       <Route path="/manager-map" element={<ManagerMap />} />
-      <Route path="/add-location" element={<AddLocation />} />    
+      <Route path="/add-location" element={<AddLocation />} />
       <Route path="/admin" element={<Admin />} />
+
+      {/* fallback */}
+      <Route path="*" element={<Navigate to="/" />} />
+
     </Routes>
   );
 }
 
-//
-// 🚀 ROOT
-//
 function App() {
   return (
     <Router>

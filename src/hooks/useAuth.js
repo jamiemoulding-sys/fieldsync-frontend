@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 
+const API_URL = process.env.REACT_APP_API_URL;
+
 export function useAuth() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -10,7 +12,6 @@ export function useAuth() {
 
       if (token) {
         try {
-          // ✅ decode JWT payload (basic)
           const payload = JSON.parse(atob(token.split('.')[1]));
 
           setUser({
@@ -35,7 +36,7 @@ export function useAuth() {
 
   const login = async ({ email, password }) => {
     try {
-      const res = await fetch('http://localhost:5000/api/auth/login', {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -47,10 +48,8 @@ export function useAuth() {
         return { success: false, error: data.error || 'Login failed' };
       }
 
-      // ✅ SAVE TOKEN (CRITICAL)
       localStorage.setItem('token', data.token);
 
-      // ✅ SET USER FROM TOKEN
       const payload = JSON.parse(atob(data.token.split('.')[1]));
 
       setUser({

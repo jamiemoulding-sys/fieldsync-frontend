@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -214,5 +215,6 @@ function LandingPage() {
     </div>
   );
 }
+
 
 export default LandingPage;

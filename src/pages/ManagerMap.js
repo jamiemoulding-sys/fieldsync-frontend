@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { managerAPI } from '../services/api';
@@ -81,5 +82,6 @@ function ManagerMap() {
     </div>
   );
 }
+
 
 export default ManagerMap;

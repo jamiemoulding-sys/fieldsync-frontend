@@ -1,27 +1,26 @@
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import { useState } from 'react';
 
-function MapClickHandler({ setPosition }) {
+function LocationMarker({ setPosition }) {
   useMapEvents({
     click(e) {
       setPosition(e.latlng);
-    },
+    }
   });
   return null;
 }
 
-function LocationPicker({ position, setPosition }) {
+function LocationPicker() {
+  const [position, setPosition] = useState(null);
+
   return (
-    <MapContainer
-      center={[52.6784, 0.9393]}
-      zoom={13}
-      style={{ height: '300px', width: '100%' }}
-    >
+    <MapContainer center={[51.505, -0.09]} zoom={13} style={{ height: '300px' }}>
       <TileLayer
+        attribution='&copy; OpenStreetMap'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      <MapClickHandler setPosition={setPosition} />
+      <LocationMarker setPosition={setPosition} />
 
       {position && <Marker position={position} />}
     </MapContainer>

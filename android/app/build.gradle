@@ -1,0 +1,29 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace "com.fieldsync.app"
+    compileSdkVersion 36
+
+    defaultConfig {
+        applicationId "com.fieldsync.app"
+        minSdkVersion 24
+        targetSdkVersion 36
+        versionCode 19
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+}   // ✅ THIS WAS MISSING
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation project(':capacitor-android')
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.11.0'
+}
+
+apply from: 'capacitor.build.gradle'

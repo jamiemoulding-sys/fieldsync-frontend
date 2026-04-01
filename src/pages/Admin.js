@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { reportAPI } from '../services/api';
 import HomeButton from '../components/HomeButton';
@@ -69,5 +70,6 @@ function Admin() {
     </div>
   );
 }
+
 
 export default Admin;

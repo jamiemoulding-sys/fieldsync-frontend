@@ -21,7 +21,9 @@ function WorkSession() {
       }, 1000);
     }
 
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [activeShift]);
 
   // 📦 LOAD DATA
@@ -36,14 +38,14 @@ function WorkSession() {
         locationAPI.getLocations()
       ]);
 
-      setActiveShift(shiftRes.data || null);
-      setLocations(locationRes.data || []);
+      setActiveShift(shiftRes?.data || null);
+      setLocations(locationRes?.data || []);
     } catch (err) {
       console.error('LOAD ERROR:', err);
     }
   };
 
-  // ▶️ CLOCK IN (WITH GPS)
+  // ▶️ CLOCK IN
   const handleClockIn = async () => {
     if (!selectedLocation) {
       alert('Select a location');
@@ -71,7 +73,7 @@ function WorkSession() {
     );
   };
 
-  // 🔄 LIVE LOCATION TRACKING (STEP 5)
+  // 🔄 LIVE LOCATION TRACKING
   useEffect(() => {
     let interval;
 
@@ -79,7 +81,7 @@ function WorkSession() {
       interval = setInterval(() => {
         navigator.geolocation.getCurrentPosition(async (pos) => {
           try {
-            await fetch('http://localhost:5000/api/shifts/update-location', {
+            await fetch(`${process.env.REACT_APP_API_URL}/api/shifts/update-location`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -94,24 +96,24 @@ function WorkSession() {
             console.error('LOCATION UPDATE ERROR:', err);
           }
         });
-      }, 10000); // every 10 seconds
+      }, 10000);
     }
 
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [activeShift]);
 
   // ⏹️ CLOCK OUT
-const handleClockOut = async () => {
-  try {
-    await shiftAPI.clockOut();
-
-    setActiveShift(null);
-    setTimer(0);
-
-  } catch (err) {
-    alert(err.response?.data?.error || 'Clock out failed');
-  }
-};
+  const handleClockOut = async () => {
+    try {
+      await shiftAPI.clockOut();
+      setActiveShift(null);
+      setTimer(0);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Clock out failed');
+    }
+  };
 
   // ⏱️ FORMAT TIMER
   const formatTime = (seconds) => {
