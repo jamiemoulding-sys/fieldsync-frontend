@@ -15,7 +15,7 @@ import Dashboard from './pages/Dashboard';
 import Onboarding from './pages/Onboarding';
 import WorkSession from './pages/WorkSession';
 import Profile from './pages/Profile';
-import Tasks from './pages/tasks';
+import Tasks from './pages/Tasks.js';
 import Locations from './pages/Locations';
 import Employees from './pages/Employees';
 import Reports from './pages/Reports';
@@ -54,7 +54,7 @@ function AppRoutes() {
       <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
       <Route path="/work-session" element={<PrivateRoute><WorkSession /></PrivateRoute>} />
       <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
-      <Route path="/tasks" element={<PrivateRoute><Tasks /></PrivateRoute>} />
+      <Route path="/Tasks" element={<PrivateRoute><Tasks /></PrivateRoute>} />
       <Route path="/locations" element={<PrivateRoute><Locations /></PrivateRoute>} />
       <Route path="/employees" element={<PrivateRoute><Employees /></PrivateRoute>} />
       <Route path="/reports" element={<PrivateRoute><Reports /></PrivateRoute>} />

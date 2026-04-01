@@ -1,9 +1,16 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import { Navigate } from 'react-router-dom';
 
 function LandingPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // ✅ If already logged in → go dashboard
+  if (user) {
+    return <Navigate to="/dashboard" />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-800 text-white">
@@ -23,7 +30,7 @@ function LandingPage() {
           </button>
 
           <button
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/onboarding')} // ✅ FIXED
             className="bg-white text-black px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition"
           >
             Get Started
@@ -46,7 +53,7 @@ function LandingPage() {
 
         <div className="mt-10 flex justify-center gap-4 flex-wrap">
           <button
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/onboarding')} // ✅ FIXED
             className="bg-indigo-600 px-6 py-3 rounded-lg text-lg font-medium hover:bg-indigo-700 transition"
           >
             Start Free Trial
@@ -105,81 +112,6 @@ function LandingPage() {
 
       </div>
 
-      {/* DASHBOARD PREVIEW */}
-      <div className="max-w-6xl mx-auto px-6 py-20">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold">
-            Everything in one place
-          </h2>
-          <p className="text-gray-400 mt-3">
-            Manage your entire workforce from a single dashboard
-          </p>
-        </div>
-
-        <div className="bg-gradient-to-br from-white/10 to-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur shadow-2xl">
-
-          <div className="grid md:grid-cols-3 gap-4">
-            <div className="bg-black/30 rounded-xl p-4">
-              <p className="text-sm text-gray-400">Active Employees</p>
-              <p className="text-2xl font-bold mt-2">24</p>
-            </div>
-
-            <div className="bg-black/30 rounded-xl p-4">
-              <p className="text-sm text-gray-400">Hours Today</p>
-              <p className="text-2xl font-bold mt-2">182h</p>
-            </div>
-
-            <div className="bg-black/30 rounded-xl p-4">
-              <p className="text-sm text-gray-400">Tasks Completed</p>
-              <p className="text-2xl font-bold mt-2">56</p>
-            </div>
-          </div>
-
-          <div className="mt-6 bg-black/30 rounded-xl p-4">
-            <p className="text-sm text-gray-400 mb-3">Live Activity</p>
-            <div className="space-y-2 text-sm text-gray-300">
-              <div className="flex justify-between">
-                <span>John Smith clocked in</span>
-                <span>08:03</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Sarah completed task</span>
-                <span>09:12</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Mike started shift</span>
-                <span>09:45</span>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      {/* TESTIMONIALS */}
-      <div className="max-w-6xl mx-auto px-6 py-20">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold">Trusted by growing teams</h2>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-6">
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-            <p>“FieldSync completely changed how we manage staff.”</p>
-            <p className="mt-4 font-semibold">James Carter</p>
-          </div>
-
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-            <p>“We save hours every week.”</p>
-            <p className="mt-4 font-semibold">Sarah Mitchell</p>
-          </div>
-
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-            <p>“Exactly what we needed to scale.”</p>
-            <p className="mt-4 font-semibold">David Khan</p>
-          </div>
-        </div>
-      </div>
-
       {/* PRICING */}
       <div className="py-20 text-center">
         <h2 className="text-3xl font-bold mb-4">Simple Pricing</h2>
@@ -190,7 +122,7 @@ function LandingPage() {
           <p className="text-gray-400">per employee / month</p>
 
           <button
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/onboarding')} // ✅ FIXED
             className="bg-indigo-600 w-full mt-6 py-3 rounded-lg"
           >
             Start Free Trial
@@ -205,7 +137,7 @@ function LandingPage() {
         </h2>
 
         <button
-          onClick={() => navigate('/login')}
+          onClick={() => navigate('/onboarding')} // ✅ FIXED
           className="bg-white text-black mt-6 px-8 py-3 rounded-lg"
         >
           Get Started
@@ -215,6 +147,5 @@ function LandingPage() {
     </div>
   );
 }
-
 
 export default LandingPage;
