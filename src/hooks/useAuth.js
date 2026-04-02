@@ -6,7 +6,7 @@ export function useAuth() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // INIT USER
+  // 🔄 INIT USER FROM TOKEN
   useEffect(() => {
     const token = localStorage.getItem('token');
 
@@ -28,7 +28,7 @@ export function useAuth() {
     setLoading(false);
   }, []);
 
-  // LOGIN
+  // 🔐 LOGIN
   const login = async ({ email, password }) => {
     try {
       const res = await fetch(`${API_URL}/api/auth/login`, {
@@ -46,7 +46,12 @@ export function useAuth() {
       localStorage.setItem('token', data.token);
 
       const payload = JSON.parse(atob(data.token.split('.')[1]));
-      setUser(payload);
+
+      setUser({
+        id: payload.id,
+        email: payload.email,
+        role: payload.role || 'employee'
+      });
 
       return { success: true };
 
@@ -55,7 +60,7 @@ export function useAuth() {
     }
   };
 
-  // ✅ CREATE COMPANY (FIXED)
+  // 🏢 CREATE COMPANY (USED IN SIGNUP PAGE)
   const createCompany = async (companyName) => {
     try {
       const res = await fetch(`${API_URL}/api/companies/create-company`, {
@@ -70,14 +75,26 @@ export function useAuth() {
         return { success: false, error: data.error };
       }
 
-      return { success: true, token: data.token };
+      // ✅ SAVE TOKEN
+      localStorage.setItem('token', data.token);
+
+      // ✅ SET USER IMMEDIATELY
+      const payload = JSON.parse(atob(data.token.split('.')[1]));
+
+      setUser({
+        id: payload.id,
+        email: payload.email,
+        role: payload.role || 'employee'
+      });
+
+      return { success: true };
 
     } catch {
       return { success: false, error: 'Network error' };
     }
   };
 
-  // ✅ JOIN COMPANY (FIXED)
+  // 🔗 JOIN COMPANY
   const joinCompany = async (code) => {
     try {
       const res = await fetch(`${API_URL}/api/companies/join`, {
@@ -92,14 +109,25 @@ export function useAuth() {
         return { success: false, error: data.error };
       }
 
-      return { success: true, token: data.token };
+      // ✅ SAVE TOKEN HERE TOO
+      localStorage.setItem('token', data.token);
+
+      const payload = JSON.parse(atob(data.token.split('.')[1]));
+
+      setUser({
+        id: payload.id,
+        email: payload.email,
+        role: payload.role || 'employee'
+      });
+
+      return { success: true };
 
     } catch {
       return { success: false, error: 'Network error' };
     }
   };
 
-  // LOGOUT
+  // 🚪 LOGOUT
   const logout = () => {
     localStorage.removeItem('token');
     setUser(null);

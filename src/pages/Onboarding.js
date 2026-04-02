@@ -1,57 +1,38 @@
-import { useAuth } from '../hooks/useAuth';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 function Onboarding() {
-  const { joinCompany, createCompany } = useAuth();
   const navigate = useNavigate();
 
   const [code, setCode] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
 
-  // 🔗 JOIN (still requires backend token logic later)
-  const handleJoin = async () => {
-    setLoading(true);
-    setError('');
-
-    const res = await joinCompany(code);
-
-    if (!res.success) {
-      setError(res.error);
-    } else {
-      // ⚠️ backend not returning token yet
-      navigate('/login');
+  // 🔗 JOIN (leave as-is for now)
+  const handleJoin = () => {
+    if (!code.trim()) {
+      return setError('Enter a join code');
     }
 
-    setLoading(false);
+    navigate('/login'); // keep simple for now
   };
 
-  // 🏢 CREATE COMPANY (FIXED FOR YOUR BACKEND)
-  const handleCreate = async () => {
+  // 🏢 CREATE → GO TO SIGNUP (THIS IS THE KEY FIX)
+  const handleCreate = () => {
     if (!companyName.trim()) {
       return setError('Company name required');
     }
 
-    setLoading(true);
-    setError('');
+    // 🚨 DO NOT CALL BACKEND HERE
+    // 👉 Just go to signup page and pass company name
 
-    const res = await createCompany(companyName);
-
-    if (!res.success) {
-      setError(res.error);
-    } else {
-      // ✅ backend does NOT log user in → send to login
-      navigate('/login');
-    }
-
-    setLoading(false);
+    navigate('/signup', {
+      state: { companyName }
+    });
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
-
       <div className="bg-gray-900 p-8 rounded w-96 border border-white/10 space-y-6">
 
         <div className="text-center">
@@ -73,7 +54,6 @@ function Onboarding() {
           <button
             onClick={handleJoin}
             className="w-full bg-blue-600 p-2 rounded hover:bg-blue-700"
-            disabled={loading}
           >
             Join Company
           </button>
@@ -96,7 +76,6 @@ function Onboarding() {
           <button
             onClick={handleCreate}
             className="w-full bg-indigo-600 p-2 rounded hover:bg-indigo-700"
-            disabled={loading}
           >
             Create Company
           </button>

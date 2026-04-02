@@ -7,6 +7,7 @@ import {
 } from 'react-router-dom';
 
 import { useAuth } from './hooks/useAuth';
+import Signup from './pages/Signup';
 
 // Pages
 import Landing from './pages/Landing';
@@ -32,10 +33,12 @@ function PrivateRoute({ children }) {
 
   if (loading) return <div />;
 
+  // ❌ not logged in
   if (!user) {
     return <Navigate to="/login" />;
   }
 
+  // ✅ logged in → allow access (NO company check yet)
   return children;
 }
 
@@ -46,9 +49,8 @@ function AppRoutes() {
       {/* PUBLIC */}
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
-
-      {/* onboarding = signup */}
       <Route path="/onboarding" element={<Onboarding />} />
+      <Route path="/signup" element={<Signup />} />
 
       {/* PRIVATE */}
       <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />

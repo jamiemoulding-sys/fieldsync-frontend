@@ -103,7 +103,7 @@ function Dashboard() {
               ⏰ Start Work Session
             </button>
 
-            <button onClick={() => goTo('/tasks')} className="btn-primary">
+            <button onClick={() => goTo('/Tasks')} className="btn-primary">
               📝 View Tasks
             </button>
 
