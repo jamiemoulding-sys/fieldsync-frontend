@@ -38,7 +38,12 @@ function PrivateRoute({ children }) {
     return <Navigate to="/login" />;
   }
 
-  // ✅ logged in → allow access (NO company check yet)
+  // 🚨 logged in BUT no company → go onboarding
+  if (!user.companyId) {
+    return <Navigate to="/onboarding" />;
+  }
+
+  // ✅ logged in + has company
   return children;
 }
 
