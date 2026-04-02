@@ -17,7 +17,8 @@ export function useAuth() {
         setUser({
           id: payload.id,
           email: payload.email,
-          role: payload.role || 'employee'
+          role: payload.role || 'employee',
+          companyId: payload.companyId // ✅ FIX
         });
       } catch {
         localStorage.removeItem('token');
@@ -25,7 +26,7 @@ export function useAuth() {
       }
     }
 
-    setLoading(false);
+    setLoading(false); // ✅ always runs
   }, []);
 
   // 🔐 LOGIN
@@ -50,7 +51,8 @@ export function useAuth() {
       setUser({
         id: payload.id,
         email: payload.email,
-        role: payload.role || 'employee'
+        role: payload.role || 'employee',
+        companyId: payload.companyId // ✅ FIX
       });
 
       return { success: true };
@@ -60,7 +62,7 @@ export function useAuth() {
     }
   };
 
-  // 🏢 CREATE COMPANY (USED IN SIGNUP PAGE)
+  // 🏢 CREATE COMPANY
   const createCompany = async (companyName) => {
     try {
       const res = await fetch(`${API_URL}/api/companies/create-company`, {
@@ -75,16 +77,15 @@ export function useAuth() {
         return { success: false, error: data.error };
       }
 
-      // ✅ SAVE TOKEN
       localStorage.setItem('token', data.token);
 
-      // ✅ SET USER IMMEDIATELY
       const payload = JSON.parse(atob(data.token.split('.')[1]));
 
       setUser({
         id: payload.id,
         email: payload.email,
-        role: payload.role || 'employee'
+        role: payload.role || 'employee',
+        companyId: payload.companyId // ✅ FIX
       });
 
       return { success: true };
@@ -109,7 +110,6 @@ export function useAuth() {
         return { success: false, error: data.error };
       }
 
-      // ✅ SAVE TOKEN HERE TOO
       localStorage.setItem('token', data.token);
 
       const payload = JSON.parse(atob(data.token.split('.')[1]));
@@ -117,7 +117,8 @@ export function useAuth() {
       setUser({
         id: payload.id,
         email: payload.email,
-        role: payload.role || 'employee'
+        role: payload.role || 'employee',
+        companyId: payload.companyId // ✅ FIX
       });
 
       return { success: true };

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'https://zorvia-api.onrender.com/api',
+  baseURL: 'https://fieldsync-backend.onrender.com/api',
 });
 
 // ✅ Attach token to every request
