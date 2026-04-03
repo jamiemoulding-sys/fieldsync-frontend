@@ -18,7 +18,7 @@ export function useAuth() {
           id: payload.id,
           email: payload.email,
           role: payload.role || 'employee',
-          companyId: payload.companyId // ✅ FIX
+          companyId: payload.companyId || null
         });
       } catch {
         localStorage.removeItem('token');
@@ -26,7 +26,7 @@ export function useAuth() {
       }
     }
 
-    setLoading(false); // ✅ always runs
+    setLoading(false);
   }, []);
 
   // 🔐 LOGIN
@@ -52,44 +52,7 @@ export function useAuth() {
         id: payload.id,
         email: payload.email,
         role: payload.role || 'employee',
-        companyId: payload.companyId // ✅ FIX
-      });
-
-      return { success: true };
-
-    } catch {
-      return { success: false, error: 'Network error' };
-    }
-  };
-
-  // 🏢 CREATE COMPANY
-      console.log('HEADERS:', RegExp.headers);
-  const createCompany = async (companyName) => {
-    try {
-      const res = await fetch(`${API_URL}/api/companies/create-company`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-         Authorization: `Bearer ${localStorage.getItem('token')}` // ✅ THIS IS CRITICAL
-        },
-        body: JSON.stringify({ name: companyName })
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        return { success: false, error: data.error };
-      }
-
-      localStorage.setItem('token', data.token);
-
-      const payload = JSON.parse(atob(data.token.split('.')[1]));
-
-      setUser({
-        id: payload.id,
-        email: payload.email,
-        role: payload.role || 'employee',
-        companyId: payload.companyId // ✅ FIX
+        companyId: payload.companyId || null
       });
 
       return { success: true };
@@ -122,7 +85,7 @@ export function useAuth() {
         id: payload.id,
         email: payload.email,
         role: payload.role || 'employee',
-        companyId: payload.companyId // ✅ FIX
+        companyId: payload.companyId || null
       });
 
       return { success: true };
@@ -143,7 +106,6 @@ export function useAuth() {
     loading,
     login,
     logout,
-    createCompany,
     joinCompany
   };
 }
