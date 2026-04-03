@@ -3,37 +3,67 @@ import { useAuth } from '../hooks/useAuth';
 import { useState } from 'react';
 
 function Signup() {
-  const { createCompany } = useAuth();
+  const { login, createCompany } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const companyName = location.state?.companyName || '';
 
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState(''); // ✅ FIX (was missing)
+  const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
 
   const handleSignup = async () => {
-    setError('');
-
-    // ✅ VALIDATION
-    if (!email || !password || !confirmPassword) {
-      return setError('All fields required');
+    if (!email || !password) {
+      return setError('Email and password required');
     }
 
     if (password !== confirmPassword) {
       return setError('Passwords do not match');
     }
 
-    // 🚨 CREATE COMPANY (this also logs user in via token)
-    const res = await createCompany(companyName);
+    try {
+      // ✅ STEP 1: REGISTER USER
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
 
-    if (!res.success) {
-      setError(res.error);
-    } else {
-      // ✅ IMPORTANT: go to dashboard AFTER token is set
+      const data = await res.json();
+
+      if (!res.ok) {
+        return setError(data.error);
+      }
+
+      // ✅ SAVE TOKEN
+      localStorage.setItem('token', data.token);
+
+      // ✅ STEP 2: CREATE COMPANY (NOW TOKEN EXISTS)
+      const companyRes = await fetch(`${process.env.REACT_APP_API_URL}/api/companies/create-company`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${data.token}` // ✅ THIS IS THE KEY
+        },
+        body: JSON.stringify({ name: companyName })
+      });
+
+      const companyData = await companyRes.json();
+
+      if (!companyRes.ok) {
+        return setError(companyData.error);
+      }
+
+      // ✅ SAVE NEW TOKEN (WITH companyId)
+      localStorage.setItem('token', companyData.token);
+
+      // ✅ GO TO DASHBOARD
       navigate('/dashboard');
+
+    } catch (err) {
+      setError('Something went wrong');
     }
   };
 

@@ -63,11 +63,15 @@ export function useAuth() {
   };
 
   // 🏢 CREATE COMPANY
+      console.log('HEADERS:', RegExp.headers);
   const createCompany = async (companyName) => {
     try {
       const res = await fetch(`${API_URL}/api/companies/create-company`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+         Authorization: `Bearer ${localStorage.getItem('token')}` // ✅ THIS IS CRITICAL
+        },
         body: JSON.stringify({ name: companyName })
       });
 
