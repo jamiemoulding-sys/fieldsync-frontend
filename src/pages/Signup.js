@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authAPI } from '../services/api';
 import api from '../services/api';
 
 function Signup() {
@@ -38,23 +37,36 @@ function Signup() {
     setLoading(true);
 
     try {
-      const res = await authAPI.register({
+      // ✅ FIX 1: Correct endpoint
+      const res = await api.post('/api/auth/register', {
         email: form.email,
         password: form.password,
       });
 
+      // store token
       localStorage.setItem('token', res.data.token);
 
-      const companyRes = await api.post('/companies/create-company', {
+      // ✅ FIX 2: Correct endpoint for company
+      const companyRes = await api.post('/api/companies/create-company', {
         name: form.companyName,
       });
 
-      localStorage.setItem('token', companyRes.data.token);
+      // overwrite token if backend returns new one
+      if (companyRes.data.token) {
+        localStorage.setItem('token', companyRes.data.token);
+      }
 
       navigate('/dashboard');
 
     } catch (err) {
-      setError(err.response?.data?.error || 'Signup failed');
+      console.log("🔥 FRONTEND ERROR:", err.response?.data || err.message);
+
+      setError(
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        'Signup failed'
+      );
     } finally {
       setLoading(false);
     }
@@ -62,7 +74,6 @@ function Signup() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-6">
-
       <div className="w-full max-w-md bg-white/[0.03] border border-white/[0.08] rounded-2xl p-8 backdrop-blur">
 
         <div className="mb-8 text-center">
@@ -141,7 +152,6 @@ function Signup() {
         </div>
 
       </div>
-
     </div>
   );
 }
