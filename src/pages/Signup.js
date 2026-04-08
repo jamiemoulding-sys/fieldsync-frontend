@@ -22,55 +22,64 @@ function Signup() {
     });
   };
 
-  const handleSignup = async (e) => {
-    e.preventDefault();
-    setError('');
+ const handleSignup = async (e) => {
+  e.preventDefault();
+  setError('');
 
-    if (form.password !== form.confirmPassword) {
-      return setError('Passwords do not match');
+  if (form.password !== form.confirmPassword) {
+    return setError('Passwords do not match');
+  }
+
+  if (!form.companyName) {
+    return setError('Company name required');
+  }
+
+  setLoading(true);
+
+  try {
+    // ✅ 1. REGISTER (creates user only)
+   await api.post('/auth/register', {
+    email: form.email,
+    password: form.password,
+    name: "User" // 👈 TEMP FIX
+});
+
+    // ✅ 2. LOGIN (GET TOKEN — THIS IS KEY)
+    const loginRes = await api.post('/auth/login', {
+      email: form.email,
+      password: form.password,
+    });
+
+    console.log("🔥 LOGIN AFTER REGISTER:", loginRes.data);
+
+    // ✅ 3. STORE REAL TOKEN
+    localStorage.setItem('token', loginRes.data.token);
+
+    // ✅ 4. CREATE COMPANY (NOW TOKEN EXISTS)
+    const companyRes = await api.post('/companies/create-company', {
+      name: form.companyName,
+    });
+
+    // update token if backend returns new one
+    if (companyRes.data.token) {
+      localStorage.setItem('token', companyRes.data.token);
     }
 
-    if (!form.companyName) {
-      return setError('Company name required');
-    }
+    navigate('/dashboard');
 
-    setLoading(true);
+  } catch (err) {
+    console.log("🔥 FRONTEND ERROR:", err.response?.data || err.message);
 
-    try {
-      // ✅ FIX 1: Correct endpoint
-      const res = await api.post('/auth/register', {
-        email: form.email,
-        password: form.password,
-      });
-
-      // store token
-      localStorage.setItem('token', res.data.token);
-
-      // ✅ FIX 2: Correct endpoint for company
-      const companyRes = await api.post('/companies/create-company', {
-        name: form.companyName,
-      });
-
-      // overwrite token if backend returns new one
-      if (companyRes.data.token) {
-        localStorage.setItem('token', companyRes.data.token);
-      }
-
-      navigate('/dashboard');
-
-    } catch (err) {
-      console.log("🔥 FRONTEND ERROR:", err.response?.data || err.message);
-
-      setError(
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        err.message ||
-        'Signup failed'
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+    setError(
+      err.response?.data?.message ||
+      err.response?.data?.error ||
+      err.message ||
+      'Signup failed'
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-6">

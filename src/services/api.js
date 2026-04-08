@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://fieldsync-backend.onrender.com/api",
+  baseURL: "https://fieldsync-backend-clean-t7vn.onrender.com/api",
 });
 
 // =========================
@@ -10,8 +10,12 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
 
-  if (token) {
+  console.log("🚀 SENDING TOKEN:", token);
+
+  if (token && token !== "undefined" && token !== "null") {
     config.headers.Authorization = `Bearer ${token}`;
+  } else {
+    console.log("❌ NO TOKEN FOUND");
   }
 
   return config;
