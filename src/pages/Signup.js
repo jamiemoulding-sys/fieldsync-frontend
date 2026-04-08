@@ -37,22 +37,22 @@ function Signup() {
   setLoading(true);
 
   try {
-    // ✅ 1. REGISTER (creates user only)
-   await api.post('/auth/register', {
-    email: form.email,
-    password: form.password,
-    name: "User" // 👈 TEMP FIX
-});
-
-    // ✅ 2. LOGIN (GET TOKEN — THIS IS KEY)
-    const loginRes = await api.post('/auth/login', {
+    // ✅ 1. REGISTER
+    await api.post('/auth/register', {
       email: form.email,
       password: form.password,
+      name: "User"
     });
 
-    console.log("🔥 LOGIN AFTER REGISTER:", loginRes.data);
+    // ✅ 2. LOGIN (THIS IS CRITICAL)
+    const loginRes = await api.post('/auth/login', {
+      email: form.email,
+      password: form.password
+    });
 
-    // ✅ 3. STORE REAL TOKEN
+    console.log("🔥 LOGIN RESPONSE:", loginRes.data);
+
+    // ✅ 3. STORE TOKEN
     localStorage.setItem('token', loginRes.data.token);
 
     // ✅ 4. CREATE COMPANY (NOW TOKEN EXISTS)
@@ -60,7 +60,7 @@ function Signup() {
       name: form.companyName,
     });
 
-    // update token if backend returns new one
+    // optional new token
     if (companyRes.data.token) {
       localStorage.setItem('token', companyRes.data.token);
     }
