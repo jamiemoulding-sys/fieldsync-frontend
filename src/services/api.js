@@ -1,175 +1,117 @@
-import axios from "axios";
+import React, { useState } from "react";
+import { authAPI } from "../services/api";
 
-// =========================
-// 🌍 BASE CONFIG
-// =========================
-const api = axios.create({
-  baseURL: "https://fieldsync-backend-clean-t7vn.onrender.com/api",
-  timeout: 10000
-});
+function Login() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-// =========================
-// 🔐 AUTH TOKEN HANDLER
-// =========================
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  const handleLogin = async (e) => {
+    e.preventDefault();
 
-  if (token && token !== "undefined" && token !== "null") {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
-  return config;
-});
-
-// =========================
-// ❌ GLOBAL ERROR HANDLER
-// =========================
-api.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    console.error("🚨 API ERROR:", err?.response?.data || err.message);
-
-    if (err?.response?.status === 401) {
-      localStorage.removeItem("token");
-      window.location.href = "/login";
+    if (!email || !password) {
+      return alert("Please enter email and password");
     }
 
-    return Promise.reject(err);
-  }
-);
+    try {
+      setLoading(true);
 
-// =========================
-// 🧠 HELPER (STANDARDISE RESPONSES)
-// =========================
-const unwrap = async (promise) => {
-  const res = await promise;
-  return res?.data;
+      const data = await authAPI.login({
+        email,
+        password,
+      });
+
+      console.log("LOGIN DATA:", data);
+
+      // ✅ CORRECT (because of unwrap)
+      const token = data?.token;
+
+      if (!token) {
+        console.error("BAD RESPONSE:", data);
+        throw new Error("No token returned from backend");
+      }
+
+      // ✅ SAVE
+      localStorage.setItem("token", token);
+
+      if (data?.user) {
+        localStorage.setItem("user", JSON.stringify(data.user));
+      }
+
+      // ✅ REDIRECT
+      window.location.href = "/dashboard";
+
+    } catch (err) {
+      console.error("LOGIN ERROR:", err);
+      alert(err.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={container}>
+      <form onSubmit={handleLogin} style={card}>
+        <h2 style={{ marginBottom: 20 }}>Login</h2>
+
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          style={input}
+        />
+
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          style={input}
+        />
+
+        <button type="submit" style={button} disabled={loading}>
+          {loading ? "Logging in..." : "Login"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+// 🎨 styles
+const container = {
+  height: "100vh",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  background: "#0f172a",
 };
 
-// =========================
-// 🔐 AUTH
-// =========================
-export const authAPI = {
-  login: (data) => unwrap(api.post("/auth/login", data)),
-  register: (data) => unwrap(api.post("/auth/register", data)),
+const card = {
+  background: "#111827",
+  padding: 30,
+  borderRadius: 10,
+  width: 300,
+  display: "flex",
+  flexDirection: "column",
 };
 
-// =========================
-// ⏱ SHIFTS
-// =========================
-export const shiftAPI = {
-  getActive: () => unwrap(api.get("/shifts/active")),
-  getAllActive: () => unwrap(api.get("/shifts/active-all")),
-  clockIn: (data) => unwrap(api.post("/shifts/clock-in", data)),
-  clockOut: () => unwrap(api.post("/shifts/clock-out")),
-  getHistory: () => unwrap(api.get("/shifts/history")),
+const input = {
+  marginBottom: 10,
+  padding: 10,
+  borderRadius: 6,
+  border: "none",
+  background: "#1f2937",
+  color: "white",
 };
 
-// =========================
-// 👥 USERS
-// =========================
-export const userAPI = {
-  getAll: () => unwrap(api.get("/users")),
+const button = {
+  padding: 10,
+  background: "#6366f1",
+  border: "none",
+  borderRadius: 6,
+  color: "white",
+  cursor: "pointer",
 };
 
-// =========================
-// 📅 SCHEDULES
-// =========================
-export const scheduleAPI = {
-  getAll: () => unwrap(api.get("/schedules")),
-  getMine: () => unwrap(api.get("/schedules/my-schedule")),
-  create: (data) => unwrap(api.post("/schedules", data)),
-  update: (id, data) => unwrap(api.put(`/schedules/${id}`, data)),
-  delete: (id) => unwrap(api.delete(`/schedules/${id}`)),
-  getLate: () => unwrap(api.get("/schedules/late-arrivals")),
-};
-
-// =========================
-// 🌴 HOLIDAYS
-// =========================
-export const holidayAPI = {
-  getAll: () => unwrap(api.get("/schedules/holiday-requests")),
-
-  create: (data) =>
-    unwrap(api.post("/schedules/holiday-requests", data)),
-
-  update: (id, data) =>
-    unwrap(api.put(`/schedules/holiday-requests/${id}`, data)),
-
-  delete: (id) =>
-    unwrap(api.delete(`/schedules/holiday-requests/${id}`)),
-
-  // helpers
-  getPending: async () => {
-    const data = await unwrap(api.get("/schedules/holiday-requests"));
-    return data.filter(h => h.status === "pending");
-  },
-
-  getByStatus: async (status) => {
-    const data = await unwrap(api.get("/schedules/holiday-requests"));
-    return data.filter(h => h.status === status);
-  }
-};
-
-// =========================
-// 📈 PERFORMANCE
-// =========================
-export const performanceAPI = {
-  getAll: () => unwrap(api.get("/performance")),
-};
-
-// =========================
-// 📍 LOCATIONS
-// =========================
-export const locationAPI = {
-  getLocations: () => unwrap(api.get("/locations")),
-  create: (data) => unwrap(api.post("/locations", data)),
-  update: (id, data) => unwrap(api.put(`/locations/${id}`, data)),
-  delete: (id) => unwrap(api.delete(`/locations/${id}`)),
-};
-
-// =========================
-// 📋 TASKS
-// =========================
-export const taskAPI = {
-  getTasks: () => unwrap(api.get("/tasks/all")),
-  create: (data) => unwrap(api.post("/tasks", data)),
-  complete: (task_id) =>
-    unwrap(api.post("/tasks/complete", { task_id })),
-};
-
-// =========================
-// 📊 REPORTS
-// =========================
-export const reportAPI = {
-  getTimesheets: () => unwrap(api.get("/reports/timesheets")),
-};
-
-// =========================
-// 📈 ANALYTICS
-// =========================
-export const analyticsAPI = {
-  getShifts: () => unwrap(api.get("/shifts/analytics")),
-};
-
-// =========================
-// 🧠 DASHBOARD
-// =========================
-export const managerAPI = {
-  getDashboard: () => unwrap(api.get("/dashboard")),
-  getActiveShifts: () => unwrap(api.get("/shifts/active-all")),
-};
-
-// =========================
-// 📤 UPLOADS
-// =========================
-export const uploadAPI = {
-  upload: (formData) =>
-    unwrap(
-      api.post("/uploads", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      })
-    ),
-};
-
-export default api;
+export default Login;
