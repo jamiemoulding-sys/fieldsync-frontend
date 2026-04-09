@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { shiftAPI, analyticsAPI, userAPI } from '../services/api';
+import {
+  shiftAPI,
+  analyticsAPI,
+  userAPI,
+  holidayAPI
+} from '../services/api';
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -9,119 +14,133 @@ function Dashboard() {
 
   const [activeShifts, setActiveShifts] = useState([]);
   const [users, setUsers] = useState([]);
-  const [analytics, setAnalytics] = useState([]);
+  const [weeklyHours, setWeeklyHours] = useState(0);
+  const [todayHours, setTodayHours] = useState(0);
+  const [alerts, setAlerts] = useState([]);
 
-  const handleLogout = () => {
+  const logout = () => {
     localStorage.removeItem('token');
     navigate('/');
   };
 
   useEffect(() => {
     loadData();
+    const i = setInterval(loadData, 15000);
+    return () => clearInterval(i);
   }, []);
 
   const loadData = async () => {
     try {
-      const [activeRes, analyticsRes, usersRes] = await Promise.all([
-        shiftAPI.getAllActive(),
-        analyticsAPI.getShifts(),
-        userAPI.getAll()
-      ]);
+      const [activeRes, analyticsRes, usersRes, holidayRes] =
+        await Promise.all([
+          shiftAPI.getAllActive().catch(() => ({ data: [] })),
+          analyticsAPI.getShifts().catch(() => ({ data: [] })),
+          userAPI.getAll().catch(() => ({ data: [] })),
+          holidayAPI.getAll().catch(() => ({ data: [] }))
+        ]);
 
-      setActiveShifts(activeRes.data || []);
-      setUsers(usersRes.data || []);
-      setAnalytics(analyticsRes.data || []);
+      const active = activeRes.data || [];
+      const analytics = analyticsRes.data || [];
+      const usersData = usersRes.data || [];
+      const holidays = holidayRes.data || [];
+
+      setActiveShifts(active);
+      setUsers(usersData);
+
+      const weekly = analytics.reduce((s, d) => s + Number(d.hours || 0), 0);
+      setWeeklyHours(weekly);
+
+      const todayStr = new Date().toDateString();
+      const today = analytics
+        .filter(d => new Date(d.date).toDateString() === todayStr)
+        .reduce((s, d) => s + Number(d.hours || 0), 0);
+
+      setTodayHours(today);
+
+      const a = [];
+      if (active.length === 0) a.push('No staff clocked in');
+      if (holidays.length > 0) a.push(`${holidays.length} holiday requests pending`);
+
+      setAlerts(a);
 
     } catch (err) {
       console.error(err);
     }
   };
 
-  const todayStr = new Date().toDateString();
-
-  const todayHours = analytics
-    .filter(d => new Date(d.date).toDateString() === todayStr)
-    .reduce((sum, d) => sum + Number(d.hours || 0), 0);
-
-  const weeklyHours = analytics.reduce((sum, d) => sum + Number(d.hours || 0), 0);
-
-  const onlinePercent = users.length
-    ? Math.round((activeShifts.length / users.length) * 100)
-    : 0;
-
-  const productivityScore = Math.min(Math.round((weeklyHours / (users.length * 40 || 1)) * 100), 100);
-
   return (
-    <div style={wrapper}>
+    <div style={layout}>
 
       {/* SIDEBAR */}
       <div style={sidebar}>
         <div>
-          <h2 style={logo}>⚡ FieldSync</h2>
+          <h2 style={brand}>FieldSync</h2>
 
-          <nav style={nav}>
-            <NavItem label="Dashboard" active />
-            <NavItem label="Schedule" onClick={() => navigate('/schedule')} />
-            <NavItem label="Reports" onClick={() => navigate('/reports')} />
-            <NavItem label="Performance" onClick={() => navigate('/performance')} />
-            <NavItem label="Billing" onClick={() => navigate('/billing')} />
-          </nav>
+          <Nav label="Dashboard" active />
+          <Nav label="Profiles" onClick={() => navigate('/users')} />
+          <Nav label="Schedule" onClick={() => navigate('/schedule')} />
+          <Nav label="Holiday Requests" onClick={() => navigate('/schedule')} />
+          <Nav label="Reports" onClick={() => navigate('/reports')} />
+          <Nav label="Performance" onClick={() => navigate('/performance')} />
         </div>
 
-        <button onClick={handleLogout} style={logoutBtn}>
-          Logout
-        </button>
+        <div>
+          <Nav label="Upgrade" highlight onClick={() => navigate('/billing')} />
+          <button onClick={logout} style={logoutBtn}>Logout</button>
+        </div>
       </div>
 
       {/* MAIN */}
       <div style={main}>
 
-        {/* HEADER */}
-        <div style={header}>
+        {/* TOP BAR */}
+        <div style={topbar}>
           <div>
             <h1 style={title}>Dashboard</h1>
-            <p style={subtitle}>Welcome back, {user?.name || 'Team'}</p>
+            <p style={subtitle}>Overview of your company</p>
+          </div>
+
+          <div style={userBox}>
+            {user?.name}
           </div>
         </div>
 
-        {/* KPI GRID */}
+        {/* KPI */}
         <div style={kpiGrid}>
-          <KPI title="Active Staff" value={activeShifts.length} sub={`${onlinePercent}% online`} />
-          <KPI title="Today Hours" value={Math.round(todayHours)} sub="Today" />
-          <KPI title="Weekly Hours" value={Math.round(weeklyHours)} sub="Last 7 days" />
-          <KPI title="Productivity" value={`${productivityScore}%`} sub="Efficiency" />
+          <KPI title="Active Staff" value={activeShifts.length} />
+          <KPI title="Today Hours" value={todayHours} />
+          <KPI title="Weekly Hours" value={weeklyHours} />
         </div>
 
-        {/* INSIGHTS STRIP */}
-        <div style={insightGrid}>
-          <Insight title="Staff Online" value={`${onlinePercent}%`} bar={onlinePercent} />
-          <Insight title="Daily Load" value={`${Math.round(todayHours)}h`} bar={(todayHours / 50) * 100} />
-          <Insight title="Weekly Load" value={`${Math.round(weeklyHours)}h`} bar={(weeklyHours / 200) * 100} />
-        </div>
+        {/* ALERTS */}
+        {alerts.length > 0 && (
+          <div style={alertsBox}>
+            {alerts.map((a, i) => (
+              <div key={i}>{a}</div>
+            ))}
+          </div>
+        )}
 
-        {/* MAIN GRID */}
+        {/* CONTENT */}
         <div style={contentGrid}>
 
           {/* TEAM */}
           <div style={card}>
-            <h3 style={cardTitle}>Team Status</h3>
+            <h3 style={cardTitle}>Team</h3>
 
-            {users.map((u) => {
+            {users.map(u => {
               const active = activeShifts.find(s => s.user_id === u.id);
 
               return (
                 <div key={u.id} style={row}>
-                  <div style={userLeft}>
-                    <div style={{
-                      ...statusDot,
-                      background: active ? '#10b981' : '#374151'
-                    }} />
-                    <span>{u.name}</span>
+                  <div>
+                    <span style={dot(active)} />
+                    {u.name}
                   </div>
 
-                  <span style={statusText}>
+                  <div style={muted}>
                     {active ? 'Working' : 'Offline'}
-                  </span>
+                  </div>
                 </div>
               );
             })}
@@ -129,36 +148,8 @@ function Dashboard() {
 
           {/* ACTIVITY */}
           <div style={card}>
-            <h3 style={cardTitle}>Live Activity</h3>
-
-            {activeShifts.map((s, i) => (
-              <div key={i} style={activityItem}>
-                🟢 {s.name || 'Employee'} started shift
-              </div>
-            ))}
-
-            {activeShifts.length === 0 && (
-              <p style={{ color: '#9ca3af' }}>No activity</p>
-            )}
-          </div>
-
-          {/* AI INSIGHTS 🔥 */}
-          <div style={card}>
-            <h3 style={cardTitle}>Insights</h3>
-
-            {activeShifts.length === 0 && <p>⚠️ No staff working</p>}
-            {activeShifts.length === 1 && <p>⚠️ Only 1 staff active</p>}
-            {todayHours > 20 && <p>⚠️ High workload today</p>}
-
-            <p>📊 {onlinePercent}% workforce active</p>
-
-            {productivityScore < 60 && (
-              <p>📉 Productivity is below optimal</p>
-            )}
-
-            {productivityScore > 80 && (
-              <p>🚀 Team performing at high efficiency</p>
-            )}
+            <h3 style={cardTitle}>Activity</h3>
+            <p style={muted}>Live system activity coming soon</p>
           </div>
 
         </div>
@@ -168,82 +159,74 @@ function Dashboard() {
   );
 }
 
-// KPI
-function KPI({ title, value, sub }) {
-  return (
-    <div style={kpiCard}>
-      <p style={kpiTitle}>{title}</p>
-      <h2 style={kpiValue}>{value}</h2>
-      <span style={kpiSub}>{sub}</span>
-    </div>
-  );
-}
+/* COMPONENTS */
 
-// INSIGHT BAR
-function Insight({ title, value, bar }) {
+function Nav({ label, onClick, active, highlight }) {
   return (
-    <div style={insightCard}>
-      <div style={insightTop}>
-        <span>{title}</span>
-        <span>{value}</span>
-      </div>
-
-      <div style={barBg}>
-        <div style={{ ...barFill, width: `${Math.min(bar, 100)}%` }} />
-      </div>
-    </div>
-  );
-}
-
-// NAV ITEM
-function NavItem({ label, onClick, active }) {
-  return (
-    <div
+    <button
       onClick={onClick}
       style={{
-        padding: '10px 14px',
-        borderRadius: 8,
-        cursor: 'pointer',
-        background: active ? '#1f2937' : 'transparent'
+        ...nav,
+        background: active ? '#1f2937' : 'transparent',
+        color: highlight ? '#10b981' : active ? 'white' : '#9ca3af'
       }}
     >
       {label}
+    </button>
+  );
+}
+
+function KPI({ title, value }) {
+  return (
+    <div style={kpi}>
+      <p style={muted}>{title}</p>
+      <h2 style={{ marginTop: 6 }}>{value}</h2>
     </div>
   );
 }
 
-// STYLES
+/* STYLES */
 
-const wrapper = {
+const layout = {
   display: 'flex',
   height: '100vh',
-  background: '#0a0a0b',
+  background: '#0b0f14',
   color: 'white'
 };
 
 const sidebar = {
-  width: 220,
-  background: '#111827',
+  width: 230,
+  background: '#0f172a',
   padding: 20,
   display: 'flex',
   flexDirection: 'column',
-  justifyContent: 'space-between'
+  justifyContent: 'space-between',
+  borderRight: '1px solid #1f2937'
 };
 
-const logo = { marginBottom: 30 };
+const brand = {
+  marginBottom: 25,
+  fontWeight: 600
+};
 
 const nav = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 10
+  width: '100%',
+  padding: 10,
+  borderRadius: 8,
+  border: 'none',
+  textAlign: 'left',
+  cursor: 'pointer',
+  marginBottom: 4
 };
 
 const logoutBtn = {
-  background: '#ef4444',
-  border: 'none',
+  marginTop: 10,
   padding: 10,
+  width: '100%',
+  background: '#111827',
+  border: '1px solid #1f2937',
   borderRadius: 8,
-  color: 'white',
+  color: '#9ca3af',
   cursor: 'pointer'
 };
 
@@ -253,105 +236,78 @@ const main = {
   overflowY: 'auto'
 };
 
-const header = { marginBottom: 25 };
+const topbar = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  marginBottom: 25
+};
 
-const title = { fontSize: 28 };
+const title = { margin: 0 };
+const subtitle = { color: '#6b7280', marginTop: 4 };
 
-const subtitle = { color: '#9ca3af' };
+const userBox = {
+  background: '#111827',
+  padding: '8px 12px',
+  borderRadius: 8,
+  fontSize: 14
+};
 
 const kpiGrid = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(4, 1fr)',
-  gap: 15,
+  gridTemplateColumns: 'repeat(3, 1fr)',
+  gap: 20,
   marginBottom: 20
 };
 
-const kpiCard = {
+const kpi = {
   background: '#111827',
   padding: 20,
-  borderRadius: 12
+  borderRadius: 10,
+  border: '1px solid #1f2937'
 };
 
-const kpiTitle = { color: '#9ca3af' };
-
-const kpiValue = { fontSize: 26 };
-
-const kpiSub = {
-  fontSize: 12,
-  color: '#6b7280'
-};
-
-const insightGrid = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(3, 1fr)',
-  gap: 15,
-  marginBottom: 20
-};
-
-const insightCard = {
-  background: '#111827',
-  padding: 15,
-  borderRadius: 12
-};
-
-const insightTop = {
-  display: 'flex',
-  justifyContent: 'space-between'
-};
-
-const barBg = {
-  height: 6,
+const alertsBox = {
   background: '#1f2937',
-  marginTop: 10,
-  borderRadius: 6
-};
-
-const barFill = {
-  height: 6,
-  background: '#6366f1',
-  borderRadius: 6
+  padding: 12,
+  borderRadius: 8,
+  marginBottom: 20,
+  fontSize: 14
 };
 
 const contentGrid = {
   display: 'grid',
-  gridTemplateColumns: '2fr 1fr 1fr',
+  gridTemplateColumns: '2fr 1fr',
   gap: 20
 };
 
 const card = {
   background: '#111827',
   padding: 20,
-  borderRadius: 12
+  borderRadius: 10,
+  border: '1px solid #1f2937'
 };
 
-const cardTitle = { marginBottom: 10 };
+const cardTitle = {
+  marginBottom: 15
+};
 
 const row = {
   display: 'flex',
   justifyContent: 'space-between',
-  padding: '10px 0',
-  borderBottom: '1px solid rgba(255,255,255,0.05)'
+  marginBottom: 10
 };
 
-const userLeft = {
-  display: 'flex',
-  gap: 10,
-  alignItems: 'center'
+const muted = {
+  color: '#6b7280'
 };
 
-const statusDot = {
+const dot = (active) => ({
+  display: 'inline-block',
   width: 8,
   height: 8,
-  borderRadius: '50%'
-};
-
-const statusText = {
-  color: '#9ca3af'
-};
-
-const activityItem = {
-  marginBottom: 8,
-  color: '#9ca3af'
-};
+  borderRadius: '50%',
+  background: active ? '#10b981' : '#374151',
+  marginRight: 8
+});
 
 export default Dashboard;
