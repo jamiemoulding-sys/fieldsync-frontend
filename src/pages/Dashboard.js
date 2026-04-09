@@ -1,25 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-
-// ✅ MAKE SURE THIS MATCHES YOUR api.js EXPORTS
-import {
-  shiftAPI,
-  analyticsAPI,
-  userAPI,
-  holidayAPI
-} from '../services/api';
+import api from '../services/api';
 
 function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth() || {};
 
-  const [activeShifts, setActiveShifts] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [weeklyHours, setWeeklyHours] = useState(0);
-  const [todayHours, setTodayHours] = useState(0);
-  const [alerts, setAlerts] = useState([]);
-  const [holidayCount, setHolidayCount] = useState(0);
+  const [stats, setStats] = useState({});
+  const [activity, setActivity] = useState([]);
+  const [notifications, setNotifications] = useState([]);
 
   const logout = () => {
     localStorage.removeItem('token');
@@ -27,52 +17,29 @@ function Dashboard() {
   };
 
   useEffect(() => {
-    loadData();
-    const i = setInterval(loadData, 15000);
+    load();
+    const i = setInterval(load, 10000);
     return () => clearInterval(i);
   }, []);
 
-  const loadData = async () => {
+  const load = async () => {
     try {
-      const [activeRes, analyticsRes, usersRes, holidayRes] =
-        await Promise.all([
-          shiftAPI.getAllActive(),
-          analyticsAPI.getShifts(),
-          userAPI.getAll(),
-          holidayAPI.getAll()
-        ]);
+      const res = await api.get('/dashboard');
 
-      // ✅ FIX: always use .data safely
-      const active = activeRes?.data || [];
-      const analytics = analyticsRes?.data || [];
-      const usersData = usersRes?.data || [];
-      const holidays = holidayRes?.data || [];
+      const data = res.data || {};
 
-      setActiveShifts(active);
-      setUsers(usersData);
+      setStats(data.stats || {});
+      setActivity(data.activity || []);
 
-      // ✅ SAFE HOLIDAY COUNT
-      const pending = holidays.filter(h => h?.status === 'pending').length;
-      setHolidayCount(pending);
-
-      const weekly = analytics.reduce((s, d) => s + Number(d.hours || 0), 0);
-      setWeeklyHours(weekly);
-
-      const todayStr = new Date().toDateString();
-      const today = analytics
-        .filter(d => new Date(d.date).toDateString() === todayStr)
-        .reduce((s, d) => s + Number(d.hours || 0), 0);
-
-      setTodayHours(today);
-
-      const a = [];
-      if (active.length === 0) a.push('No staff clocked in');
-      if (pending > 0) a.push(`${pending} holiday requests pending`);
-
-      setAlerts(a);
+      // 🔔 notifications = pending holidays
+      setNotifications([
+        ...(data.stats?.pendingHolidays > 0
+          ? [`${data.stats.pendingHolidays} pending holiday requests`]
+          : [])
+      ]);
 
     } catch (err) {
-      console.error('DASHBOARD LOAD ERROR:', err);
+      console.error(err);
     }
   };
 
@@ -87,14 +54,7 @@ function Dashboard() {
           <Nav label="Dashboard" active />
           <Nav label="Profiles" onClick={() => navigate('/employees')} />
           <Nav label="Schedule" onClick={() => navigate('/schedule')} />
-
-          {/* ✅ FIXED ROUTE + BADGE */}
-          <Nav
-            label="Holiday Requests"
-            badge={holidayCount}
-            onClick={() => navigate('/holiday-requests')}
-          />
-
+          <Nav label="Holiday Requests" onClick={() => navigate('/holiday-requests')} />
           <Nav label="Reports" onClick={() => navigate('/reports')} />
           <Nav label="Performance" onClick={() => navigate('/performance')} />
         </div>
@@ -108,63 +68,72 @@ function Dashboard() {
       {/* MAIN */}
       <div style={main}>
 
-        {/* HEADER */}
+        {/* TOP BAR */}
         <div style={topbar}>
           <div>
             <h1 style={title}>Dashboard</h1>
-            <p style={subtitle}>Overview of your company</p>
+            <p style={subtitle}>Real-time company overview</p>
           </div>
 
-          <div style={userBox}>
-            {user?.name}
+          <div style={topRight}>
+            {/* 🔔 NOTIFICATIONS */}
+            <div style={bell}>
+              🔔
+              {notifications.length > 0 && (
+                <span style={notifBadge}>{notifications.length}</span>
+              )}
+            </div>
+
+            <div style={userBox}>{user?.name}</div>
           </div>
         </div>
 
         {/* KPI */}
         <div style={kpiGrid}>
-          <KPI title="Active Staff" value={activeShifts.length} />
-          <KPI title="Today Hours" value={todayHours} />
-          <KPI title="Weekly Hours" value={weeklyHours} />
+          <KPI title="Users" value={stats.users || 0} />
+          <KPI title="Active Staff" value={stats.activeShifts || 0} />
+          <KPI title="Tasks" value={stats.tasks || 0} />
+          <KPI title="Completed" value={stats.completedTasks || 0} />
         </div>
-
-        {/* ALERTS */}
-        {alerts.length > 0 && (
-          <div style={alertsBox}>
-            {alerts.map((a, i) => (
-              <div key={i}>⚠️ {a}</div>
-            ))}
-          </div>
-        )}
 
         {/* CONTENT */}
         <div style={contentGrid}>
 
-          {/* TEAM */}
+          {/* ACTIVITY FEED 🔥 */}
           <div style={card}>
-            <h3 style={cardTitle}>Team</h3>
+            <h3 style={cardTitle}>Live Activity</h3>
 
-            {users.map(u => {
-              const active = activeShifts.find(s => s.user_id === u.id);
+            {activity.length === 0 && (
+              <p style={muted}>No recent activity</p>
+            )}
 
-              return (
-                <div key={u.id} style={row}>
-                  <div>
-                    <span style={dot(active)} />
-                    {u.name}
-                  </div>
-
-                  <div style={muted}>
-                    {active ? 'Working' : 'Offline'}
-                  </div>
+            {activity.map((a, i) => (
+              <div key={i} style={activityRow}>
+                <div>
+                  <strong>{a.name}</strong> {formatAction(a)}
                 </div>
-              );
-            })}
+                <div style={time}>
+                  {timeAgo(a.created_at)}
+                </div>
+              </div>
+            ))}
           </div>
 
-          {/* ACTIVITY */}
+          {/* QUICK INSIGHTS */}
           <div style={card}>
-            <h3 style={cardTitle}>Activity</h3>
-            <p style={muted}>Live system activity coming soon</p>
+            <h3 style={cardTitle}>Insights</h3>
+
+            <p style={muted}>
+              {stats.pendingHolidays > 0
+                ? `${stats.pendingHolidays} holidays need approval`
+                : 'No pending approvals'}
+            </p>
+
+            <p style={muted}>
+              {stats.activeShifts > 0
+                ? `${stats.activeShifts} staff currently working`
+                : 'No active shifts'}
+            </p>
           </div>
 
         </div>
@@ -174,9 +143,29 @@ function Dashboard() {
   );
 }
 
+/* HELPERS */
+
+const formatAction = (a) => {
+  switch (a.action) {
+    case 'clock_in': return 'clocked in';
+    case 'clock_out': return 'clocked out';
+    case 'task_completed': return `completed ${a.metadata?.task || 'a task'}`;
+    case 'task_created': return `created ${a.metadata?.title || 'a task'}`;
+    default: return a.action;
+  }
+};
+
+const timeAgo = (date) => {
+  const diff = (Date.now() - new Date(date)) / 1000;
+  if (diff < 60) return `${Math.floor(diff)}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+};
+
 /* COMPONENTS */
 
-function Nav({ label, onClick, active, highlight, badge }) {
+function Nav({ label, onClick, active, highlight }) {
   return (
     <button
       onClick={onClick}
@@ -186,15 +175,7 @@ function Nav({ label, onClick, active, highlight, badge }) {
         color: highlight ? '#10b981' : active ? 'white' : '#9ca3af'
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-        <span>{label}</span>
-
-        {badge > 0 && (
-          <span style={badgeStyle}>
-            {badge}
-          </span>
-        )}
-      </div>
+      {label}
     </button>
   );
 }
@@ -203,7 +184,7 @@ function KPI({ title, value }) {
   return (
     <div style={kpi}>
       <p style={muted}>{title}</p>
-      <h2 style={{ marginTop: 6 }}>{value}</h2>
+      <h2>{value}</h2>
     </div>
   );
 }
@@ -227,10 +208,7 @@ const sidebar = {
   borderRight: '1px solid #1f2937'
 };
 
-const brand = {
-  marginBottom: 25,
-  fontWeight: 600
-};
+const brand = { marginBottom: 25 };
 
 const nav = {
   width: '100%',
@@ -242,14 +220,6 @@ const nav = {
   marginBottom: 4
 };
 
-const badgeStyle = {
-  background: '#ef4444',
-  borderRadius: 20,
-  padding: '2px 8px',
-  fontSize: 12,
-  color: 'white'
-};
-
 const logoutBtn = {
   marginTop: 10,
   padding: 10,
@@ -257,15 +227,10 @@ const logoutBtn = {
   background: '#111827',
   border: '1px solid #1f2937',
   borderRadius: 8,
-  color: '#9ca3af',
-  cursor: 'pointer'
+  color: '#9ca3af'
 };
 
-const main = {
-  flex: 1,
-  padding: 30,
-  overflowY: 'auto'
-};
+const main = { flex: 1, padding: 30 };
 
 const topbar = {
   display: 'flex',
@@ -273,19 +238,40 @@ const topbar = {
   marginBottom: 25
 };
 
-const title = { margin: 0 };
-const subtitle = { color: '#6b7280', marginTop: 4 };
+const topRight = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 15
+};
+
+const bell = {
+  position: 'relative',
+  fontSize: 20,
+  cursor: 'pointer'
+};
+
+const notifBadge = {
+  position: 'absolute',
+  top: -6,
+  right: -10,
+  background: '#ef4444',
+  borderRadius: 20,
+  fontSize: 10,
+  padding: '2px 6px'
+};
 
 const userBox = {
   background: '#111827',
-  padding: '8px 12px',
-  borderRadius: 8,
-  fontSize: 14
+  padding: '6px 10px',
+  borderRadius: 8
 };
+
+const title = { margin: 0 };
+const subtitle = { color: '#6b7280' };
 
 const kpiGrid = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(3, 1fr)',
+  gridTemplateColumns: 'repeat(4, 1fr)',
   gap: 20,
   marginBottom: 20
 };
@@ -297,14 +283,6 @@ const kpi = {
   border: '1px solid #1f2937'
 };
 
-const alertsBox = {
-  background: '#1f2937',
-  padding: 12,
-  borderRadius: 8,
-  marginBottom: 20,
-  fontSize: 14
-};
-
 const contentGrid = {
   display: 'grid',
   gridTemplateColumns: '2fr 1fr',
@@ -314,31 +292,18 @@ const contentGrid = {
 const card = {
   background: '#111827',
   padding: 20,
-  borderRadius: 10,
-  border: '1px solid #1f2937'
+  borderRadius: 10
 };
 
-const cardTitle = {
-  marginBottom: 15
-};
+const cardTitle = { marginBottom: 15 };
 
-const row = {
+const activityRow = {
   display: 'flex',
   justifyContent: 'space-between',
   marginBottom: 10
 };
 
-const muted = {
-  color: '#6b7280'
-};
-
-const dot = (active) => ({
-  display: 'inline-block',
-  width: 8,
-  height: 8,
-  borderRadius: '50%',
-  background: active ? '#10b981' : '#374151',
-  marginRight: 8
-});
+const muted = { color: '#6b7280' };
+const time = { color: '#6b7280', fontSize: 12 };
 
 export default Dashboard;
