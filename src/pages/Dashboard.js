@@ -21,6 +21,7 @@ function Dashboard() {
   const [stats, setStats] = useState({});
   const [activity, setActivity] = useState([]);
   const [hours, setHours] = useState([]);
+  const [showBilling, setShowBilling] = useState(false);
 
   useEffect(() => {
     load();
@@ -45,29 +46,60 @@ function Dashboard() {
       {/* SIDEBAR */}
       <div style={sidebar}>
         <div>
+
           <h2 style={brand}>FieldSync</h2>
 
-          <Nav label="Dashboard" active />
-          <Nav label="Employees" onClick={() => navigate('/employees')} />
-          <Nav label="Schedule" onClick={() => navigate('/schedule')} />
-          <Nav label="Work Session" onClick={() => navigate('/work-session')} />
-          <Nav label="Tasks" onClick={() => navigate('/tasks')} />
-          <Nav label="Locations" onClick={() => navigate('/locations')} />
-          <Nav label="Holiday Requests" onClick={() => navigate('/holiday-requests')} />
-          <Nav label="Timesheets" onClick={() => navigate('/timesheets')} />
-          <Nav label="Reports" onClick={() => navigate('/reports')} />
-          <Nav label="Performance" onClick={() => navigate('/performance')} />
-          <Nav label="Profile" onClick={() => navigate('/profile')} />
+          {/* CORE */}
+          <Section title="Core">
+            <Nav label="Dashboard" active />
+            <Nav label="Work Session" onClick={() => navigate('/work-session')} />
+            <Nav label="Tasks" onClick={() => navigate('/tasks')} />
+          </Section>
+
+          {/* MANAGEMENT */}
+          <Section title="Management">
+            <Nav label="Employees" onClick={() => navigate('/employees')} />
+            <Nav label="Schedule" onClick={() => navigate('/schedule')} />
+            <Nav label="Locations" onClick={() => navigate('/locations')} />
+            <Nav label="Holiday Requests" onClick={() => navigate('/holiday-requests')} />
+            <Nav label="Timesheets" onClick={() => navigate('/timesheets')} />
+          </Section>
+
+          {/* BUSINESS */}
+          <Section title="Business">
+            <Nav label="Reports" onClick={() => navigate('/reports')} />
+            <Nav label="Performance" onClick={() => navigate('/performance')} />
+          </Section>
+
+          {/* ACCOUNT */}
+          <Section title="Account">
+            <Nav label="Profile" onClick={() => navigate('/profile')} />
+
+            <Nav
+              label="Billing ▾"
+              onClick={() => setShowBilling(!showBilling)}
+            />
+
+            {showBilling && (
+              <div style={subMenu}>
+                <Nav label="Plans" onClick={() => navigate('/billing')} />
+                <Nav label="Invoices" onClick={() => navigate('/billing')} />
+              </div>
+            )}
+          </Section>
+
         </div>
 
-        <div>
-          <button onClick={() => {
+        {/* LOGOUT */}
+        <button
+          onClick={() => {
             localStorage.removeItem('token');
             window.location.href = '/login';
-          }} style={logoutBtn}>
-            Logout
-          </button>
-        </div>
+          }}
+          style={logoutBtn}
+        >
+          Logout
+        </button>
       </div>
 
       {/* MAIN */}
@@ -96,29 +128,20 @@ function Dashboard() {
         {/* CHARTS */}
         <div style={chartGrid}>
 
-          {/* HOURS */}
           <div style={card}>
             <h3 style={cardTitle}>Weekly Hours</h3>
-
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={hours}>
                 <XAxis dataKey="date" stroke="#6b7280" />
                 <YAxis stroke="#6b7280" />
                 <Tooltip />
-                <Line
-                  type="monotone"
-                  dataKey="hours"
-                  stroke="#6366f1"
-                  strokeWidth={2}
-                />
+                <Line type="monotone" dataKey="hours" stroke="#6366f1" />
               </LineChart>
             </ResponsiveContainer>
           </div>
 
-          {/* TOP PERFORMERS */}
           <div style={card}>
             <h3 style={cardTitle}>Top Performers</h3>
-
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={activity}>
                 <XAxis dataKey="name" stroke="#6b7280" />
@@ -131,7 +154,7 @@ function Dashboard() {
 
         </div>
 
-        {/* ACTIVITY FEED */}
+        {/* ACTIVITY */}
         <div style={card}>
           <h3 style={cardTitle}>Live Activity</h3>
 
@@ -141,7 +164,7 @@ function Dashboard() {
 
           {activity.map((a, i) => (
             <div key={i} style={activityRow}>
-              <strong>{a.name}</strong> {formatAction(a)}
+              <strong>{a.name}</strong> — {a.action}
             </div>
           ))}
         </div>
@@ -152,15 +175,6 @@ function Dashboard() {
 }
 
 /* COMPONENTS */
-
-function KPI({ title, value }) {
-  return (
-    <div style={kpi}>
-      <p style={muted}>{title}</p>
-      <h2>{value}</h2>
-    </div>
-  );
-}
 
 function Nav({ label, onClick, active }) {
   return (
@@ -177,17 +191,23 @@ function Nav({ label, onClick, active }) {
   );
 }
 
-/* HELPERS */
+function Section({ title, children }) {
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <p style={sectionTitle}>{title}</p>
+      {children}
+    </div>
+  );
+}
 
-const formatAction = (a) => {
-  switch (a?.action) {
-    case 'clock_in': return 'clocked in';
-    case 'clock_out': return 'clocked out';
-    case 'task_completed': return 'completed a task';
-    case 'task_created': return 'created a task';
-    default: return a?.action || '';
-  }
-};
+function KPI({ title, value }) {
+  return (
+    <div style={kpi}>
+      <p style={muted}>{title}</p>
+      <h2>{value}</h2>
+    </div>
+  );
+}
 
 /* STYLES */
 
@@ -199,7 +219,7 @@ const layout = {
 };
 
 const sidebar = {
-  width: 230,
+  width: 240,
   background: '#0f172a',
   padding: 20,
   display: 'flex',
@@ -208,7 +228,14 @@ const sidebar = {
   borderRight: '1px solid #1f2937'
 };
 
-const brand = { marginBottom: 25 };
+const brand = { marginBottom: 20 };
+
+const sectionTitle = {
+  fontSize: 12,
+  color: '#6b7280',
+  marginBottom: 6,
+  textTransform: 'uppercase'
+};
 
 const nav = {
   width: '100%',
@@ -218,6 +245,10 @@ const nav = {
   textAlign: 'left',
   cursor: 'pointer',
   marginBottom: 4
+};
+
+const subMenu = {
+  paddingLeft: 10
 };
 
 const main = {
@@ -257,21 +288,20 @@ const chartGrid = {
 const kpi = {
   background: '#111827',
   padding: 20,
-  borderRadius: 10,
-  border: '1px solid #1f2937'
+  borderRadius: 10
 };
 
 const card = {
   background: '#111827',
   padding: 20,
   borderRadius: 10,
-  border: '1px solid #1f2937'
+  marginBottom: 20
 };
 
 const cardTitle = { marginBottom: 15 };
 
 const activityRow = {
-  marginBottom: 10
+  marginBottom: 8
 };
 
 const muted = { color: '#6b7280' };
