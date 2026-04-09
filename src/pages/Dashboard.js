@@ -48,18 +48,24 @@ function Dashboard() {
           <h2 style={brand}>FieldSync</h2>
 
           <Nav label="Dashboard" active onClick={() => navigate('/dashboard')} />
+          <Nav label="Employees" onClick={() => navigate('/employees')} />
           <Nav label="Schedule" onClick={() => navigate('/schedule')} />
-          <Nav label="Holidays" onClick={() => navigate('/holiday-requests')} />
+          <Nav label="Work Session" onClick={() => navigate('/work-session')} />
+          <Nav label="Tasks" onClick={() => navigate('/tasks')} />
+          <Nav label="Locations" onClick={() => navigate('/locations')} />
+          <Nav label="Holiday Requests" onClick={() => navigate('/holiday-requests')} />
+          <Nav label="Timesheets" onClick={() => navigate('/timesheets')} />
+          <Nav label="Reports" onClick={() => navigate('/reports')} />
+          <Nav label="Performance" onClick={() => navigate('/performance')} />
+          <Nav label="Profile" onClick={() => navigate('/profile')} />
         </div>
 
-        <div>
-          <button style={logoutBtn} onClick={() => {
-            localStorage.removeItem('token');
-            window.location.href = '/login';
-          }}>
-            Logout
-          </button>
-        </div>
+        <button style={logoutBtn} onClick={() => {
+          localStorage.removeItem('token');
+          window.location.href = '/login';
+        }}>
+          Logout
+        </button>
       </div>
 
       {/* MAIN */}
@@ -81,40 +87,45 @@ function Dashboard() {
           <KPI title="Completed" value={stats.completedTasks || 0} />
         </div>
 
-        {/* HOURS CHART */}
-        <div style={card}>
-          <h3 style={cardTitle}>Weekly Hours</h3>
+        {/* CHARTS ROW (50/50) */}
+        <div style={chartGrid}>
 
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={hours}>
-              <XAxis dataKey="date" stroke="#9ca3af" />
-              <YAxis stroke="#9ca3af" />
-              <Tooltip />
-              <Line
-                type="monotone"
-                dataKey="hours"
-                stroke="#6366f1"
-                strokeWidth={2}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          {/* HOURS */}
+          <div style={card}>
+            <h3 style={cardTitle}>Weekly Hours</h3>
+
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={hours}>
+                <XAxis dataKey="date" stroke="#9ca3af" />
+                <YAxis stroke="#9ca3af" />
+                <Tooltip />
+                <Line
+                  type="monotone"
+                  dataKey="hours"
+                  stroke="#6366f1"
+                  strokeWidth={2}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* TOP PERFORMERS */}
+          <div style={card}>
+            <h3 style={cardTitle}>Top Performers</h3>
+
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={activity}>
+                <XAxis dataKey="name" stroke="#9ca3af" />
+                <YAxis stroke="#9ca3af" />
+                <Tooltip />
+                <Bar dataKey="action" fill="#10b981" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
         </div>
 
-        {/* TOP PERFORMERS */}
-        <div style={card}>
-          <h3 style={cardTitle}>Top Performers</h3>
-
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={activity}>
-              <XAxis dataKey="name" stroke="#9ca3af" />
-              <YAxis stroke="#9ca3af" />
-              <Tooltip />
-              <Bar dataKey="action" fill="#10b981" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* ACTIVITY FEED */}
+        {/* ACTIVITY */}
         <div style={card}>
           <h3 style={cardTitle}>Live Activity</h3>
 
@@ -188,7 +199,7 @@ const layout = {
 };
 
 const sidebar = {
-  width: 230,
+  width: 240,
   background: '#020617',
   padding: 20,
   display: 'flex',
@@ -197,9 +208,7 @@ const sidebar = {
   borderRight: '1px solid #1f2937'
 };
 
-const brand = {
-  marginBottom: 25
-};
+const brand = { marginBottom: 25 };
 
 const main = {
   flex: 1,
@@ -220,6 +229,13 @@ const kpiGrid = {
   marginBottom: 20
 };
 
+const chartGrid = {
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: 20,
+  marginBottom: 20
+};
+
 const kpi = {
   background: '#111827',
   padding: 20,
@@ -231,7 +247,6 @@ const card = {
   background: '#111827',
   padding: 20,
   borderRadius: 10,
-  marginBottom: 20,
   border: '1px solid #1f2937'
 };
 
