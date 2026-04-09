@@ -17,7 +17,7 @@ function HolidayRequests() {
   const load = async () => {
     try {
       const res = await holidayAPI.getAll();
-      setRequests(res.data || []);
+      setRequests(res || []); // ✅ FIXED
     } catch (err) {
       console.error(err);
     }
@@ -32,8 +32,7 @@ function HolidayRequests() {
     filter === 'all' ? true : r.status === filter
   );
 
-  // 📅 CALENDAR LOGIC
-  const startOfMonth = new Date(currentMonth);
+  // 📅 CALENDAR
   const endOfMonth = new Date(
     currentMonth.getFullYear(),
     currentMonth.getMonth() + 1,
@@ -53,43 +52,49 @@ function HolidayRequests() {
     });
   };
 
+  const changeMonth = (dir) => {
+    const newDate = new Date(currentMonth);
+    newDate.setMonth(newDate.getMonth() + dir);
+    setCurrentMonth(newDate);
+  };
+
   return (
     <div style={container}>
 
       {/* HEADER */}
       <div style={header}>
         <div>
-          <h1 style={{ margin: 0 }}>Holiday Management</h1>
-          <p style={sub}>Manage time-off across your company</p>
+          <h1 style={title}>Holiday Management</h1>
+          <p style={sub}>Company-wide time off overview</p>
         </div>
 
-        <div style={controls}>
-          <select value={filter} onChange={e => setFilter(e.target.value)} style={select}>
-            <option value="all">All</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-          </select>
-        </div>
+        <select value={filter} onChange={e => setFilter(e.target.value)} style={select}>
+          <option value="all">All</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+        </select>
       </div>
 
       {/* KPI */}
       <div style={kpiRow}>
-        <KPI label="Total Requests" value={requests.length} />
+        <KPI label="Total" value={requests.length} />
         <KPI label="Pending" value={requests.filter(r => r.status === 'pending').length} />
         <KPI label="Approved" value={requests.filter(r => r.status === 'approved').length} />
       </div>
 
       {/* CALENDAR NAV */}
       <div style={calendarNav}>
-        <button onClick={() => setCurrentMonth(prev => new Date(prev.setMonth(prev.getMonth() - 1)))}>←</button>
+        <button onClick={() => changeMonth(-1)} style={navBtn}>←</button>
+
         <h3>
           {currentMonth.toLocaleString('default', { month: 'long' })} {currentMonth.getFullYear()}
         </h3>
-        <button onClick={() => setCurrentMonth(prev => new Date(prev.setMonth(prev.getMonth() + 1)))}>→</button>
+
+        <button onClick={() => changeMonth(1)} style={navBtn}>→</button>
       </div>
 
-      {/* CALENDAR GRID */}
+      {/* CALENDAR */}
       <div style={calendarGrid}>
         {days.map((day, i) => {
           const dayRequests = getRequestsForDay(day);
@@ -115,7 +120,7 @@ function HolidayRequests() {
         })}
       </div>
 
-      {/* TABLE (SECONDARY VIEW) */}
+      {/* TABLE */}
       <div style={card}>
         <h3 style={{ marginBottom: 10 }}>All Requests</h3>
 
@@ -183,9 +188,8 @@ const header = {
   marginBottom: 20
 };
 
-const sub = { color: '#6b7280', marginTop: 4 };
-
-const controls = { display: 'flex', gap: 10 };
+const title = { margin: 0 };
+const sub = { color: '#6b7280' };
 
 const select = {
   background: '#111827',
@@ -214,6 +218,15 @@ const calendarNav = {
   justifyContent: 'space-between',
   alignItems: 'center',
   marginBottom: 15
+};
+
+const navBtn = {
+  background: '#111827',
+  border: '1px solid #1f2937',
+  color: 'white',
+  borderRadius: 6,
+  padding: '4px 10px',
+  cursor: 'pointer'
 };
 
 const calendarGrid = {

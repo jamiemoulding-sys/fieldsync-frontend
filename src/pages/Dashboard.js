@@ -10,6 +10,7 @@ function Dashboard() {
   const [stats, setStats] = useState({});
   const [activity, setActivity] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [hours, setHours] = useState([]); // 🔥 NEW (trend data)
 
   const logout = () => {
     localStorage.removeItem('token');
@@ -26,20 +27,31 @@ function Dashboard() {
     try {
       const res = await api.get('/dashboard');
 
-      const data = res.data || {};
+      const data = res?.data || {};
 
-      setStats(data.stats || {});
-      setActivity(data.activity || []);
+      const statsData = data?.stats || {};
+      const activityData = data?.activity || [];
+      const hoursData = data?.trends?.hours || [];
 
-      // 🔔 notifications = pending holidays
-      setNotifications([
-        ...(data.stats?.pendingHolidays > 0
-          ? [`${data.stats.pendingHolidays} pending holiday requests`]
-          : [])
-      ]);
+      setStats(statsData);
+      setActivity(activityData);
+      setHours(hoursData);
+
+      // 🔔 notifications
+      const notifs = [];
+
+      if (statsData?.pendingHolidays > 0) {
+        notifs.push(`${statsData.pendingHolidays} pending holiday requests`);
+      }
+
+      if (statsData?.activeShifts === 0) {
+        notifs.push('No staff currently clocked in');
+      }
+
+      setNotifications(notifs);
 
     } catch (err) {
-      console.error(err);
+      console.error('DASHBOARD LOAD ERROR:', err);
     }
   };
 
@@ -76,7 +88,6 @@ function Dashboard() {
           </div>
 
           <div style={topRight}>
-            {/* 🔔 NOTIFICATIONS */}
             <div style={bell}>
               🔔
               {notifications.length > 0 && (
@@ -90,16 +101,32 @@ function Dashboard() {
 
         {/* KPI */}
         <div style={kpiGrid}>
-          <KPI title="Users" value={stats.users || 0} />
-          <KPI title="Active Staff" value={stats.activeShifts || 0} />
-          <KPI title="Tasks" value={stats.tasks || 0} />
-          <KPI title="Completed" value={stats.completedTasks || 0} />
+          <KPI title="Users" value={stats?.users || 0} />
+          <KPI title="Active Staff" value={stats?.activeShifts || 0} />
+          <KPI title="Tasks" value={stats?.tasks || 0} />
+          <KPI title="Completed" value={stats?.completedTasks || 0} />
+        </div>
+
+        {/* 🔥 HOURS TREND (NEW) */}
+        <div style={card}>
+          <h3 style={cardTitle}>Hours (Last 7 Days)</h3>
+
+          {hours.length === 0 && (
+            <p style={muted}>No data</p>
+          )}
+
+          {hours.map((h, i) => (
+            <div key={i} style={activityRow}>
+              <div>{new Date(h.date).toLocaleDateString()}</div>
+              <div>{Number(h.hours).toFixed(1)} hrs</div>
+            </div>
+          ))}
         </div>
 
         {/* CONTENT */}
         <div style={contentGrid}>
 
-          {/* ACTIVITY FEED 🔥 */}
+          {/* ACTIVITY FEED */}
           <div style={card}>
             <h3 style={cardTitle}>Live Activity</h3>
 
@@ -110,7 +137,7 @@ function Dashboard() {
             {activity.map((a, i) => (
               <div key={i} style={activityRow}>
                 <div>
-                  <strong>{a.name}</strong> {formatAction(a)}
+                  <strong>{a.name || 'User'}</strong> {formatAction(a)}
                 </div>
                 <div style={time}>
                   {timeAgo(a.created_at)}
@@ -119,20 +146,24 @@ function Dashboard() {
             ))}
           </div>
 
-          {/* QUICK INSIGHTS */}
+          {/* INSIGHTS */}
           <div style={card}>
             <h3 style={cardTitle}>Insights</h3>
 
             <p style={muted}>
-              {stats.pendingHolidays > 0
+              {stats?.pendingHolidays > 0
                 ? `${stats.pendingHolidays} holidays need approval`
                 : 'No pending approvals'}
             </p>
 
             <p style={muted}>
-              {stats.activeShifts > 0
+              {stats?.activeShifts > 0
                 ? `${stats.activeShifts} staff currently working`
                 : 'No active shifts'}
+            </p>
+
+            <p style={muted}>
+              Late rate: {stats?.lateRate || 0}%
             </p>
           </div>
 
@@ -146,16 +177,17 @@ function Dashboard() {
 /* HELPERS */
 
 const formatAction = (a) => {
-  switch (a.action) {
+  switch (a?.action) {
     case 'clock_in': return 'clocked in';
     case 'clock_out': return 'clocked out';
-    case 'task_completed': return `completed ${a.metadata?.task || 'a task'}`;
-    case 'task_created': return `created ${a.metadata?.title || 'a task'}`;
-    default: return a.action;
+    case 'task_completed': return `completed ${a?.metadata?.task || 'a task'}`;
+    case 'task_created': return `created ${a?.metadata?.title || 'a task'}`;
+    default: return a?.action || 'did something';
   }
 };
 
 const timeAgo = (date) => {
+  if (!date) return '';
   const diff = (Date.now() - new Date(date)) / 1000;
   if (diff < 60) return `${Math.floor(diff)}s ago`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
@@ -292,7 +324,8 @@ const contentGrid = {
 const card = {
   background: '#111827',
   padding: 20,
-  borderRadius: 10
+  borderRadius: 10,
+  marginBottom: 20
 };
 
 const cardTitle = { marginBottom: 15 };

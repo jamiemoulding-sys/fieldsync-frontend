@@ -5,11 +5,17 @@ import { userAPI, scheduleAPI } from '../services/api';
 function Schedule() {
   const [users, setUsers] = useState([]);
   const [schedules, setSchedules] = useState([]);
+  const [view, setView] = useState('grid'); // grid | calendar
 
   const [selectedUser, setSelectedUser] = useState('');
   const [date, setDate] = useState('');
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
+
+  const today = new Date();
+  const [currentMonth, setCurrentMonth] = useState(
+    new Date(today.getFullYear(), today.getMonth(), 1)
+  );
 
   useEffect(() => {
     loadData();
@@ -22,8 +28,9 @@ function Schedule() {
         scheduleAPI.getAll()
       ]);
 
-      setUsers(usersRes.data || []);
-      setSchedules(schedRes.data || []);
+      setUsers(usersRes || []);       // ✅ FIXED
+      setSchedules(schedRes || []);   // ✅ FIXED
+
     } catch (err) {
       console.error(err);
     }
@@ -55,12 +62,32 @@ function Schedule() {
   };
 
   const deleteSchedule = async (id) => {
-    try {
-      await scheduleAPI.delete(id);
-      loadData();
-    } catch (err) {
-      console.error(err);
-    }
+    await scheduleAPI.delete(id);
+    loadData();
+  };
+
+  // 📅 CALENDAR
+  const endOfMonth = new Date(
+    currentMonth.getFullYear(),
+    currentMonth.getMonth() + 1,
+    0
+  );
+
+  const days = [];
+  for (let i = 1; i <= endOfMonth.getDate(); i++) {
+    days.push(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), i));
+  }
+
+  const getShiftsForDay = (day) => {
+    return schedules.filter(s =>
+      new Date(s.date).toDateString() === day.toDateString()
+    );
+  };
+
+  const changeMonth = (dir) => {
+    const newDate = new Date(currentMonth);
+    newDate.setMonth(newDate.getMonth() + dir);
+    setCurrentMonth(newDate);
   };
 
   return (
@@ -73,46 +100,28 @@ function Schedule() {
             <h1 style={title}>Schedule Manager</h1>
             <p style={subtitle}>Plan and manage team shifts</p>
           </div>
+
+          <div style={controls}>
+            <button onClick={() => setView('grid')} style={viewBtn(view === 'grid')}>Grid</button>
+            <button onClick={() => setView('calendar')} style={viewBtn(view === 'calendar')}>Calendar</button>
+          </div>
         </div>
 
-        {/* CREATE SHIFT */}
+        {/* CREATE */}
         <div style={card}>
           <h3 style={cardTitle}>Assign Shift</h3>
 
           <div style={formGrid}>
-            <select
-              value={selectedUser}
-              onChange={(e) => setSelectedUser(e.target.value)}
-              style={input}
-            >
+            <select value={selectedUser} onChange={(e) => setSelectedUser(e.target.value)} style={input}>
               <option value="">Select Employee</option>
               {users.map(u => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
+                <option key={u.id} value={u.id}>{u.name}</option>
               ))}
             </select>
 
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              style={input}
-            />
-
-            <input
-              type="time"
-              value={start}
-              onChange={(e) => setStart(e.target.value)}
-              style={input}
-            />
-
-            <input
-              type="time"
-              value={end}
-              onChange={(e) => setEnd(e.target.value)}
-              style={input}
-            />
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={input} />
+            <input type="time" value={start} onChange={(e) => setStart(e.target.value)} style={input} />
+            <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} style={input} />
 
             <button onClick={createSchedule} style={primaryBtn}>
               Create Shift
@@ -120,37 +129,57 @@ function Schedule() {
           </div>
         </div>
 
-        {/* SCHEDULE LIST */}
-        <div style={{ marginTop: 30 }}>
-          <h3 style={cardTitle}>Upcoming Shifts</h3>
+        {/* GRID VIEW */}
+        {view === 'grid' && (
+          <div style={{ marginTop: 30 }}>
+            <h3 style={cardTitle}>Upcoming Shifts</h3>
 
-          {schedules.length === 0 && (
-            <p style={muted}>No schedules yet</p>
-          )}
+            <div style={grid}>
+              {schedules.map(s => (
+                <div key={s.id} style={shiftCard}>
+                  <div>
+                    <strong>{s.name}</strong>
+                    <p style={muted}>{formatDate(s.date)}</p>
+                    <p style={time}>
+                      {formatTime(s.start_time)} → {formatTime(s.end_time)}
+                    </p>
+                  </div>
 
-          <div style={grid}>
-            {schedules.map(s => (
-              <div key={s.id} style={shiftCard}>
-                <div>
-                  <strong>{s.name}</strong>
-                  <p style={muted}>
-                    {formatDate(s.date)}
-                  </p>
-                  <p style={time}>
-                    {formatTime(s.start_time)} → {formatTime(s.end_time)}
-                  </p>
+                  <button onClick={() => deleteSchedule(s.id)} style={deleteBtn}>
+                    Delete
+                  </button>
                 </div>
-
-                <button
-                  onClick={() => deleteSchedule(s.id)}
-                  style={deleteBtn}
-                >
-                  Delete
-                </button>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* CALENDAR VIEW */}
+        {view === 'calendar' && (
+          <>
+            <div style={calendarNav}>
+              <button onClick={() => changeMonth(-1)} style={navBtn}>←</button>
+              <h3>
+                {currentMonth.toLocaleString('default', { month: 'long' })} {currentMonth.getFullYear()}
+              </h3>
+              <button onClick={() => changeMonth(1)} style={navBtn}>→</button>
+            </div>
+
+            <div style={calendarGrid}>
+              {days.map((day, i) => (
+                <div key={i} style={dayCell}>
+                  <div style={dayHeader}>{day.getDate()}</div>
+
+                  {getShiftsForDay(day).map(s => (
+                    <div key={s.id} style={shiftEvent}>
+                      {s.name}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
       </div>
     </Layout>
@@ -159,30 +188,24 @@ function Schedule() {
 
 /* HELPERS */
 
-function formatDate(d) {
-  return new Date(d).toLocaleDateString();
-}
-
-function formatTime(t) {
-  return new Date(t).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-}
+const formatDate = d => new Date(d).toLocaleDateString();
+const formatTime = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
 /* STYLES */
 
-const container = {
-  padding: 30,
-  color: 'white'
-};
+const container = { padding: 30, color: 'white' };
 
-const header = {
-  marginBottom: 20
-};
+const header = { display: 'flex', justifyContent: 'space-between', marginBottom: 20 };
 
-const title = { margin: 0 };
-const subtitle = { color: '#6b7280', marginTop: 5 };
+const controls = { display: 'flex', gap: 10 };
+
+const viewBtn = (active) => ({
+  background: active ? '#1f2937' : '#111827',
+  border: '1px solid #1f2937',
+  color: 'white',
+  padding: '6px 12px',
+  borderRadius: 6
+});
 
 const card = {
   background: '#111827',
@@ -191,9 +214,7 @@ const card = {
   border: '1px solid #1f2937'
 };
 
-const cardTitle = {
-  marginBottom: 15
-};
+const cardTitle = { marginBottom: 15 };
 
 const formGrid = {
   display: 'grid',
@@ -214,8 +235,7 @@ const primaryBtn = {
   background: '#6366f1',
   border: 'none',
   borderRadius: 8,
-  color: 'white',
-  cursor: 'pointer'
+  color: 'white'
 };
 
 const grid = {
@@ -230,8 +250,7 @@ const shiftCard = {
   borderRadius: 12,
   border: '1px solid #1f2937',
   display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center'
+  justifyContent: 'space-between'
 };
 
 const deleteBtn = {
@@ -239,18 +258,51 @@ const deleteBtn = {
   border: 'none',
   padding: '6px 10px',
   borderRadius: 6,
+  color: 'white'
+};
+
+const calendarNav = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  marginTop: 20,
+  marginBottom: 10
+};
+
+const navBtn = {
+  background: '#111827',
+  border: '1px solid #1f2937',
+  padding: '4px 10px',
   color: 'white',
-  cursor: 'pointer'
+  borderRadius: 6
 };
 
-const muted = {
-  color: '#6b7280',
-  fontSize: 14
+const calendarGrid = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(7, 1fr)',
+  gap: 10
 };
 
-const time = {
-  fontSize: 14,
-  marginTop: 5
+const dayCell = {
+  background: '#111827',
+  padding: 10,
+  borderRadius: 10,
+  minHeight: 80
 };
+
+const dayHeader = { fontSize: 12, color: '#6b7280' };
+
+const shiftEvent = {
+  background: '#1f2937',
+  padding: 4,
+  borderRadius: 4,
+  marginTop: 4,
+  fontSize: 12
+};
+
+const muted = { color: '#6b7280' };
+const time = { fontSize: 14 };
+
+const title = { margin: 0 };
+const subtitle = { color: '#6b7280' };
 
 export default Schedule;

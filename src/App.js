@@ -1,22 +1,32 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
+// 🌐 PUBLIC
 import Landing from './pages/Landing';
 import Signup from './pages/Signup';
-import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
-import Upgrade from './pages/Upgrade';
+
+// 🧠 CORE APP
+import Dashboard from './pages/Dashboard';
 import Tasks from './pages/Tasks';
 import Schedule from './pages/Schedule';
+import ScheduleCalendar from "./pages/ScheduleCalendar";
+import HolidayRequests from "./pages/HolidayRequests";
+
+// 📊 BUSINESS
 import Performance from './pages/Performance';
-import Success from './pages/Success';
-import Employees from './pages/Employees';
-import Locations from './pages/Locations';
 import Reports from './pages/Reports';
 import Billing from './pages/Billing';
-import Profile from './pages/Profile';
-import ScheduleCalendar from "./pages/ScheduleCalendar";
-import HolidayRequests from "./pages/HolidayRequests"; // ✅ NEW
 
+// 👥 MANAGEMENT
+import Employees from './pages/Employees';
+import Locations from './pages/Locations';
+
+// 👤 USER
+import Profile from './pages/Profile';
+
+// 💸 SYSTEM
+import Upgrade from './pages/Upgrade';
+import Success from './pages/Success';
 import WorkSession from './pages/WorkSession';
 
 function App() {
@@ -24,26 +34,32 @@ function App() {
     <Router>
       <Routes>
 
+        {/* ================= PUBLIC ================= */}
         <Route path="/" element={<Landing />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
 
+        {/* ================= CORE ================= */}
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/tasks" element={<Tasks />} />
-        <Route path="/upgrade" element={<Upgrade />} />
         <Route path="/schedule" element={<Schedule />} />
-        <Route path="/performance" element={<Performance />} />
         <Route path="/calendar" element={<ScheduleCalendar />} />
-
-        {/* ✅ NEW */}
         <Route path="/holiday-requests" element={<HolidayRequests />} />
 
-        <Route path="/employees" element={<Employees />} />
-        <Route path="/locations" element={<Locations />} />
+        {/* ================= BUSINESS ================= */}
+        <Route path="/performance" element={<Performance />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/billing" element={<Billing />} />
+
+        {/* ================= MANAGEMENT ================= */}
+        <Route path="/employees" element={<Employees />} />
+        <Route path="/locations" element={<Locations />} />
+
+        {/* ================= USER ================= */}
         <Route path="/profile" element={<Profile />} />
 
+        {/* ================= SYSTEM ================= */}
+        <Route path="/upgrade" element={<Upgrade />} />
         <Route path="/work-session" element={<WorkSession />} />
         <Route path="/success" element={<Success />} />
 

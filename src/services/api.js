@@ -1,7 +1,11 @@
 import axios from "axios";
 
+// =========================
+// 🌍 BASE CONFIG
+// =========================
 const api = axios.create({
   baseURL: "https://fieldsync-backend-clean-t7vn.onrender.com/api",
+  timeout: 10000
 });
 
 // =========================
@@ -23,10 +27,9 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    console.error("API ERROR:", err?.response || err.message);
+    console.error("🚨 API ERROR:", err?.response?.data || err.message);
 
     if (err?.response?.status === 401) {
-      // auto logout if token invalid
       localStorage.removeItem("token");
       window.location.href = "/login";
     }
@@ -36,67 +39,75 @@ api.interceptors.response.use(
 );
 
 // =========================
+// 🧠 HELPER (STANDARDISE RESPONSES)
+// =========================
+const unwrap = async (promise) => {
+  const res = await promise;
+  return res?.data;
+};
+
+// =========================
 // 🔐 AUTH
 // =========================
 export const authAPI = {
-  login: (data) => api.post("/auth/login", data),
-  register: (data) => api.post("/auth/register", data),
+  login: (data) => unwrap(api.post("/auth/login", data)),
+  register: (data) => unwrap(api.post("/auth/register", data)),
 };
 
 // =========================
 // ⏱ SHIFTS
 // =========================
 export const shiftAPI = {
-  getActive: () => api.get("/shifts/active"),
-  getAllActive: () => api.get("/shifts/active-all"),
-  clockIn: (data) => api.post("/shifts/clock-in", data),
-  clockOut: () => api.post("/shifts/clock-out"),
-  getHistory: () => api.get("/shifts/history"),
+  getActive: () => unwrap(api.get("/shifts/active")),
+  getAllActive: () => unwrap(api.get("/shifts/active-all")),
+  clockIn: (data) => unwrap(api.post("/shifts/clock-in", data)),
+  clockOut: () => unwrap(api.post("/shifts/clock-out")),
+  getHistory: () => unwrap(api.get("/shifts/history")),
 };
 
 // =========================
 // 👥 USERS
 // =========================
 export const userAPI = {
-  getAll: () => api.get("/users"),
+  getAll: () => unwrap(api.get("/users")),
 };
 
 // =========================
 // 📅 SCHEDULES
 // =========================
 export const scheduleAPI = {
-  getAll: () => api.get("/schedules"),
-  getMine: () => api.get("/schedules/my-schedule"),
-  create: (data) => api.post("/schedules", data),
-  update: (id, data) => api.put(`/schedules/${id}`, data),
-  delete: (id) => api.delete(`/schedules/${id}`),
-  getLate: () => api.get("/schedules/late-arrivals"),
+  getAll: () => unwrap(api.get("/schedules")),
+  getMine: () => unwrap(api.get("/schedules/my-schedule")),
+  create: (data) => unwrap(api.post("/schedules", data)),
+  update: (id, data) => unwrap(api.put(`/schedules/${id}`, data)),
+  delete: (id) => unwrap(api.delete(`/schedules/${id}`)),
+  getLate: () => unwrap(api.get("/schedules/late-arrivals")),
 };
 
 // =========================
-// 🌴 HOLIDAYS (UPGRADED)
+// 🌴 HOLIDAYS
 // =========================
 export const holidayAPI = {
-  getAll: () => api.get("/schedules/holiday-requests"),
+  getAll: () => unwrap(api.get("/schedules/holiday-requests")),
 
   create: (data) =>
-    api.post("/schedules/holiday-requests", data),
+    unwrap(api.post("/schedules/holiday-requests", data)),
 
   update: (id, data) =>
-    api.put(`/schedules/holiday-requests/${id}`, data),
+    unwrap(api.put(`/schedules/holiday-requests/${id}`, data)),
 
   delete: (id) =>
-    api.delete(`/schedules/holiday-requests/${id}`),
+    unwrap(api.delete(`/schedules/holiday-requests/${id}`)),
 
-  // 🔥 NEW HELPERS
+  // helpers
   getPending: async () => {
-    const res = await api.get("/schedules/holiday-requests");
-    return res.data.filter(h => h.status === "pending");
+    const data = await unwrap(api.get("/schedules/holiday-requests"));
+    return data.filter(h => h.status === "pending");
   },
 
   getByStatus: async (status) => {
-    const res = await api.get("/schedules/holiday-requests");
-    return res.data.filter(h => h.status === status);
+    const data = await unwrap(api.get("/schedules/holiday-requests"));
+    return data.filter(h => h.status === status);
   }
 };
 
@@ -104,49 +115,49 @@ export const holidayAPI = {
 // 📈 PERFORMANCE
 // =========================
 export const performanceAPI = {
-  getAll: () => api.get("/performance"),
+  getAll: () => unwrap(api.get("/performance")),
 };
 
 // =========================
 // 📍 LOCATIONS
 // =========================
 export const locationAPI = {
-  getLocations: () => api.get("/locations"),
-  create: (data) => api.post("/locations", data),
-  update: (id, data) => api.put(`/locations/${id}`, data),
-  delete: (id) => api.delete(`/locations/${id}`),
+  getLocations: () => unwrap(api.get("/locations")),
+  create: (data) => unwrap(api.post("/locations", data)),
+  update: (id, data) => unwrap(api.put(`/locations/${id}`, data)),
+  delete: (id) => unwrap(api.delete(`/locations/${id}`)),
 };
 
 // =========================
 // 📋 TASKS
 // =========================
 export const taskAPI = {
-  getTasks: () => api.get("/tasks/all"),
-  create: (data) => api.post("/tasks", data),
+  getTasks: () => unwrap(api.get("/tasks/all")),
+  create: (data) => unwrap(api.post("/tasks", data)),
   complete: (task_id) =>
-    api.post("/tasks/complete", { task_id }),
+    unwrap(api.post("/tasks/complete", { task_id })),
 };
 
 // =========================
 // 📊 REPORTS
 // =========================
 export const reportAPI = {
-  getTimesheets: () => api.get("/reports/timesheets"),
+  getTimesheets: () => unwrap(api.get("/reports/timesheets")),
 };
 
 // =========================
 // 📈 ANALYTICS
 // =========================
 export const analyticsAPI = {
-  getShifts: () => api.get("/shifts/analytics"),
+  getShifts: () => unwrap(api.get("/shifts/analytics")),
 };
 
 // =========================
 // 🧠 DASHBOARD
 // =========================
 export const managerAPI = {
-  getDashboard: () => api.get("/dashboard"),
-  getActiveShifts: () => api.get("/shifts/active-all"),
+  getDashboard: () => unwrap(api.get("/dashboard")),
+  getActiveShifts: () => unwrap(api.get("/shifts/active-all")),
 };
 
 // =========================
@@ -154,9 +165,11 @@ export const managerAPI = {
 // =========================
 export const uploadAPI = {
   upload: (formData) =>
-    api.post("/uploads", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    }),
+    unwrap(
+      api.post("/uploads", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      })
+    ),
 };
 
 export default api;
