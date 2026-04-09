@@ -21,21 +21,36 @@ function Login() {
         password,
       });
 
-      const token = res.data.token;
+      // 🔥 DEBUG (leave this for now)
+      console.log("LOGIN RESPONSE:", res);
+
+      // ✅ SAFE ACCESS
+      const token = res?.data?.token;
 
       if (!token) {
-        throw new Error("No token returned");
+        throw new Error("No token returned from backend");
       }
 
       // ✅ SAVE TOKEN
       localStorage.setItem("token", token);
+
+      // ✅ OPTIONAL: save user (helps later)
+      if (res?.data?.user) {
+        localStorage.setItem("user", JSON.stringify(res.data.user));
+      }
 
       // ✅ REDIRECT
       window.location.href = "/dashboard";
 
     } catch (err) {
       console.error("LOGIN ERROR:", err);
-      alert("Invalid email or password");
+
+      const message =
+        err?.response?.data?.error ||
+        err?.message ||
+        "Login failed";
+
+      alert(message);
     } finally {
       setLoading(false);
     }
