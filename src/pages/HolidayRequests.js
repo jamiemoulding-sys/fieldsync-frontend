@@ -1,143 +1,182 @@
-import React, { useState, useEffect } from 'react';
-import api from '../services/api'; // ✅ FIXED
-import HomeButton from '../components/HomeButton';
+import React, { useEffect, useState } from 'react';
+import { holidayAPI } from '../services/api';
 
 function HolidayRequests() {
-  const [holidayRequests, setHolidayRequests] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [editingRequest, setEditingRequest] = useState(null);
-
-  const [formData, setFormData] = useState({
-    employee_id: '',
-    start_date: '',
-    end_date: '',
-    holiday_type: 'annual',
-    reason: '',
-    notes: ''
-  });
-
-  const [user, setUser] = useState(null);
-  const [isManager, setIsManager] = useState(false);
+  const [requests, setRequests] = useState([]);
+  const [view, setView] = useState('table'); // table | calendar
+  const [filter, setFilter] = useState('all');
 
   useEffect(() => {
-    const userData = JSON.parse(localStorage.getItem('user') || '{}');
-    setUser(userData);
-    setIsManager(userData.role === 'manager');
-    loadData();
+    load();
   }, []);
 
-  const loadData = async () => {
+  const load = async () => {
     try {
-      setLoading(true);
-
-      let res;
-
-      if (isManager) {
-        res = await api.get('/holiday'); // adjust if needed
-      } else {
-        res = await api.get('/holiday/my');
-      }
-
-      setHolidayRequests(Array.isArray(res.data) ? res.data : []);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    try {
-      const requestData = {
-        ...formData,
-        employee_id: formData.employee_id || user.id
-      };
-
-      if (editingRequest) {
-        await api.put(`/holiday/${editingRequest.id}`, requestData);
-        setSuccess('Updated successfully');
-      } else {
-        await api.post('/holiday', requestData);
-        setSuccess('Created successfully');
-      }
-
-      setShowModal(false);
-      setEditingRequest(null);
-      await loadData();
+      const res = await holidayAPI.getAll();
+      setRequests(res.data || []);
     } catch (err) {
-      setError('Failed to save request');
-    } finally {
-      setLoading(false);
+      console.error(err);
     }
   };
 
-  const handleApprove = async (id) => {
-    try {
-      await api.post(`/holiday/${id}/approve`);
-      loadData();
-    } catch {
-      setError('Approve failed');
-    }
+  const updateStatus = async (id, status) => {
+    await holidayAPI.update(id, { status });
+    load();
   };
 
-  const handleReject = async (id) => {
-    try {
-      await api.post(`/holiday/${id}/reject`);
-      loadData();
-    } catch {
-      setError('Reject failed');
-    }
-  };
-
-  const handleDelete = async (id) => {
-    try {
-      await api.delete(`/holiday/${id}`);
-      loadData();
-    } catch {
-      setError('Delete failed');
-    }
-  };
-
-  if (loading) return <div>Loading...</div>;
+  const filtered = requests.filter(r =>
+    filter === 'all' ? true : r.status === filter
+  );
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between mb-6">
-        <h1 className="text-xl font-bold">Holiday Requests</h1>
-        <div className="flex gap-2">
-          <button onClick={() => setShowModal(true)} className="btn-primary">
-            ➕ New
-          </button>
-          <HomeButton />
+    <div style={container}>
+
+      {/* HEADER */}
+      <div style={header}>
+        <h1>Holiday Requests</h1>
+
+        <div style={controls}>
+          <button onClick={() => setView('table')} style={btn(view === 'table')}>Table</button>
+          <button onClick={() => setView('calendar')} style={btn(view === 'calendar')}>Calendar</button>
+
+          <select value={filter} onChange={e => setFilter(e.target.value)} style={select}>
+            <option value="all">All</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
         </div>
       </div>
 
-      {holidayRequests.map(r => (
-        <div key={r.id} className="card mb-3">
-          <p>{r.start_date} → {r.end_date}</p>
-          <p>{r.reason}</p>
+      {/* TABLE VIEW */}
+      {view === 'table' && (
+        <div style={card}>
+          <table style={table}>
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
 
-          {isManager && r.status === 'pending' && (
-            <>
-              <button onClick={() => handleApprove(r.id)}>Approve</button>
-              <button onClick={() => handleReject(r.id)}>Reject</button>
-            </>
-          )}
-
-          {r.status === 'pending' && (
-            <button onClick={() => handleDelete(r.id)}>Delete</button>
-          )}
+            <tbody>
+              {filtered.map(r => (
+                <tr key={r.id}>
+                  <td>{r.name}</td>
+                  <td>{format(r.start_date)}</td>
+                  <td>{format(r.end_date)}</td>
+                  <td><span style={badge(r.status)}>{r.status}</span></td>
+                  <td>
+                    {r.status === 'pending' && (
+                      <>
+                        <button onClick={() => updateStatus(r.id, 'approved')} style={approve}>Approve</button>
+                        <button onClick={() => updateStatus(r.id, 'rejected')} style={reject}>Reject</button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      ))}
+      )}
+
+      {/* CALENDAR VIEW */}
+      {view === 'calendar' && (
+        <div style={calendar}>
+          {filtered.map(r => (
+            <div key={r.id} style={calendarCard}>
+              <strong>{r.name}</strong>
+              <p>{format(r.start_date)} → {format(r.end_date)}</p>
+              <span style={badge(r.status)}>{r.status}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
     </div>
   );
 }
+
+/* HELPERS */
+
+const format = d => new Date(d).toLocaleDateString();
+
+/* STYLES */
+
+const container = { padding: 30, color: 'white', background: '#0b0f14', minHeight: '100vh' };
+
+const header = { display: 'flex', justifyContent: 'space-between', marginBottom: 20 };
+
+const controls = { display: 'flex', gap: 10 };
+
+const btn = (active) => ({
+  padding: '6px 12px',
+  background: active ? '#1f2937' : '#111827',
+  border: '1px solid #1f2937',
+  color: 'white',
+  borderRadius: 6,
+  cursor: 'pointer'
+});
+
+const select = {
+  background: '#111827',
+  border: '1px solid #1f2937',
+  color: 'white',
+  borderRadius: 6,
+  padding: 6
+};
+
+const card = {
+  background: '#111827',
+  padding: 20,
+  borderRadius: 10
+};
+
+const table = {
+  width: '100%',
+  borderCollapse: 'collapse'
+};
+
+const approve = {
+  background: '#10b981',
+  border: 'none',
+  padding: 6,
+  marginRight: 5,
+  borderRadius: 6,
+  color: 'white'
+};
+
+const reject = {
+  background: '#ef4444',
+  border: 'none',
+  padding: 6,
+  borderRadius: 6,
+  color: 'white'
+};
+
+const badge = (status) => ({
+  padding: '4px 10px',
+  borderRadius: 20,
+  background:
+    status === 'approved' ? '#065f46' :
+    status === 'rejected' ? '#7f1d1d' :
+    '#1f2937'
+});
+
+const calendar = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+  gap: 15
+};
+
+const calendarCard = {
+  background: '#111827',
+  padding: 15,
+  borderRadius: 10
+};
 
 export default HolidayRequests;

@@ -5,21 +5,35 @@ const api = axios.create({
 });
 
 // =========================
-// 🔐 AUTH TOKEN
+// 🔐 AUTH TOKEN HANDLER
 // =========================
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
 
-  console.log("🚀 SENDING TOKEN:", token);
-
   if (token && token !== "undefined" && token !== "null") {
     config.headers.Authorization = `Bearer ${token}`;
-  } else {
-    console.log("❌ NO TOKEN FOUND");
   }
 
   return config;
 });
+
+// =========================
+// ❌ GLOBAL ERROR HANDLER
+// =========================
+api.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    console.error("API ERROR:", err?.response || err.message);
+
+    if (err?.response?.status === 401) {
+      // auto logout if token invalid
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+    }
+
+    return Promise.reject(err);
+  }
+);
 
 // =========================
 // 🔐 AUTH
@@ -60,22 +74,37 @@ export const scheduleAPI = {
 };
 
 // =========================
+// 🌴 HOLIDAYS (UPGRADED)
+// =========================
+export const holidayAPI = {
+  getAll: () => api.get("/schedules/holiday-requests"),
+
+  create: (data) =>
+    api.post("/schedules/holiday-requests", data),
+
+  update: (id, data) =>
+    api.put(`/schedules/holiday-requests/${id}`, data),
+
+  delete: (id) =>
+    api.delete(`/schedules/holiday-requests/${id}`),
+
+  // 🔥 NEW HELPERS
+  getPending: async () => {
+    const res = await api.get("/schedules/holiday-requests");
+    return res.data.filter(h => h.status === "pending");
+  },
+
+  getByStatus: async (status) => {
+    const res = await api.get("/schedules/holiday-requests");
+    return res.data.filter(h => h.status === status);
+  }
+};
+
+// =========================
 // 📈 PERFORMANCE
 // =========================
 export const performanceAPI = {
   getAll: () => api.get("/performance"),
-};
-
-// =========================
-// 🌴 HOLIDAYS
-// =========================
-export const holidayAPI = {
-  getAll: () => api.get("/schedules/holiday-requests"),
-  create: (data) => api.post("/schedules/holiday-requests", data),
-  update: (id, data) =>
-    api.put(`/schedules/holiday-requests/${id}`, data),
-  delete: (id) =>
-    api.delete(`/schedules/holiday-requests/${id}`),
 };
 
 // =========================

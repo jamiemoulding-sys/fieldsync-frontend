@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+
+// ✅ MAKE SURE THIS MATCHES YOUR api.js EXPORTS
 import {
   shiftAPI,
   analyticsAPI,
@@ -17,6 +19,7 @@ function Dashboard() {
   const [weeklyHours, setWeeklyHours] = useState(0);
   const [todayHours, setTodayHours] = useState(0);
   const [alerts, setAlerts] = useState([]);
+  const [holidayCount, setHolidayCount] = useState(0);
 
   const logout = () => {
     localStorage.removeItem('token');
@@ -33,19 +36,24 @@ function Dashboard() {
     try {
       const [activeRes, analyticsRes, usersRes, holidayRes] =
         await Promise.all([
-          shiftAPI.getAllActive().catch(() => ({ data: [] })),
-          analyticsAPI.getShifts().catch(() => ({ data: [] })),
-          userAPI.getAll().catch(() => ({ data: [] })),
-          holidayAPI.getAll().catch(() => ({ data: [] }))
+          shiftAPI.getAllActive(),
+          analyticsAPI.getShifts(),
+          userAPI.getAll(),
+          holidayAPI.getAll()
         ]);
 
-      const active = activeRes.data || [];
-      const analytics = analyticsRes.data || [];
-      const usersData = usersRes.data || [];
-      const holidays = holidayRes.data || [];
+      // ✅ FIX: always use .data safely
+      const active = activeRes?.data || [];
+      const analytics = analyticsRes?.data || [];
+      const usersData = usersRes?.data || [];
+      const holidays = holidayRes?.data || [];
 
       setActiveShifts(active);
       setUsers(usersData);
+
+      // ✅ SAFE HOLIDAY COUNT
+      const pending = holidays.filter(h => h?.status === 'pending').length;
+      setHolidayCount(pending);
 
       const weekly = analytics.reduce((s, d) => s + Number(d.hours || 0), 0);
       setWeeklyHours(weekly);
@@ -59,12 +67,12 @@ function Dashboard() {
 
       const a = [];
       if (active.length === 0) a.push('No staff clocked in');
-      if (holidays.length > 0) a.push(`${holidays.length} holiday requests pending`);
+      if (pending > 0) a.push(`${pending} holiday requests pending`);
 
       setAlerts(a);
 
     } catch (err) {
-      console.error(err);
+      console.error('DASHBOARD LOAD ERROR:', err);
     }
   };
 
@@ -77,9 +85,16 @@ function Dashboard() {
           <h2 style={brand}>FieldSync</h2>
 
           <Nav label="Dashboard" active />
-          <Nav label="Profiles" onClick={() => navigate('/users')} />
+          <Nav label="Profiles" onClick={() => navigate('/employees')} />
           <Nav label="Schedule" onClick={() => navigate('/schedule')} />
-          <Nav label="Holiday Requests" onClick={() => navigate('/schedule')} />
+
+          {/* ✅ FIXED ROUTE + BADGE */}
+          <Nav
+            label="Holiday Requests"
+            badge={holidayCount}
+            onClick={() => navigate('/holiday-requests')}
+          />
+
           <Nav label="Reports" onClick={() => navigate('/reports')} />
           <Nav label="Performance" onClick={() => navigate('/performance')} />
         </div>
@@ -93,7 +108,7 @@ function Dashboard() {
       {/* MAIN */}
       <div style={main}>
 
-        {/* TOP BAR */}
+        {/* HEADER */}
         <div style={topbar}>
           <div>
             <h1 style={title}>Dashboard</h1>
@@ -116,7 +131,7 @@ function Dashboard() {
         {alerts.length > 0 && (
           <div style={alertsBox}>
             {alerts.map((a, i) => (
-              <div key={i}>{a}</div>
+              <div key={i}>⚠️ {a}</div>
             ))}
           </div>
         )}
@@ -161,7 +176,7 @@ function Dashboard() {
 
 /* COMPONENTS */
 
-function Nav({ label, onClick, active, highlight }) {
+function Nav({ label, onClick, active, highlight, badge }) {
   return (
     <button
       onClick={onClick}
@@ -171,7 +186,15 @@ function Nav({ label, onClick, active, highlight }) {
         color: highlight ? '#10b981' : active ? 'white' : '#9ca3af'
       }}
     >
-      {label}
+      <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+        <span>{label}</span>
+
+        {badge > 0 && (
+          <span style={badgeStyle}>
+            {badge}
+          </span>
+        )}
+      </div>
     </button>
   );
 }
@@ -217,6 +240,14 @@ const nav = {
   textAlign: 'left',
   cursor: 'pointer',
   marginBottom: 4
+};
+
+const badgeStyle = {
+  background: '#ef4444',
+  borderRadius: 20,
+  padding: '2px 8px',
+  fontSize: 12,
+  color: 'white'
 };
 
 const logoutBtn = {

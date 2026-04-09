@@ -15,13 +15,14 @@ import Reports from './pages/Reports';
 import Billing from './pages/Billing';
 import Profile from './pages/Profile';
 import ScheduleCalendar from "./pages/ScheduleCalendar";
+import HolidayRequests from "./pages/HolidayRequests"; // ✅ NEW
 
 import WorkSession from './pages/WorkSession';
 
 function App() {
   return (
     <Router>
-      <Routes> 
+      <Routes>
 
         <Route path="/" element={<Landing />} />
         <Route path="/signup" element={<Signup />} />
@@ -34,13 +35,14 @@ function App() {
         <Route path="/performance" element={<Performance />} />
         <Route path="/calendar" element={<ScheduleCalendar />} />
 
+        {/* ✅ NEW */}
+        <Route path="/holiday-requests" element={<HolidayRequests />} />
+
         <Route path="/employees" element={<Employees />} />
         <Route path="/locations" element={<Locations />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/billing" element={<Billing />} />
         <Route path="/profile" element={<Profile />} />
-
-        <Route path="/performance" element={<Performance />} />
 
         <Route path="/work-session" element={<WorkSession />} />
         <Route path="/success" element={<Success />} />
