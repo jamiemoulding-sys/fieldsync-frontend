@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import Layout from '../components/Layout';
-import { locationAPI } from '../services/api';
-import LocationPicker from '../components/LocationPicker';
-import { useAuth } from '../hooks/useAuth';
+import { useState, useEffect } from "react";
+import { locationAPI } from "../services/api";
+import LocationPicker from "../components/LocationPicker";
+import { useAuth } from "../hooks/useAuth";
+import { motion } from "framer-motion";
 
-function Locations() {
-  const { user } = useAuth(); // ✅ IMPORTANT
+export default function Locations() {
+  const { user } = useAuth();
 
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -13,14 +13,14 @@ function Locations() {
   const [editingLocation, setEditingLocation] = useState(null);
 
   const [formData, setFormData] = useState({
-    name: '',
-    address: '',
-    radius: 100
+    name: "",
+    address: "",
+    radius: 100,
   });
 
   const [position, setPosition] = useState(null);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   useEffect(() => {
     loadLocations();
@@ -28,11 +28,11 @@ function Locations() {
 
   const loadLocations = async () => {
     try {
-      const res = await locationAPI.getLocations();
-      setLocations(Array.isArray(res.data) ? res.data : []);
+      const data = await locationAPI.getLocations(); // ✅ FIXED
+      setLocations(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
-      setError('Failed to load locations');
+      setError("Failed to load locations");
     } finally {
       setLoading(false);
     }
@@ -41,11 +41,11 @@ function Locations() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    setError('');
-    setSuccess('');
+    setError("");
+    setSuccess("");
 
     if (!position) {
-      setError('Please select a location on the map');
+      setError("Please select a location on the map");
       return;
     }
 
@@ -54,29 +54,25 @@ function Locations() {
         ...formData,
         latitude: position.lat,
         longitude: position.lng,
-        company_id: user?.companyId // ✅ CRITICAL FIX
+        company_id: user?.companyId,
       };
-
-      console.log('SENDING LOCATION:', payload); // 👈 DEBUG
 
       if (editingLocation) {
         await locationAPI.update(editingLocation.id, payload);
-        setSuccess('Updated');
+        setSuccess("Updated");
       } else {
         await locationAPI.create(payload);
-        setSuccess('Created');
+        setSuccess("Created");
       }
 
       setShowModal(false);
       setEditingLocation(null);
       setPosition(null);
-      setFormData({ name: '', address: '', radius: 100 });
+      setFormData({ name: "", address: "", radius: 100 });
 
       loadLocations();
-
     } catch (err) {
-      console.error('LOCATION ERROR:', err.response?.data || err); // 👈 IMPORTANT
-      setError(err.response?.data?.error || 'Save failed');
+      setError(err?.response?.data?.error || "Save failed");
     }
   };
 
@@ -85,13 +81,13 @@ function Locations() {
 
     setFormData({
       name: loc.name,
-      address: loc.address || '',
-      radius: loc.radius || 100
+      address: loc.address || "",
+      radius: loc.radius || 100,
     });
 
     setPosition({
       lat: loc.latitude,
-      lng: loc.longitude
+      lng: loc.longitude,
     });
 
     setShowModal(true);
@@ -101,139 +97,160 @@ function Locations() {
     try {
       await locationAPI.delete(id);
       loadLocations();
-    } catch (err) {
-      console.error(err);
-      setError('Delete failed');
+    } catch {
+      setError("Delete failed");
     }
   };
 
   if (loading) {
-    return (
-      <Layout>
-        <div className="text-white">Loading locations...</div>
-      </Layout>
-    );
+    return <div className="text-gray-400">Loading locations...</div>;
   }
 
   return (
-    <Layout>
-      <div className="space-y-8">
+    <div className="space-y-6">
 
-        {/* HEADER */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="heading-1">📍 Locations</h1>
-            <p className="subtle-text">Manage your business locations</p>
-          </div>
-
-          <button
-            onClick={() => {
-              setEditingLocation(null);
-              setPosition(null);
-              setFormData({ name: '', address: '', radius: 100 });
-              setShowModal(true);
-            }}
-            className="btn-primary"
-          >
-            ➕ Add Location
-          </button>
+      {/* HEADER */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-semibold">Locations</h1>
+          <p className="text-gray-400 text-sm">
+            Manage your business locations
+          </p>
         </div>
 
-        {/* LIST */}
-        {locations.length === 0 ? (
-          <div className="card text-center text-gray-400">
-            No locations yet
-          </div>
-        ) : (
-          <div className="grid md:grid-cols-2 gap-4">
-            {locations.map(loc => (
-              <div key={loc.id} className="card">
-                <p className="text-white font-semibold">{loc.name}</p>
+        <button
+          onClick={() => {
+            setEditingLocation(null);
+            setPosition(null);
+            setFormData({ name: "", address: "", radius: 100 });
+            setShowModal(true);
+          }}
+          className="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-xl text-sm transition shadow-lg shadow-indigo-500/20"
+        >
+          + Add Location
+        </button>
+      </div>
+
+      {/* LIST */}
+      {locations.length === 0 ? (
+        <div className="text-center text-gray-500 mt-10">
+          No locations yet
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 gap-4">
+          {locations.map((loc, i) => (
+            <motion.div
+              key={loc.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+              className="rounded-2xl p-[1px] bg-gradient-to-b from-white/10 to-transparent"
+            >
+              <div className="bg-[#020617] border border-white/10 rounded-2xl p-4">
+
+                <p className="font-semibold text-white">{loc.name}</p>
                 <p className="text-gray-400 text-sm">{loc.address}</p>
+
                 <p className="text-xs text-gray-500 mt-1">
                   Radius: {loc.radius || 100}m
                 </p>
 
                 <div className="flex gap-2 mt-4">
+
                   <button
                     onClick={() => handleEdit(loc)}
-                    className="btn-secondary"
+                    className="text-xs bg-white/5 hover:bg-white/10 px-3 py-1 rounded-lg"
                   >
                     Edit
                   </button>
 
                   <button
                     onClick={() => handleDelete(loc.id)}
-                    className="btn-danger"
+                    className="text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 px-3 py-1 rounded-lg"
                   >
                     Delete
                   </button>
+
                 </div>
+
               </div>
-            ))}
-          </div>
-        )}
+            </motion.div>
+          ))}
+        </div>
+      )}
 
-        {/* MODAL */}
-        {showModal && (
-          <div className="fixed inset-0 bg-black/60 flex items-center justify-center">
-            <div className="card w-full max-w-md space-y-4">
+      {/* MODAL */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-[#020617] border border-white/10 rounded-2xl p-6 w-full max-w-md"
+          >
+            <h2 className="text-lg font-semibold mb-4">
+              {editingLocation ? "Edit Location" : "Add Location"}
+            </h2>
 
-                <input
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  className="input-field"
-                  placeholder="Location name"
-                  required
-                />
+            <form onSubmit={handleSubmit} className="space-y-3">
 
-                <input
-                  value={formData.address}
-                  onChange={(e) =>
-                    setFormData({ ...formData, address: e.target.value })
-                  }
-                  className="input-field"
-                  placeholder="Optional address"
-                />
+              <input
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm"
+                placeholder="Location name"
+                required
+              />
 
-                <LocationPicker position={position} setPosition={setPosition} />
+              <input
+                value={formData.address}
+                onChange={(e) =>
+                  setFormData({ ...formData, address: e.target.value })
+                }
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm"
+                placeholder="Address"
+              />
 
-                {position && (
-                  <p className="text-xs text-gray-400">
-                    📍 {position.lat.toFixed(5)}, {position.lng.toFixed(5)}
-                  </p>
-                )}
+              <LocationPicker
+                position={position}
+                setPosition={setPosition}
+              />
 
-                <input
-                  type="number"
-                  value={formData.radius}
-                  onChange={(e) =>
-                    setFormData({ ...formData, radius: e.target.value })
-                  }
-                  className="input-field"
-                  placeholder="Radius (meters)"
-                />
+              {position && (
+                <p className="text-xs text-gray-400">
+                  {position.lat.toFixed(5)}, {position.lng.toFixed(5)}
+                </p>
+              )}
 
-                <button className="btn-primary w-full">
-                  {editingLocation ? 'Update Location' : 'Add Location'}
-                </button>
+              <input
+                type="number"
+                value={formData.radius}
+                onChange={(e) =>
+                  setFormData({ ...formData, radius: e.target.value })
+                }
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm"
+                placeholder="Radius (m)"
+              />
 
-              </form>
+              <button className="w-full bg-indigo-600 hover:bg-indigo-500 py-2 rounded-xl text-sm transition">
+                {editingLocation ? "Update" : "Create"}
+              </button>
 
-            </div>
-          </div>
-        )}
+            </form>
+          </motion.div>
+        </div>
+      )}
 
-        {error && <div className="badge-error">{error}</div>}
-        {success && <div className="badge-success">{success}</div>}
+      {/* FEEDBACK */}
+      {error && (
+        <div className="text-red-400 text-sm">{error}</div>
+      )}
+      {success && (
+        <div className="text-green-400 text-sm">{success}</div>
+      )}
 
-      </div>
-    </Layout>
+    </div>
   );
 }
-
-export default Locations;

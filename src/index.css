@@ -93,3 +93,26 @@ body {
 .center-screen {
   @apply min-h-screen flex items-center justify-center;
 }
+
+.shadow-glow {
+  box-shadow: 0 0 40px rgba(99, 102, 241, 0.25);
+}
+
+.glow-border {
+  position: relative;
+}
+
+.glow-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background: linear-gradient(
+    120deg,
+    rgba(99,102,241,0.4),
+    transparent,
+    rgba(99,102,241,0.2)
+  );
+  filter: blur(20px);
+  z-index: -1;
+}

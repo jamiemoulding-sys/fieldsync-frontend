@@ -1,26 +1,24 @@
-import React, { useEffect, useState } from 'react';
-import Layout from '../components/Layout';
-import { reportAPI } from '../services/api';
-import { useAuth } from '../hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from "react";
+import { reportAPI } from "../services/api";
+import { useAuth } from "../hooks/useAuth";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 
-function Reports() {
+export default function Reports() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
   const [data, setData] = useState({
     totalShifts: 0,
     totalUsers: 0,
-    totalTasks: 0
+    totalTasks: 0,
   });
 
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    // 🔒 LOCK IF NOT PRO
     if (!user?.isPro) return;
-
     loadReports();
   }, [user]);
 
@@ -28,93 +26,109 @@ function Reports() {
     try {
       setLoading(true);
 
-      const res = await reportAPI.getTimesheets();
+      const res = await reportAPI.getTimesheets(); // ✅ already unwrapped
 
       setData({
-        totalShifts: res.data?.totalShifts || 0,
-        totalUsers: res.data?.totalUsers || 0,
-        totalTasks: res.data?.totalTasks || 0
+        totalShifts: res?.totalShifts || 0,
+        totalUsers: res?.totalUsers || 0,
+        totalTasks: res?.totalTasks || 0,
       });
 
     } catch (err) {
       console.error(err);
-      setError('Failed to load reports');
+      setError("Failed to load reports");
     } finally {
       setLoading(false);
     }
   };
 
-  // 🔒 PAYWALL
+  /* 🔒 PAYWALL */
   if (!user?.isPro) {
     return (
-      <Layout>
-        <div className="card text-center space-y-4">
+      <div className="flex items-center justify-center h-[60vh]">
 
-          <h1 className="heading-1">📊 Reports</h1>
+        <div className="rounded-2xl p-[1px] bg-gradient-to-b from-indigo-500/20 to-transparent w-full max-w-md">
+          <div className="bg-[#020617] border border-white/10 rounded-2xl p-6 text-center space-y-4 shadow-[0_0_40px_rgba(99,102,241,0.2)]">
 
-          <p className="text-gray-400">
-            Unlock advanced insights and analytics
-          </p>
+            <h1 className="text-xl font-semibold">📊 Reports</h1>
 
-          <button
-            onClick={() => navigate('/upgrade')}
-            className="btn-primary"
-          >
-            Upgrade to Pro
-          </button>
+            <p className="text-gray-400 text-sm">
+              Unlock advanced insights and analytics
+            </p>
 
+            <button
+              onClick={() => navigate("/upgrade")}
+              className="w-full bg-indigo-600 hover:bg-indigo-500 py-2 rounded-xl text-sm transition"
+            >
+              Upgrade to Pro
+            </button>
+
+          </div>
         </div>
-      </Layout>
+
+      </div>
     );
   }
 
   if (loading) {
-    return (
-      <Layout>
-        <div className="text-white">Loading reports...</div>
-      </Layout>
-    );
+    return <div className="text-gray-400">Loading reports...</div>;
   }
 
   return (
-    <Layout>
-      <div className="space-y-8">
+    <div className="space-y-6">
 
-        {/* HEADER */}
-        <div>
-          <h1 className="heading-1">📊 Reports</h1>
-          <p className="subtle-text">
-            Overview of your business performance
-          </p>
-        </div>
+      {/* HEADER */}
+      <div>
+        <h1 className="text-2xl font-semibold">Reports</h1>
+        <p className="text-gray-400 text-sm">
+          Overview of your business performance
+        </p>
+      </div>
 
-        {error && (
-          <div className="badge-error">{error}</div>
-        )}
+      {error && (
+        <div className="text-red-400 text-sm">{error}</div>
+      )}
 
-        {/* KPI GRID */}
-        <div className="grid md:grid-cols-3 gap-6">
+      {/* KPI GRID */}
+      <div className="grid md:grid-cols-3 gap-4">
 
-          <div className="kpi">
-            <p className="kpi-title">Total Shifts</p>
-            <p className="kpi-value">{data.totalShifts}</p>
-          </div>
-
-          <div className="kpi">
-            <p className="kpi-title">Users</p>
-            <p className="kpi-value">{data.totalUsers}</p>
-          </div>
-
-          <div className="kpi">
-            <p className="kpi-title">Tasks</p>
-            <p className="kpi-value">{data.totalTasks}</p>
-          </div>
-
-        </div>
+        <KPI title="Total Shifts" value={data.totalShifts} />
+        <KPI title="Users" value={data.totalUsers} />
+        <KPI title="Tasks" value={data.totalTasks} />
 
       </div>
-    </Layout>
+
+    </div>
   );
 }
 
-export default Reports;
+/* KPI */
+
+function KPI({ title, value }) {
+  const spark = [1, 2, 3, 2, 4];
+
+  return (
+    <motion.div
+      whileHover={{ y: -3 }}
+      className="relative rounded-2xl p-[1px] bg-gradient-to-b from-indigo-500/20 to-transparent"
+    >
+      <div className="bg-[#020617] border border-white/10 rounded-2xl p-4 shadow-[0_0_30px_rgba(99,102,241,0.15)]">
+
+        <p className="text-gray-400 text-xs">{title}</p>
+        <h2 className="text-xl font-semibold">{value}</h2>
+
+        {/* sparkline */}
+        <div className="mt-2 h-6 flex items-end gap-[2px]">
+          {spark.map((v, i) => (
+            <div
+              key={i}
+              className="bg-indigo-500/70 rounded"
+              style={{ height: `${v * 6}px`, width: "4px" }}
+            />
+          ))}
+        </div>
+
+      </div>
+    </motion.div>
+  );
+}

@@ -1,16 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import Layout from '../components/Layout';
-import { userAPI, scheduleAPI } from '../services/api';
+import { useEffect, useState } from "react";
+import { userAPI, scheduleAPI } from "../services/api";
+import { motion } from "framer-motion";
 
-function Schedule() {
+export default function Schedule() {
   const [users, setUsers] = useState([]);
   const [schedules, setSchedules] = useState([]);
-  const [view, setView] = useState('grid'); // grid | calendar
+  const [view, setView] = useState("grid");
 
-  const [selectedUser, setSelectedUser] = useState('');
-  const [date, setDate] = useState('');
-  const [start, setStart] = useState('');
-  const [end, setEnd] = useState('');
+  const [selectedUser, setSelectedUser] = useState("");
+  const [date, setDate] = useState("");
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
 
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(
@@ -23,14 +23,13 @@ function Schedule() {
 
   const loadData = async () => {
     try {
-      const [usersRes, schedRes] = await Promise.all([
+      const [usersData, schedData] = await Promise.all([
         userAPI.getAll(),
-        scheduleAPI.getAll()
+        scheduleAPI.getAll(),
       ]);
 
-      setUsers(usersRes || []);       // ✅ FIXED
-      setSchedules(schedRes || []);   // ✅ FIXED
-
+      setUsers(Array.isArray(usersData) ? usersData : []);
+      setSchedules(Array.isArray(schedData) ? schedData : []);
     } catch (err) {
       console.error(err);
     }
@@ -38,7 +37,7 @@ function Schedule() {
 
   const createSchedule = async () => {
     if (!selectedUser || !date || !start || !end) {
-      return alert('Fill all fields');
+      return alert("Fill all fields");
     }
 
     try {
@@ -46,18 +45,17 @@ function Schedule() {
         user_id: selectedUser,
         date,
         start_time: `${date}T${start}`,
-        end_time: `${date}T${end}`
+        end_time: `${date}T${end}`,
       });
 
-      setSelectedUser('');
-      setDate('');
-      setStart('');
-      setEnd('');
+      setSelectedUser("");
+      setDate("");
+      setStart("");
+      setEnd("");
 
       loadData();
     } catch (err) {
-      console.error(err);
-      alert('Failed to create schedule');
+      alert("Failed to create schedule");
     }
   };
 
@@ -66,7 +64,7 @@ function Schedule() {
     loadData();
   };
 
-  // 📅 CALENDAR
+  /* CALENDAR */
   const endOfMonth = new Date(
     currentMonth.getFullYear(),
     currentMonth.getMonth() + 1,
@@ -75,12 +73,15 @@ function Schedule() {
 
   const days = [];
   for (let i = 1; i <= endOfMonth.getDate(); i++) {
-    days.push(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), i));
+    days.push(
+      new Date(currentMonth.getFullYear(), currentMonth.getMonth(), i)
+    );
   }
 
   const getShiftsForDay = (day) => {
-    return schedules.filter(s =>
-      new Date(s.date).toDateString() === day.toDateString()
+    return schedules.filter(
+      (s) =>
+        new Date(s.date).toDateString() === day.toDateString()
     );
   };
 
@@ -91,218 +92,180 @@ function Schedule() {
   };
 
   return (
-    <Layout>
-      <div style={container}>
+    <div className="space-y-6">
 
-        {/* HEADER */}
-        <div style={header}>
-          <div>
-            <h1 style={title}>Schedule Manager</h1>
-            <p style={subtitle}>Plan and manage team shifts</p>
-          </div>
-
-          <div style={controls}>
-            <button onClick={() => setView('grid')} style={viewBtn(view === 'grid')}>Grid</button>
-            <button onClick={() => setView('calendar')} style={viewBtn(view === 'calendar')}>Calendar</button>
-          </div>
+      {/* HEADER */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-semibold">Schedule</h1>
+          <p className="text-gray-400 text-sm">
+            Plan and manage team shifts
+          </p>
         </div>
 
-        {/* CREATE */}
-        <div style={card}>
-          <h3 style={cardTitle}>Assign Shift</h3>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setView("grid")}
+            className={`px-3 py-1 rounded-lg text-sm ${
+              view === "grid"
+                ? "bg-indigo-600 text-white"
+                : "bg-white/5 text-gray-400"
+            }`}
+          >
+            Grid
+          </button>
 
-          <div style={formGrid}>
-            <select value={selectedUser} onChange={(e) => setSelectedUser(e.target.value)} style={input}>
-              <option value="">Select Employee</option>
-              {users.map(u => (
-                <option key={u.id} value={u.id}>{u.name}</option>
+          <button
+            onClick={() => setView("calendar")}
+            className={`px-3 py-1 rounded-lg text-sm ${
+              view === "calendar"
+                ? "bg-indigo-600 text-white"
+                : "bg-white/5 text-gray-400"
+            }`}
+          >
+            Calendar
+          </button>
+        </div>
+      </div>
+
+      {/* CREATE */}
+      <div className="rounded-2xl p-[1px] bg-gradient-to-b from-white/10 to-transparent">
+        <div className="bg-[#020617] border border-white/10 rounded-2xl p-5">
+
+          <h3 className="text-sm text-gray-400 mb-3">
+            Assign Shift
+          </h3>
+
+          <div className="grid md:grid-cols-5 gap-3">
+
+            <select
+              value={selectedUser}
+              onChange={(e) => setSelectedUser(e.target.value)}
+              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm"
+            >
+              <option value="">Employee</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
               ))}
             </select>
 
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={input} />
-            <input type="time" value={start} onChange={(e) => setStart(e.target.value)} style={input} />
-            <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} style={input} />
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm"
+            />
 
-            <button onClick={createSchedule} style={primaryBtn}>
-              Create Shift
+            <input
+              type="time"
+              value={start}
+              onChange={(e) => setStart(e.target.value)}
+              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm"
+            />
+
+            <input
+              type="time"
+              value={end}
+              onChange={(e) => setEnd(e.target.value)}
+              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm"
+            />
+
+            <button
+              onClick={createSchedule}
+              className="bg-indigo-600 hover:bg-indigo-500 rounded-xl text-sm"
+            >
+              Create
             </button>
           </div>
         </div>
-
-        {/* GRID VIEW */}
-        {view === 'grid' && (
-          <div style={{ marginTop: 30 }}>
-            <h3 style={cardTitle}>Upcoming Shifts</h3>
-
-            <div style={grid}>
-              {schedules.map(s => (
-                <div key={s.id} style={shiftCard}>
-                  <div>
-                    <strong>{s.name}</strong>
-                    <p style={muted}>{formatDate(s.date)}</p>
-                    <p style={time}>
-                      {formatTime(s.start_time)} → {formatTime(s.end_time)}
-                    </p>
-                  </div>
-
-                  <button onClick={() => deleteSchedule(s.id)} style={deleteBtn}>
-                    Delete
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* CALENDAR VIEW */}
-        {view === 'calendar' && (
-          <>
-            <div style={calendarNav}>
-              <button onClick={() => changeMonth(-1)} style={navBtn}>←</button>
-              <h3>
-                {currentMonth.toLocaleString('default', { month: 'long' })} {currentMonth.getFullYear()}
-              </h3>
-              <button onClick={() => changeMonth(1)} style={navBtn}>→</button>
-            </div>
-
-            <div style={calendarGrid}>
-              {days.map((day, i) => (
-                <div key={i} style={dayCell}>
-                  <div style={dayHeader}>{day.getDate()}</div>
-
-                  {getShiftsForDay(day).map(s => (
-                    <div key={s.id} style={shiftEvent}>
-                      {s.name}
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-
       </div>
-    </Layout>
+
+      {/* GRID VIEW */}
+      {view === "grid" && (
+        <div className="grid md:grid-cols-3 gap-4">
+          {schedules.map((s, i) => (
+            <motion.div
+              key={s.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+              className="rounded-2xl p-[1px] bg-gradient-to-b from-white/10 to-transparent"
+            >
+              <div className="bg-[#020617] border border-white/10 rounded-2xl p-4 flex justify-between">
+
+                <div>
+                  <p className="font-medium">{s.name}</p>
+                  <p className="text-gray-400 text-xs">
+                    {new Date(s.date).toLocaleDateString()}
+                  </p>
+                  <p className="text-sm">
+                    {new Date(s.start_time).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}{" "}
+                    →
+                    {new Date(s.end_time).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => deleteSchedule(s.id)}
+                  className="text-red-400 text-xs hover:text-red-300"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      {/* CALENDAR VIEW */}
+      {view === "calendar" && (
+        <div>
+
+          <div className="flex justify-between mb-3">
+            <button onClick={() => changeMonth(-1)}>←</button>
+
+            <h3>
+              {currentMonth.toLocaleString("default", {
+                month: "long",
+              })}{" "}
+              {currentMonth.getFullYear()}
+            </h3>
+
+            <button onClick={() => changeMonth(1)}>→</button>
+          </div>
+
+          <div className="grid grid-cols-7 gap-2">
+            {days.map((day, i) => (
+              <div
+                key={i}
+                className="bg-[#020617] border border-white/10 rounded-xl p-2 min-h-[80px]"
+              >
+                <div className="text-xs text-gray-500">
+                  {day.getDate()}
+                </div>
+
+                {getShiftsForDay(day).map((s) => (
+                  <div
+                    key={s.id}
+                    className="text-xs bg-indigo-500/20 text-indigo-400 px-1 rounded mt-1"
+                  >
+                    {s.name}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+
+        </div>
+      )}
+    </div>
   );
 }
-
-/* HELPERS */
-
-const formatDate = d => new Date(d).toLocaleDateString();
-const formatTime = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-/* STYLES */
-
-const container = { padding: 30, color: 'white' };
-
-const header = { display: 'flex', justifyContent: 'space-between', marginBottom: 20 };
-
-const controls = { display: 'flex', gap: 10 };
-
-const viewBtn = (active) => ({
-  background: active ? '#1f2937' : '#111827',
-  border: '1px solid #1f2937',
-  color: 'white',
-  padding: '6px 12px',
-  borderRadius: 6
-});
-
-const card = {
-  background: '#111827',
-  padding: 20,
-  borderRadius: 12,
-  border: '1px solid #1f2937'
-};
-
-const cardTitle = { marginBottom: 15 };
-
-const formGrid = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-  gap: 10
-};
-
-const input = {
-  padding: 10,
-  borderRadius: 8,
-  border: '1px solid #1f2937',
-  background: '#0b0f14',
-  color: 'white'
-};
-
-const primaryBtn = {
-  padding: 10,
-  background: '#6366f1',
-  border: 'none',
-  borderRadius: 8,
-  color: 'white'
-};
-
-const grid = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-  gap: 15
-};
-
-const shiftCard = {
-  background: '#111827',
-  padding: 15,
-  borderRadius: 12,
-  border: '1px solid #1f2937',
-  display: 'flex',
-  justifyContent: 'space-between'
-};
-
-const deleteBtn = {
-  background: '#ef4444',
-  border: 'none',
-  padding: '6px 10px',
-  borderRadius: 6,
-  color: 'white'
-};
-
-const calendarNav = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  marginTop: 20,
-  marginBottom: 10
-};
-
-const navBtn = {
-  background: '#111827',
-  border: '1px solid #1f2937',
-  padding: '4px 10px',
-  color: 'white',
-  borderRadius: 6
-};
-
-const calendarGrid = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(7, 1fr)',
-  gap: 10
-};
-
-const dayCell = {
-  background: '#111827',
-  padding: 10,
-  borderRadius: 10,
-  minHeight: 80
-};
-
-const dayHeader = { fontSize: 12, color: '#6b7280' };
-
-const shiftEvent = {
-  background: '#1f2937',
-  padding: 4,
-  borderRadius: 4,
-  marginTop: 4,
-  fontSize: 12
-};
-
-const muted = { color: '#6b7280' };
-const time = { fontSize: 14 };
-
-const title = { margin: 0 };
-const subtitle = { color: '#6b7280' };
-
-export default Schedule;
