@@ -1,10 +1,10 @@
 import axios from "axios";
 
 // =========================
-// 🌍 BASE CONFIG
+// 🌍 BASE CONFIG (🔥 FIXED)
 // =========================
 const api = axios.create({
-  baseURL: "https://fieldsync-backend-clean-t7vn.onrender.com/api",
+  baseURL: "https://fieldsync-backend.onrender.com/api", // ✅ CORRECT BACKEND
   timeout: 10000,
 });
 
@@ -55,21 +55,22 @@ export const authAPI = {
 };
 
 // =========================
-// 👥 USERS (🔥 FINAL)
+// 👥 USERS
 // =========================
 export const userAPI = {
   getAll: () => unwrap(api.get("/users")),
-
-  // CREATE USER
   create: (data) => unwrap(api.post("/auth/register", data)),
-
-  // PERMANENT ROLE
   updateRole: (id, data) =>
     unwrap(api.put(`/users/${id}/role`, data)),
-
-  // 🔥 TEMP ROLE (HOLIDAY COVER)
   setTempRole: (id, data) =>
     unwrap(api.put(`/users/${id}/temp-role`, data)),
+};
+
+// =========================
+// 📧 INVITE (🔥 ADDED)
+// =========================
+export const inviteAPI = {
+  send: (data) => unwrap(api.post("/invite", data)),
 };
 
 // =========================
@@ -100,25 +101,12 @@ export const scheduleAPI = {
 // =========================
 export const holidayAPI = {
   getAll: () => unwrap(api.get("/schedules/holiday-requests")),
-
   create: (data) =>
     unwrap(api.post("/schedules/holiday-requests", data)),
-
   update: (id, data) =>
     unwrap(api.put(`/schedules/holiday-requests/${id}`, data)),
-
   delete: (id) =>
     unwrap(api.delete(`/schedules/holiday-requests/${id}`)),
-
-  getPending: async () => {
-    const data = await unwrap(api.get("/schedules/holiday-requests"));
-    return data.filter((h) => h.status === "pending");
-  },
-
-  getByStatus: async (status) => {
-    const data = await unwrap(api.get("/schedules/holiday-requests"));
-    return data.filter((h) => h.status === status);
-  },
 };
 
 // =========================
@@ -156,18 +144,10 @@ export const reportAPI = {
 };
 
 // =========================
-// 📈 ANALYTICS
-// =========================
-export const analyticsAPI = {
-  getShifts: () => unwrap(api.get("/shifts/analytics")),
-};
-
-// =========================
 // 🧠 DASHBOARD
 // =========================
 export const managerAPI = {
   getDashboard: () => unwrap(api.get("/dashboard")),
-  getActiveShifts: () => unwrap(api.get("/shifts/active-all")),
 };
 
 // =========================
