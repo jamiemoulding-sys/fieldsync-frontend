@@ -9,6 +9,10 @@ export default function Employees() {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("employee");
+
   const [tempRoleData, setTempRoleData] = useState({
     userId: null,
     role: "manager",
@@ -45,13 +49,10 @@ export default function Employees() {
     }
 
     try {
-      await userAPI.setTempRole(
-        tempRoleData.userId,
-        {
-          role: tempRoleData.role,
-          expiresAt: tempRoleData.expiresAt,
-        }
-      );
+      await userAPI.setTempRole(tempRoleData.userId, {
+        role: tempRoleData.role,
+        expiresAt: tempRoleData.expiresAt,
+      });
 
       setTempRoleData({
         userId: null,
@@ -62,6 +63,26 @@ export default function Employees() {
       loadEmployees();
     } catch (err) {
       alert(err?.response?.data?.error || "Failed to assign temp role");
+    }
+  };
+
+  // 🔥 INVITE
+  const sendInvite = async () => {
+    if (!inviteEmail) return alert("Enter email");
+
+    try {
+      await userAPI.invite({
+        email: inviteEmail,
+        role: inviteRole,
+      });
+
+      setInviteOpen(false);
+      setInviteEmail("");
+      setInviteRole("employee");
+
+      alert("Invite sent");
+    } catch (err) {
+      alert(err?.response?.data?.error || "Invite failed");
     }
   };
 
@@ -84,16 +105,26 @@ export default function Employees() {
     <div className="space-y-6">
 
       {/* HEADER */}
-      <div>
-        <h1 className="text-2xl font-semibold">Employees</h1>
-        <p className="text-gray-400 text-sm">
-          Manage your team & permissions
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-semibold">Employees</h1>
+          <p className="text-gray-400 text-sm">
+            Manage your team & permissions
+          </p>
+        </div>
+
+        {user?.role === "admin" && (
+          <button
+            onClick={() => setInviteOpen(true)}
+            className="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-xl text-sm"
+          >
+            + Invite Employee
+          </button>
+        )}
       </div>
 
       {/* TABLE */}
       <div className="rounded-2xl border border-white/10 overflow-hidden bg-[#020617]">
-
         <table className="w-full text-sm">
           <thead className="bg-white/5 text-gray-400">
             <tr>
@@ -106,7 +137,6 @@ export default function Employees() {
 
           <tbody>
             {employees.map((emp, i) => {
-
               const canEdit =
                 user?.role === "admin" ||
                 user?.role === "manager";
@@ -121,20 +151,17 @@ export default function Employees() {
                   transition={{ delay: i * 0.05 }}
                   className="border-t border-white/5 hover:bg-white/5 transition"
                 >
-                  {/* USER */}
                   <td className="p-4 flex items-center gap-3">
                     <img
                       src={`https://ui-avatars.com/api/?name=${emp.name}`}
                       className="w-9 h-9 rounded-full"
                     />
-
                     <div>
                       <p className="font-medium">{emp.name}</p>
                       <p className="text-gray-400 text-xs">{emp.email}</p>
                     </div>
                   </td>
 
-                  {/* ROLE */}
                   <td className="p-4">
                     {canEdit && !isSelf ? (
                       <select
@@ -146,7 +173,6 @@ export default function Employees() {
                       >
                         <option value="employee">Employee</option>
                         <option value="manager">Manager</option>
-
                         {user?.role === "admin" && (
                           <option value="admin">Admin</option>
                         )}
@@ -156,15 +182,12 @@ export default function Employees() {
                     )}
                   </td>
 
-                  {/* TEMP ROLE */}
                   <td className="p-4">
-
                     {emp.temp_role ? (
                       <div className="text-xs space-y-1">
                         <span className="text-yellow-400">
                           {emp.temp_role}
                         </span>
-
                         <p className="text-gray-500">
                           until {new Date(emp.temp_role_expires).toLocaleDateString()}
                         </p>
@@ -200,10 +223,8 @@ export default function Employees() {
                     ) : (
                       <span className="text-gray-500 text-xs">—</span>
                     )}
-
                   </td>
 
-                  {/* STATUS */}
                   <td className="p-4">
                     <span className="text-green-400 text-xs flex items-center gap-1">
                       ● Active
@@ -222,12 +243,50 @@ export default function Employees() {
         )}
       </div>
 
+      {/* INVITE MODAL */}
+      {inviteOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center">
+          <div className="bg-[#020617] border border-white/10 rounded-2xl p-6 w-full max-w-md space-y-4">
+            <h2 className="text-lg font-semibold">Invite Employee</h2>
+
+            <input
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              placeholder="Email"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2"
+            />
+
+            <select
+              value={inviteRole}
+              onChange={(e) => setInviteRole(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2"
+            >
+              <option value="employee">Employee</option>
+              <option value="manager">Manager</option>
+              <option value="admin">Admin</option>
+            </select>
+
+            <button
+              onClick={sendInvite}
+              className="w-full bg-indigo-600 hover:bg-indigo-500 py-2 rounded-xl"
+            >
+              Send Invite
+            </button>
+
+            <button
+              onClick={() => setInviteOpen(false)}
+              className="w-full text-gray-400 text-sm"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* TEMP ROLE MODAL */}
       {tempRoleData.userId && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center">
-
           <div className="bg-[#020617] border border-white/10 rounded-2xl p-6 w-full max-w-md space-y-4">
-
             <h2 className="text-lg font-semibold">
               Assign Temporary Role
             </h2>
@@ -279,17 +338,12 @@ export default function Employees() {
             >
               Cancel
             </button>
-
           </div>
-
         </div>
       )}
-
     </div>
   );
 }
-
-/* ROLE BADGE */
 
 function RoleBadge({ role }) {
   const styles = {
