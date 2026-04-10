@@ -28,7 +28,7 @@ export default function Locations() {
 
   const loadLocations = async () => {
     try {
-      const data = await locationAPI.getLocations(); // ✅ FIXED
+      const data = await locationAPI.getLocations();
       setLocations(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
@@ -54,7 +54,6 @@ export default function Locations() {
         ...formData,
         latitude: position.lat,
         longitude: position.lng,
-        company_id: user?.companyId,
       };
 
       if (editingLocation) {
@@ -72,7 +71,8 @@ export default function Locations() {
 
       loadLocations();
     } catch (err) {
-      setError(err?.response?.data?.error || "Save failed");
+      // 🔥 FIX: no .response (API already unwraps)
+      setError(err?.message || "Save failed");
     }
   };
 
@@ -97,8 +97,8 @@ export default function Locations() {
     try {
       await locationAPI.delete(id);
       loadLocations();
-    } catch {
-      setError("Delete failed");
+    } catch (err) {
+      setError(err?.message || "Delete failed");
     }
   };
 

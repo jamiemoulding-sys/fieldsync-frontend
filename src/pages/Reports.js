@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
 export default function Reports() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [data, setData] = useState({
@@ -18,9 +18,16 @@ export default function Reports() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!user?.isPro || user?.role !== "admin") return;
-    loadReports();
-  }, [user]);
+    // 🔥 WAIT FOR AUTH FIRST
+    if (authLoading) return;
+
+    // 🔥 ONLY LOAD IF ALLOWED
+    if (user?.isPro && user?.role === "admin") {
+      loadReports();
+    } else {
+      setLoading(false);
+    }
+  }, [user, authLoading]);
 
   const loadReports = async () => {
     try {
@@ -36,14 +43,17 @@ export default function Reports() {
 
     } catch (err) {
       console.error(err);
-      setError("Failed to load reports");
+      setError(err?.message || "Failed to load reports");
     } finally {
       setLoading(false);
     }
   };
 
-  // 🔒 ROLE LOCK (FIRST)
-  if (user?.role !== "admin") {
+  // 🔒 WAIT FOR AUTH
+  if (authLoading) return null;
+
+  // 🔒 ROLE LOCK
+  if (!user || user.role !== "admin") {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <div className="text-gray-400 text-sm">
@@ -53,8 +63,8 @@ export default function Reports() {
     );
   }
 
-  // 🔒 PAYWALL (SECOND)
-  if (!user?.isPro) {
+  // 🔒 PAYWALL
+  if (!user.isPro) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
 
@@ -128,7 +138,6 @@ function KPI({ title, value }) {
         <p className="text-gray-400 text-xs">{title}</p>
         <h2 className="text-xl font-semibold">{value}</h2>
 
-        {/* sparkline */}
         <div className="mt-2 h-6 flex items-end gap-[2px]">
           {spark.map((v, i) => (
             <div
