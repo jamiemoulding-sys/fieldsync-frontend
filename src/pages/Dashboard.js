@@ -1,4 +1,3 @@
-import Layout from "../components/Layout";
 import { useEffect, useState } from "react";
 import api from "../services/api";
 import { useAuth } from "../hooks/useAuth";
@@ -39,104 +38,102 @@ export default function Dashboard() {
   };
 
   return (
-    <Layout>
-      <div className="space-y-6">
+    <div className="space-y-6">
 
-        {/* HERO */}
-        <div className="relative h-44 rounded-2xl overflow-hidden group">
+      {/* HERO */}
+      <div className="relative h-44 rounded-2xl overflow-hidden group">
 
-          <div
-            className="absolute inset-0 bg-cover bg-center scale-105 group-hover:scale-110 transition duration-700"
-            style={{
-              backgroundImage:
-                "url('https://images.unsplash.com/photo-1492724441997-5dc865305da7')",
-            }}
+        <div
+          className="absolute inset-0 bg-cover bg-center scale-105 group-hover:scale-110 transition duration-700"
+          style={{
+            backgroundImage:
+              "url('https://images.unsplash.com/photo-1492724441997-5dc865305da7')",
+          }}
+        />
+
+        <div className="absolute inset-0 bg-gradient-to-b from-[#020617]/80 to-[#020617]" />
+        <div className="absolute inset-0 backdrop-blur-sm" />
+
+        <div className="relative z-10 p-6 flex flex-col gap-2">
+
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Good morning, {user?.name || "there"} 👋
+          </h1>
+
+          <p className="text-gray-400 text-sm">
+            Here's what's happening today
+          </p>
+
+          <input
+            placeholder="Search anything..."
+            className="mt-2 max-w-xs bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition"
           />
-
-          <div className="absolute inset-0 bg-gradient-to-b from-[#020617]/80 to-[#020617]" />
-          <div className="absolute inset-0 backdrop-blur-sm" />
-
-          <div className="relative z-10 p-6 flex flex-col gap-2">
-
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Good morning, {user?.name || "there"} 👋
-            </h1>
-
-            <p className="text-gray-400 text-sm">
-              Here's what's happening today
-            </p>
-
-            <input
-              placeholder="Search anything..."
-              className="mt-2 max-w-xs bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition"
-            />
-          </div>
         </div>
+      </div>
 
-        {/* KPI */}
-        <div className="grid grid-cols-4 gap-4">
-          <KPI title="Users" value={stats.users} />
-          <KPI title="Active Staff" value={stats.activeShifts} />
-          <KPI title="Tasks" value={stats.tasks} />
-          <KPI title="Completed" value={stats.completedTasks} />
-        </div>
+      {/* KPI */}
+      <div className="grid grid-cols-4 gap-4">
+        <KPI title="Users" value={stats.users} />
+        <KPI title="Active Staff" value={stats.activeShifts} />
+        <KPI title="Tasks" value={stats.tasks} />
+        <KPI title="Completed" value={stats.completedTasks} />
+      </div>
 
-        {/* CHARTS */}
-        <div className="grid grid-cols-2 gap-4">
+      {/* CHARTS */}
+      <div className="grid grid-cols-2 gap-4">
 
-          <GlowCard>
-            <ChartWrapper title="Weekly Hours">
-              <ResponsiveContainer width="100%" height={90}>
-                <LineChart data={hours}>
-                  <XAxis dataKey="date" stroke="#6b7280" fontSize={10} />
-                  <YAxis stroke="#6b7280" fontSize={10} />
-                  <Tooltip />
-                  <Line dataKey="hours" stroke="#6366f1" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartWrapper>
-          </GlowCard>
-
-          <GlowCard>
-            <ChartWrapper title="Top Performers">
-              <ResponsiveContainer width="100%" height={90}>
-                <BarChart data={topUsers}>
-                  <XAxis dataKey="name" stroke="#6b7280" fontSize={10} />
-                  <YAxis stroke="#6b7280" fontSize={10} />
-                  <Tooltip />
-                  <Bar dataKey="completed" fill="#10b981" />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartWrapper>
-          </GlowCard>
-
-        </div>
-
-        {/* ACTIVITY */}
         <GlowCard>
-          <div className="space-y-2">
-            {activity.map((a, i) => (
-              <motion.div
-                key={i}
-                whileHover={{ scale: 1.02 }}
-                className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5"
-              >
-                <img
-                  src={`https://ui-avatars.com/api/?name=${a.name}`}
-                  className="w-8 h-8 rounded-full"
-                />
+          <ChartWrapper title="Weekly Hours">
+            <ResponsiveContainer width="100%" height={90}>
+              <LineChart data={hours}>
+                <XAxis dataKey="date" stroke="#6b7280" fontSize={10} />
+                <YAxis stroke="#6b7280" fontSize={10} />
+                <Tooltip />
+                <Line dataKey="hours" stroke="#6366f1" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </ChartWrapper>
+        </GlowCard>
 
-                <div>
-                  <p className="text-sm">{a.name}</p>
-                  <p className="text-xs text-gray-400">{a.action}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+        <GlowCard>
+          <ChartWrapper title="Top Performers">
+            <ResponsiveContainer width="100%" height={90}>
+              <BarChart data={topUsers}>
+                <XAxis dataKey="name" stroke="#6b7280" fontSize={10} />
+                <YAxis stroke="#6b7280" fontSize={10} />
+                <Tooltip />
+                <Bar dataKey="completed" fill="#10b981" />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartWrapper>
         </GlowCard>
 
       </div>
-    </Layout>
+
+      {/* ACTIVITY */}
+      <GlowCard>
+        <div className="space-y-2">
+          {activity.map((a, i) => (
+            <motion.div
+              key={i}
+              whileHover={{ scale: 1.02 }}
+              className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5"
+            >
+              <img
+                src={`https://ui-avatars.com/api/?name=${a.name}`}
+                className="w-8 h-8 rounded-full"
+              />
+
+              <div>
+                <p className="text-sm">{a.name}</p>
+                <p className="text-xs text-gray-400">{a.action}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </GlowCard>
+
+    </div>
   );
 }
 
