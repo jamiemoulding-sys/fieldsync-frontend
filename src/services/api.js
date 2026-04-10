@@ -4,7 +4,7 @@ import axios from "axios";
 // 🌍 BASE CONFIG (🔥 FIXED)
 // =========================
 const api = axios.create({
-  baseURL: "https://fieldsync-backend.onrender.com/api", // ✅ CORRECT BACKEND
+  baseURL: "https://fieldsync-backend-clean-t7vn.onrender.com/api", // ✅ CORRECT BACKEND
   timeout: 10000,
 });
 
