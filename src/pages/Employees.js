@@ -40,6 +40,10 @@ export default function Employees() {
   };
 
   const assignTempRole = async () => {
+    if (!tempRoleData.expiresAt) {
+      return alert("Please select an expiry date");
+    }
+
     try {
       await userAPI.setTempRole(
         tempRoleData.userId,
@@ -60,6 +64,17 @@ export default function Employees() {
       alert(err?.response?.data?.error || "Failed to assign temp role");
     }
   };
+
+  // 🔒 HARD LOCK
+  if (user?.role === "employee") {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="text-gray-400 text-sm">
+          You don’t have access to Employees
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return <div className="text-gray-400">Loading employees...</div>;
@@ -91,9 +106,12 @@ export default function Employees() {
 
           <tbody>
             {employees.map((emp, i) => {
+
               const canEdit =
                 user?.role === "admin" ||
                 user?.role === "manager";
+
+              const isSelf = emp.id === user?.id;
 
               return (
                 <motion.tr
@@ -116,9 +134,9 @@ export default function Employees() {
                     </div>
                   </td>
 
-                  {/* PERMANENT ROLE */}
+                  {/* ROLE */}
                   <td className="p-4">
-                    {canEdit ? (
+                    {canEdit && !isSelf ? (
                       <select
                         value={emp.role}
                         onChange={(e) =>
@@ -142,13 +160,29 @@ export default function Employees() {
                   <td className="p-4">
 
                     {emp.temp_role ? (
-                      <div className="text-xs">
+                      <div className="text-xs space-y-1">
                         <span className="text-yellow-400">
                           {emp.temp_role}
                         </span>
+
                         <p className="text-gray-500">
                           until {new Date(emp.temp_role_expires).toLocaleDateString()}
                         </p>
+
+                        {canEdit && (
+                          <button
+                            onClick={async () => {
+                              await userAPI.setTempRole(emp.id, {
+                                role: null,
+                                expiresAt: null,
+                              });
+                              loadEmployees();
+                            }}
+                            className="text-red-400 hover:underline text-xs"
+                          >
+                            Remove
+                          </button>
+                        )}
                       </div>
                     ) : canEdit ? (
                       <button
@@ -235,7 +269,11 @@ export default function Employees() {
 
             <button
               onClick={() =>
-                setTempRoleData({ userId: null })
+                setTempRoleData({
+                  userId: null,
+                  role: "manager",
+                  expiresAt: "",
+                })
               }
               className="w-full text-gray-400 text-sm"
             >

@@ -18,7 +18,7 @@ export default function Reports() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!user?.isPro) return;
+    if (!user?.isPro || user?.role !== "admin") return;
     loadReports();
   }, [user]);
 
@@ -26,7 +26,7 @@ export default function Reports() {
     try {
       setLoading(true);
 
-      const res = await reportAPI.getTimesheets(); // ✅ already unwrapped
+      const res = await reportAPI.getTimesheets();
 
       setData({
         totalShifts: res?.totalShifts || 0,
@@ -42,7 +42,18 @@ export default function Reports() {
     }
   };
 
-  /* 🔒 PAYWALL */
+  // 🔒 ROLE LOCK (FIRST)
+  if (user?.role !== "admin") {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="text-gray-400 text-sm">
+          You don’t have access to Reports
+        </div>
+      </div>
+    );
+  }
+
+  // 🔒 PAYWALL (SECOND)
   if (!user?.isPro) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
