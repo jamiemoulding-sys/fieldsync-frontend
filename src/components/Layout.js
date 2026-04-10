@@ -1,4 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
+
 import {
   LayoutDashboard,
   Calendar,
@@ -14,6 +16,9 @@ import {
 export default function Layout({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
+
+  const role = user?.role;
 
   const menu = [
     {
@@ -21,24 +26,38 @@ export default function Layout({ children }) {
       items: [
         { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
         { name: "Schedule", path: "/schedule", icon: Calendar },
-        { name: "Holiday Requests", path: "/holiday-requests", icon: FileText },
         { name: "Tasks", path: "/tasks", icon: CheckSquare },
+
+        // 🔒 Employees can't see holiday management
+        ...(role !== "employee"
+          ? [{ name: "Holiday Requests", path: "/holiday-requests", icon: FileText }]
+          : []),
       ],
     },
     {
       section: "MANAGEMENT",
-      items: [
-        { name: "Employees", path: "/employees", icon: Users },
-        { name: "Locations", path: "/locations", icon: MapPin },
-      ],
+      items:
+        role === "employee"
+          ? [] // ❌ hide entire section
+          : [
+              { name: "Employees", path: "/employees", icon: Users },
+              { name: "Locations", path: "/locations", icon: MapPin },
+            ],
     },
     {
       section: "BUSINESS",
-      items: [
-        { name: "Reports", path: "/reports", icon: BarChart3 },
-        { name: "Performance", path: "/performance", icon: BarChart3 },
-        { name: "Billing", path: "/billing", icon: CreditCard },
-      ],
+      items:
+        role === "employee"
+          ? []
+          : [
+              { name: "Reports", path: "/reports", icon: BarChart3 },
+              { name: "Performance", path: "/performance", icon: BarChart3 },
+
+              // 🔒 Only admin sees billing
+              ...(role === "admin"
+                ? [{ name: "Billing", path: "/billing", icon: CreditCard }]
+                : []),
+            ],
     },
     {
       section: "ACCOUNT",
@@ -62,47 +81,54 @@ export default function Layout({ children }) {
             FieldSync
           </h2>
 
-          {menu.map((group, i) => (
-            <div key={i} className="mb-6">
+          {menu.map((group, i) => {
+            if (!group.items.length) return null;
 
-              <p className="text-[11px] text-gray-500 mb-2 tracking-wider">
-                {group.section}
-              </p>
+            return (
+              <div key={i} className="mb-6">
 
-              {group.items.map((item) => {
-                const active = location.pathname === item.path;
-                const Icon = item.icon;
+                <p className="text-[11px] text-gray-500 mb-2 tracking-wider">
+                  {group.section}
+                </p>
 
-                return (
-                  <button
-                    key={item.path}
-                    onClick={() => navigate(item.path)}
-                    className={`flex items-center gap-3 w-full px-3 py-2 rounded-lg mb-1 text-sm transition-all duration-200
-                      ${
-                        active
-                          ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30"
-                          : "text-gray-400 hover:bg-white/5 hover:text-white"
-                      }
-                    `}
-                  >
-                    <Icon size={16} />
-                    {item.name}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
+                {group.items.map((item) => {
+                  const active = location.pathname === item.path;
+                  const Icon = item.icon;
+
+                  return (
+                    <button
+                      key={item.path}
+                      onClick={() => navigate(item.path)}
+                      className={`flex items-center gap-3 w-full px-3 py-2 rounded-lg mb-1 text-sm transition-all duration-200
+                        ${
+                          active
+                            ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30"
+                            : "text-gray-400 hover:bg-white/5 hover:text-white"
+                        }
+                      `}
+                    >
+                      <Icon size={16} />
+                      {item.name}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })}
         </div>
 
         {/* BOTTOM */}
         <div className="space-y-2">
 
-          <button
-            onClick={() => navigate("/billing")}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 transition rounded-xl py-2 text-sm shadow-lg shadow-indigo-500/20"
-          >
-            Upgrade Plan
-          </button>
+          {/* 🔒 Only admin sees upgrade */}
+          {role === "admin" && (
+            <button
+              onClick={() => navigate("/billing")}
+              className="w-full bg-indigo-600 hover:bg-indigo-500 transition rounded-xl py-2 text-sm shadow-lg shadow-indigo-500/20"
+            >
+              Upgrade Plan
+            </button>
+          )}
 
           <button
             onClick={() => {
@@ -128,8 +154,8 @@ export default function Layout({ children }) {
           </p>
 
           <div className="flex items-center gap-3">
-            <div className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-xs">
-              PRO
+            <div className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-xs capitalize">
+              {role || "user"}
             </div>
           </div>
 

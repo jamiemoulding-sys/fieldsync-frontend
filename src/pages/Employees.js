@@ -8,12 +8,11 @@ export default function Employees() {
 
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
 
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    role: "employee",
+  const [tempRoleData, setTempRoleData] = useState({
+    userId: null,
+    role: "manager",
+    expiresAt: "",
   });
 
   useEffect(() => {
@@ -22,7 +21,7 @@ export default function Employees() {
 
   const loadEmployees = async () => {
     try {
-      const data = await userAPI.getAll(); // ✅ FIXED
+      const data = await userAPI.getAll();
       setEmployees(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
@@ -31,19 +30,34 @@ export default function Employees() {
     }
   };
 
-  const handleCreate = async (e) => {
-    e.preventDefault();
-
+  const updateRole = async (id, role) => {
     try {
-      // 👉 you may need to wire this endpoint later
-      await userAPI.create?.(formData);
+      await userAPI.updateRole(id, { role });
+      loadEmployees();
+    } catch (err) {
+      alert(err?.response?.data?.error || "Failed to update role");
+    }
+  };
 
-      setShowModal(false);
-      setFormData({ name: "", email: "", role: "employee" });
+  const assignTempRole = async () => {
+    try {
+      await userAPI.setTempRole(
+        tempRoleData.userId,
+        {
+          role: tempRoleData.role,
+          expiresAt: tempRoleData.expiresAt,
+        }
+      );
+
+      setTempRoleData({
+        userId: null,
+        role: "manager",
+        expiresAt: "",
+      });
 
       loadEmployees();
     } catch (err) {
-      alert("Failed to create employee");
+      alert(err?.response?.data?.error || "Failed to assign temp role");
     }
   };
 
@@ -55,18 +69,11 @@ export default function Employees() {
     <div className="space-y-6">
 
       {/* HEADER */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-semibold">Employees</h1>
-          <p className="text-gray-400 text-sm">Manage your team</p>
-        </div>
-
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-xl text-sm transition shadow-lg shadow-indigo-500/20"
-        >
-          + Add Employee
-        </button>
+      <div>
+        <h1 className="text-2xl font-semibold">Employees</h1>
+        <p className="text-gray-400 text-sm">
+          Manage your team & permissions
+        </p>
       </div>
 
       {/* TABLE */}
@@ -77,46 +84,100 @@ export default function Employees() {
             <tr>
               <th className="text-left p-4">User</th>
               <th className="text-left p-4">Role</th>
+              <th className="text-left p-4">Temporary Role</th>
               <th className="text-left p-4">Status</th>
             </tr>
           </thead>
 
           <tbody>
-            {employees.map((emp, i) => (
-              <motion.tr
-                key={emp.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="border-t border-white/5 hover:bg-white/5 transition"
-              >
-                <td className="p-4 flex items-center gap-3">
+            {employees.map((emp, i) => {
+              const canEdit =
+                user?.role === "admin" ||
+                user?.role === "manager";
 
-                  {/* Avatar */}
-                  <img
-                    src={`https://ui-avatars.com/api/?name=${emp.name}`}
-                    className="w-9 h-9 rounded-full"
-                  />
+              return (
+                <motion.tr
+                  key={emp.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="border-t border-white/5 hover:bg-white/5 transition"
+                >
+                  {/* USER */}
+                  <td className="p-4 flex items-center gap-3">
+                    <img
+                      src={`https://ui-avatars.com/api/?name=${emp.name}`}
+                      className="w-9 h-9 rounded-full"
+                    />
 
-                  <div>
-                    <p className="font-medium">{emp.name}</p>
-                    <p className="text-gray-400 text-xs">{emp.email}</p>
-                  </div>
-                </td>
+                    <div>
+                      <p className="font-medium">{emp.name}</p>
+                      <p className="text-gray-400 text-xs">{emp.email}</p>
+                    </div>
+                  </td>
 
-                <td className="p-4">
-                  <span className="px-2 py-1 rounded-full text-xs bg-indigo-500/20 text-indigo-400">
-                    {emp.role}
-                  </span>
-                </td>
+                  {/* PERMANENT ROLE */}
+                  <td className="p-4">
+                    {canEdit ? (
+                      <select
+                        value={emp.role}
+                        onChange={(e) =>
+                          updateRole(emp.id, e.target.value)
+                        }
+                        className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs"
+                      >
+                        <option value="employee">Employee</option>
+                        <option value="manager">Manager</option>
 
-                <td className="p-4">
-                  <span className="text-green-400 text-xs flex items-center gap-1">
-                    ● Active
-                  </span>
-                </td>
-              </motion.tr>
-            ))}
+                        {user?.role === "admin" && (
+                          <option value="admin">Admin</option>
+                        )}
+                      </select>
+                    ) : (
+                      <RoleBadge role={emp.role} />
+                    )}
+                  </td>
+
+                  {/* TEMP ROLE */}
+                  <td className="p-4">
+
+                    {emp.temp_role ? (
+                      <div className="text-xs">
+                        <span className="text-yellow-400">
+                          {emp.temp_role}
+                        </span>
+                        <p className="text-gray-500">
+                          until {new Date(emp.temp_role_expires).toLocaleDateString()}
+                        </p>
+                      </div>
+                    ) : canEdit ? (
+                      <button
+                        onClick={() =>
+                          setTempRoleData({
+                            userId: emp.id,
+                            role: "manager",
+                            expiresAt: "",
+                          })
+                        }
+                        className="text-indigo-400 text-xs hover:underline"
+                      >
+                        + Assign
+                      </button>
+                    ) : (
+                      <span className="text-gray-500 text-xs">—</span>
+                    )}
+
+                  </td>
+
+                  {/* STATUS */}
+                  <td className="p-4">
+                    <span className="text-green-400 text-xs flex items-center gap-1">
+                      ● Active
+                    </span>
+                  </td>
+                </motion.tr>
+              );
+            })}
           </tbody>
         </table>
 
@@ -127,60 +188,81 @@ export default function Employees() {
         )}
       </div>
 
-      {/* MODAL */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+      {/* TEMP ROLE MODAL */}
+      {tempRoleData.userId && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center">
 
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-[#020617] border border-white/10 rounded-2xl p-6 w-full max-w-md"
-          >
-            <h2 className="text-lg font-semibold mb-4">
-              Add Employee
+          <div className="bg-[#020617] border border-white/10 rounded-2xl p-6 w-full max-w-md space-y-4">
+
+            <h2 className="text-lg font-semibold">
+              Assign Temporary Role
             </h2>
 
-            <form onSubmit={handleCreate} className="space-y-3">
+            <select
+              value={tempRoleData.role}
+              onChange={(e) =>
+                setTempRoleData({
+                  ...tempRoleData,
+                  role: e.target.value,
+                })
+              }
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2"
+            >
+              <option value="manager">Manager</option>
+              {user?.role === "admin" && (
+                <option value="admin">Admin</option>
+              )}
+            </select>
 
-              <input
-                placeholder="Name"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm"
-                required
-              />
+            <input
+              type="date"
+              value={tempRoleData.expiresAt}
+              onChange={(e) =>
+                setTempRoleData({
+                  ...tempRoleData,
+                  expiresAt: e.target.value,
+                })
+              }
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2"
+            />
 
-              <input
-                placeholder="Email"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm"
-                required
-              />
+            <button
+              onClick={assignTempRole}
+              className="w-full bg-indigo-600 hover:bg-indigo-500 py-2 rounded-xl"
+            >
+              Assign Temporary Role
+            </button>
 
-              <select
-                value={formData.role}
-                onChange={(e) =>
-                  setFormData({ ...formData, role: e.target.value })
-                }
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm"
-              >
-                <option value="employee">Employee</option>
-                <option value="manager">Manager</option>
-              </select>
+            <button
+              onClick={() =>
+                setTempRoleData({ userId: null })
+              }
+              className="w-full text-gray-400 text-sm"
+            >
+              Cancel
+            </button>
 
-              <button className="w-full bg-indigo-600 hover:bg-indigo-500 py-2 rounded-xl text-sm transition">
-                Create Employee
-              </button>
+          </div>
 
-            </form>
-          </motion.div>
         </div>
       )}
+
     </div>
+  );
+}
+
+/* ROLE BADGE */
+
+function RoleBadge({ role }) {
+  const styles = {
+    admin: "bg-red-500/20 text-red-400",
+    manager: "bg-indigo-500/20 text-indigo-400",
+    employee: "bg-gray-500/20 text-gray-400",
+  };
+
+  return (
+    <span className={`px-2 py-1 rounded-full text-xs ${styles[role]}`}>
+      {role}
+    </span>
   );
 }

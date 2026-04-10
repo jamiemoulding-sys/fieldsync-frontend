@@ -55,6 +55,24 @@ export const authAPI = {
 };
 
 // =========================
+// 👥 USERS (🔥 FINAL)
+// =========================
+export const userAPI = {
+  getAll: () => unwrap(api.get("/users")),
+
+  // CREATE USER
+  create: (data) => unwrap(api.post("/auth/register", data)),
+
+  // PERMANENT ROLE
+  updateRole: (id, data) =>
+    unwrap(api.put(`/users/${id}/role`, data)),
+
+  // 🔥 TEMP ROLE (HOLIDAY COVER)
+  setTempRole: (id, data) =>
+    unwrap(api.put(`/users/${id}/temp-role`, data)),
+};
+
+// =========================
 // ⏱ SHIFTS
 // =========================
 export const shiftAPI = {
@@ -63,13 +81,6 @@ export const shiftAPI = {
   clockIn: (data) => unwrap(api.post("/shifts/clock-in", data)),
   clockOut: () => unwrap(api.post("/shifts/clock-out")),
   getHistory: () => unwrap(api.get("/shifts/history")),
-};
-
-// =========================
-// 👥 USERS
-// =========================
-export const userAPI = {
-  getAll: () => unwrap(api.get("/users")),
 };
 
 // =========================

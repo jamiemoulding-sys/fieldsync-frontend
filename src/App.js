@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { useAuth } from "./hooks/useAuth";
 
 // 🌐 PUBLIC
 import Landing from "./pages/Landing";
@@ -29,8 +30,38 @@ import Upgrade from "./pages/Upgrade";
 import Success from "./pages/Success";
 import WorkSession from "./pages/WorkSession";
 
-// 🧱 NEW LAYOUT
+// 🧱 LAYOUT
 import AppLayout from "./layout/AppLayout";
+
+//
+// =======================
+// 🔐 PROTECTED ROUTE
+// =======================
+function ProtectedRoute({ children }) {
+  const { user, loading } = useAuth();
+
+  if (loading) return null;
+
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+
+  return children;
+}
+
+//
+// =======================
+// 🔒 ROLE ROUTE
+// =======================
+function RoleRoute({ roles, children }) {
+  const { user } = useAuth();
+
+  if (!roles.includes(user?.role)) {
+    return <Navigate to="/dashboard" />;
+  }
+
+  return children;
+}
 
 function App() {
   return (
@@ -42,25 +73,82 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
 
-        {/* ================= APP (WITH LAYOUT) ================= */}
-        <Route element={<AppLayout />}>
+        {/* ================= APP ================= */}
+        <Route
+          element={
+            <ProtectedRoute>
+              <AppLayout />
+            </ProtectedRoute>
+          }
+        >
 
+          {/* CORE */}
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/schedule" element={<Schedule />} />
           <Route path="/calendar" element={<ScheduleCalendar />} />
-          <Route path="/holiday-requests" element={<HolidayRequests />} />
+          <Route path="/work-session" element={<WorkSession />} />
 
-          <Route path="/performance" element={<Performance />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/billing" element={<Billing />} />
+          {/* 🔒 MANAGER+ */}
+          <Route
+            path="/holiday-requests"
+            element={
+              <RoleRoute roles={["manager", "admin"]}>
+                <HolidayRequests />
+              </RoleRoute>
+            }
+          />
 
-          <Route path="/employees" element={<Employees />} />
-          <Route path="/locations" element={<Locations />} />
+          <Route
+            path="/employees"
+            element={
+              <RoleRoute roles={["manager", "admin"]}>
+                <Employees />
+              </RoleRoute>
+            }
+          />
 
+          <Route
+            path="/locations"
+            element={
+              <RoleRoute roles={["manager", "admin"]}>
+                <Locations />
+              </RoleRoute>
+            }
+          />
+
+          {/* 🔒 BUSINESS (MANAGER+) */}
+          <Route
+            path="/performance"
+            element={
+              <RoleRoute roles={["manager", "admin"]}>
+                <Performance />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="/reports"
+            element={
+              <RoleRoute roles={["manager", "admin"]}>
+                <Reports />
+              </RoleRoute>
+            }
+          />
+
+          {/* 🔒 ADMIN ONLY */}
+          <Route
+            path="/billing"
+            element={
+              <RoleRoute roles={["admin"]}>
+                <Billing />
+              </RoleRoute>
+            }
+          />
+
+          {/* ACCOUNT */}
           <Route path="/profile" element={<Profile />} />
           <Route path="/upgrade" element={<Upgrade />} />
-          <Route path="/work-session" element={<WorkSession />} />
           <Route path="/success" element={<Success />} />
 
         </Route>
