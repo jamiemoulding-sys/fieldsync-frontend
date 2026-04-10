@@ -4,15 +4,14 @@ import React, { useEffect, useState } from "react";
 import { Calendar, momentLocalizer } from "react-big-calendar";
 import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
 
-// 📦 STYLES (IMPORTANT)
+// 📦 STYLES
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
 
 // ⏱ DATE LIB
 import moment from "moment";
 
-// 🧩 YOUR APP
-import Layout from "../components/Layout";
+// 🧩 YOUR APP (❌ REMOVED OLD LAYOUT)
 import { scheduleAPI, userAPI } from "../services/api";
 
 // ✅ SETUP
@@ -35,12 +34,13 @@ function ScheduleCalendar() {
         userAPI.getAll(),
       ]);
 
+      // ✅ FIX: API already unwrapped → no .data
       const usersMap = {};
-      usersRes.data.forEach((u) => {
+      (usersRes || []).forEach((u) => {
         usersMap[u.id] = u.name || u.email;
       });
 
-      const formatted = (schedRes.data || []).map((s) => ({
+      const formatted = (schedRes || []).map((s) => ({
         id: s.id,
         title: usersMap[s.user_id] || "Employee",
         start: new Date(s.start_time),
@@ -48,13 +48,13 @@ function ScheduleCalendar() {
       }));
 
       setEvents(formatted);
-      setUsers(usersRes.data || []);
+      setUsers(usersRes || []);
     } catch (err) {
       console.error("Calendar load error:", err);
     }
   };
 
-  // ➕ CREATE SHIFT (click empty slot)
+  // ➕ CREATE SHIFT
   const handleSelectSlot = async ({ start, end }) => {
     const user_id = prompt("Enter user ID");
 
@@ -103,35 +103,35 @@ function ScheduleCalendar() {
   };
 
   return (
-    <Layout>
-      <div style={{ padding: 20 }}>
-        <h1 style={{ marginBottom: 20 }}>📅 Drag & Drop Schedule</h1>
+    <div className="p-6">
+      <h1 className="text-xl font-semibold mb-4">
+        📅 Drag & Drop Schedule
+      </h1>
 
-        <DnDCalendar
-          localizer={localizer}
-          events={events}
-          startAccessor="start"
-          endAccessor="end"
-          selectable
-          resizable
-          defaultView="week"
-          views={["month", "week", "day"]}
-          step={30}
-          timeslots={2}
-          style={{ height: "80vh" }}
-          onSelectSlot={handleSelectSlot}
-          onEventDrop={handleEventDrop}
-          onEventResize={handleEventResize}
-          eventPropGetter={() => ({
-            style: {
-              backgroundColor: "#6366f1",
-              borderRadius: "6px",
-              border: "none",
-            },
-          })}
-        />
-      </div>
-    </Layout>
+      <DnDCalendar
+        localizer={localizer}
+        events={events}
+        startAccessor="start"
+        endAccessor="end"
+        selectable
+        resizable
+        defaultView="week"
+        views={["month", "week", "day"]}
+        step={30}
+        timeslots={2}
+        style={{ height: "80vh" }}
+        onSelectSlot={handleSelectSlot}
+        onEventDrop={handleEventDrop}
+        onEventResize={handleEventResize}
+        eventPropGetter={() => ({
+          style: {
+            backgroundColor: "#6366f1",
+            borderRadius: "6px",
+            border: "none",
+          },
+        })}
+      />
+    </div>
   );
 }
 
