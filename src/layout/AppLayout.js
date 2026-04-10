@@ -18,9 +18,18 @@ import {
 export default function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, loading } = useAuth(); // 🔥 IMPORTANT
 
-  const role = user?.role;
+  // 🔥 WAIT FOR AUTH
+  if (loading) {
+    return null; // or loader
+  }
+
+  if (!user) {
+    return null; // ProtectedRoute handles redirect
+  }
+
+  const role = user.role;
 
   const menu = [
     {
@@ -92,19 +101,16 @@ export default function AppLayout() {
       {/* SIDEBAR */}
       <div className="w-64 relative bg-[#020617] border-r border-white/5 p-5 flex flex-col justify-between">
 
-        {/* glow line */}
         <div className="absolute right-0 top-0 h-full w-[2px] bg-gradient-to-b from-indigo-500 via-transparent to-transparent opacity-40" />
 
         <div>
           <h2 className="text-xl font-semibold mb-6">FieldSync</h2>
 
           {menu.map((group, i) => {
-            // 🔥 FILTER BY ROLE
             const filteredItems = group.items.filter(
               (item) => !item.roles || item.roles.includes(role)
             );
 
-            // 👉 hide section if empty
             if (filteredItems.length === 0) return null;
 
             return (
@@ -161,12 +167,12 @@ export default function AppLayout() {
 
           <div className="flex items-center gap-3">
             <div className="bg-white/5 px-3 py-1 rounded-lg text-sm">
-              {role?.toUpperCase() || "USER"}
+              {role.toUpperCase()}
             </div>
           </div>
         </div>
 
-        {/* PAGE CONTENT */}
+        {/* CONTENT */}
         <div className="flex-1 overflow-y-auto p-6">
           <Outlet />
         </div>
