@@ -1,73 +1,187 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import api from "../services/api";
 import { motion } from "framer-motion";
+import {
+  User,
+  Phone,
+  Building2,
+  Briefcase,
+  Mail,
+  Shield,
+  Crown,
+  Save,
+  LogOut,
+  CheckCircle2,
+  Camera,
+} from "lucide-react";
 
 export default function Profile() {
-  const { user, updateUser, logout } = useAuth();
+  const { user, updateUser, logout } =
+    useAuth();
 
-  const [name, setName] = useState(user?.name || "");
-  const [phone, setPhone] = useState(user?.phone || "");
-  const [saving, setSaving] = useState(false);
+  const [name, setName] = useState(
+    user?.name || ""
+  );
+  const [phone, setPhone] = useState(
+    user?.phone || ""
+  );
+  const [company, setCompany] =
+    useState(
+      user?.companyName || ""
+    );
+  const [jobTitle, setJobTitle] =
+    useState(
+      user?.jobTitle || ""
+    );
+
+  const [saving, setSaving] =
+    useState(false);
+  const [success, setSuccess] =
+    useState("");
 
   const saveProfile = async () => {
     try {
       setSaving(true);
+      setSuccess("");
 
-      const res = await api.put("/auth/me", {
-        name,
-        phone,
-      });
+      const res = await api.put(
+        "/auth/me",
+        {
+          name,
+          phone,
+          companyName: company,
+          jobTitle,
+        }
+      );
 
-      updateUser(res.data);
+      if (updateUser) {
+        updateUser(res.data);
+      }
 
-      alert("Profile updated");
+      setSuccess(
+        "Profile updated successfully"
+      );
 
     } catch (err) {
       console.error(err);
-      alert("Failed to save profile");
+
+      alert(
+        err?.response?.data?.error ||
+          "Failed to save profile"
+      );
 
     } finally {
       setSaving(false);
     }
   };
 
+  const profileScore = useMemo(() => {
+    return (
+      [
+        name,
+        phone,
+        company,
+        jobTitle,
+      ].filter(Boolean).length * 25
+    );
+  }, [
+    name,
+    phone,
+    company,
+    jobTitle,
+  ]);
+
+  const initials = (
+    name ||
+    user?.email ||
+    "U"
+  )
+    .charAt(0)
+    .toUpperCase();
+
   return (
-    <div className="space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
 
-      {/* HEADER */}
-      <div>
-        <h1 className="text-2xl font-semibold">
-          My Profile
-        </h1>
+      {/* HERO */}
+      <div className="rounded-3xl p-[1px] bg-gradient-to-r from-indigo-500/30 via-purple-500/20 to-transparent">
 
-        <p className="text-gray-400 text-sm">
-          Manage your account settings
-        </p>
-      </div>
+        <div className="bg-[#020617] border border-white/10 rounded-3xl p-6 md:p-8">
 
-      {/* PROFILE CARD */}
-      <div className="rounded-2xl p-[1px] bg-gradient-to-b from-indigo-500/20 to-transparent">
+          <div className="flex justify-between gap-6 flex-wrap items-center">
 
-        <div className="bg-[#020617] border border-white/10 rounded-2xl p-6">
+            <div className="flex items-center gap-5">
 
-          <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="w-20 h-20 rounded-full bg-indigo-600 flex items-center justify-center text-2xl font-semibold text-white shadow-lg shadow-indigo-500/30">
+                  {initials}
+                </div>
 
-            {/* AVATAR */}
-            <div className="w-16 h-16 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl font-semibold">
-              {(name || user?.email || "U")
-                .charAt(0)
-                .toUpperCase()}
+                <button className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-white/10 border border-white/10 flex items-center justify-center hover:bg-white/20 transition">
+                  <Camera size={14} />
+                </button>
+              </div>
+
+              <div>
+                <h1 className="text-2xl md:text-3xl font-semibold text-white">
+                  {name ||
+                    "Unnamed User"}
+                </h1>
+
+                <p className="text-gray-400 mt-1">
+                  {user?.email}
+                </p>
+
+                <div className="flex gap-2 mt-3 flex-wrap">
+
+                  <Badge
+                    icon={
+                      <Shield size={13} />
+                    }
+                    text={
+                      user?.role?.toUpperCase() ||
+                      "USER"
+                    }
+                  />
+
+                  <Badge
+                    icon={
+                      <Crown size={13} />
+                    }
+                    text={
+                      user?.isPro
+                        ? "PRO"
+                        : "TRIAL"
+                    }
+                  />
+
+                </div>
+
+              </div>
+
             </div>
 
-            {/* INFO */}
-            <div>
-              <p className="text-lg font-medium">
-                {name || "Unnamed User"}
+            <div className="min-w-[220px]">
+              <p className="text-sm text-gray-400">
+                Profile Strength
               </p>
 
-              <p className="text-sm text-gray-400">
-                {user?.email}
+              <h2 className="text-4xl font-bold text-white mt-2">
+                {profileScore}%
+              </h2>
+
+              <div className="h-2 bg-white/5 rounded-full overflow-hidden mt-4">
+                <div
+                  className="h-full bg-indigo-500 rounded-full"
+                  style={{
+                    width: `${profileScore}%`,
+                  }}
+                />
+              </div>
+
+              <p className="text-xs text-gray-500 mt-3">
+                Complete all fields to
+                maximise setup.
               </p>
             </div>
 
@@ -77,10 +191,19 @@ export default function Profile() {
 
       </div>
 
+      {/* SUCCESS */}
+      {success && (
+        <div className="rounded-2xl bg-green-500/10 border border-green-500/30 text-green-300 p-4 text-sm flex items-center gap-2">
+          <CheckCircle2 size={16} />
+          {success}
+        </div>
+      )}
+
       {/* FORM */}
       <div className="grid md:grid-cols-2 gap-4">
 
         <Field
+          icon={<User size={16} />}
           label="Full Name"
           value={name}
           onChange={setName}
@@ -88,44 +211,85 @@ export default function Profile() {
         />
 
         <Field
+          icon={<Phone size={16} />}
           label="Phone Number"
           value={phone}
           onChange={setPhone}
           placeholder="Phone number"
         />
 
+        <Field
+          icon={
+            <Building2 size={16} />
+          }
+          label="Company Name"
+          value={company}
+          onChange={setCompany}
+          placeholder="Your company"
+        />
+
+        <Field
+          icon={
+            <Briefcase size={16} />
+          }
+          label="Job Title"
+          value={jobTitle}
+          onChange={setJobTitle}
+          placeholder="Owner / Manager / Staff"
+        />
+
         <ReadOnly
+          icon={<Mail size={16} />}
           label="Email"
           value={user?.email}
         />
 
         <ReadOnly
-          label="Role"
-          value={user?.role}
-        />
-
-        <ReadOnly
+          icon={<Crown size={16} />}
           label="Plan"
-          value={user?.isPro ? "Pro" : "Trial"}
+          value={
+            user?.isPro
+              ? "Pro"
+              : "Trial"
+          }
         />
 
       </div>
 
+      {/* SECURITY */}
+      <div className="rounded-3xl bg-[#020617] border border-white/10 p-6">
+
+        <h3 className="text-white font-medium">
+          Security & Account
+        </h3>
+
+        <p className="text-sm text-gray-400 mt-2">
+          Password reset, two-factor
+          authentication and activity
+          history can be added next.
+        </p>
+
+      </div>
+
       {/* ACTIONS */}
-      <div className="flex gap-3">
+      <div className="flex gap-3 flex-wrap">
 
         <button
           onClick={saveProfile}
           disabled={saving}
-          className="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 transition"
+          className="px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 transition disabled:opacity-60 text-white font-medium flex items-center gap-2"
         >
-          {saving ? "Saving..." : "Save Changes"}
+          <Save size={16} />
+          {saving
+            ? "Saving..."
+            : "Save Changes"}
         </button>
 
         <button
           onClick={logout}
-          className="px-5 py-3 rounded-xl bg-red-500 hover:bg-red-600 transition"
+          className="px-5 py-3 rounded-2xl bg-red-500 hover:bg-red-600 transition text-white font-medium flex items-center gap-2"
         >
+          <LogOut size={16} />
           Sign Out
         </button>
 
@@ -138,6 +302,7 @@ export default function Profile() {
 /* COMPONENTS */
 
 function Field({
+  icon,
   label,
   value,
   onChange,
@@ -145,19 +310,22 @@ function Field({
 }) {
   return (
     <motion.div
-      whileHover={{ y: -2 }}
+      whileHover={{ y: -3 }}
       className="rounded-2xl p-[1px] bg-gradient-to-b from-white/10 to-transparent"
     >
       <div className="bg-[#020617] border border-white/10 rounded-2xl p-4">
 
-        <p className="text-gray-400 text-xs mb-2">
+        <div className="flex items-center gap-2 text-gray-400 text-xs mb-2">
+          {icon}
           {label}
-        </p>
+        </div>
 
         <input
           value={value}
           onChange={(e) =>
-            onChange(e.target.value)
+            onChange(
+              e.target.value
+            )
           }
           placeholder={placeholder}
           className="w-full bg-[#111827] border border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500"
@@ -168,20 +336,37 @@ function Field({
   );
 }
 
-function ReadOnly({ label, value }) {
+function ReadOnly({
+  icon,
+  label,
+  value,
+}) {
   return (
     <div className="rounded-2xl p-[1px] bg-gradient-to-b from-white/10 to-transparent">
       <div className="bg-[#020617] border border-white/10 rounded-2xl p-4">
 
-        <p className="text-gray-400 text-xs mb-2">
+        <div className="flex items-center gap-2 text-gray-400 text-xs mb-2">
+          {icon}
           {label}
-        </p>
+        </div>
 
-        <p className="text-sm">
+        <p className="text-white text-sm">
           {value || "-"}
         </p>
 
       </div>
+    </div>
+  );
+}
+
+function Badge({
+  icon,
+  text,
+}) {
+  return (
+    <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-white flex items-center gap-2">
+      {icon}
+      {text}
     </div>
   );
 }

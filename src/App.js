@@ -40,57 +40,95 @@ import WorkSession from "./pages/WorkSession";
 /* 🧱 LAYOUT */
 import AppLayout from "./layout/AppLayout";
 
-//
-// =======================
-// 🔐 PROTECTED ROUTE
-// =======================
+/* =======================
+   🔐 PROTECTED ROUTE
+======================= */
 function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth();
+  const { user, loading } =
+    useAuth();
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#020617] text-white flex items-center justify-center">
+        Loading...
+      </div>
+    );
+  }
 
   if (!user) {
-    return <Navigate to="/login" />;
+    return (
+      <Navigate
+        to="/login"
+        replace
+      />
+    );
   }
 
   return children;
 }
 
-//
-// =======================
-// 🔒 ROLE ROUTE
-// =======================
-function RoleRoute({ roles, children }) {
-  const { user, loading } = useAuth();
+/* =======================
+   🔒 ROLE ROUTE
+======================= */
+function RoleRoute({
+  roles,
+  children,
+}) {
+  const { user, loading } =
+    useAuth();
 
   if (loading) return null;
 
   if (!user) {
-    return <Navigate to="/login" />;
+    return (
+      <Navigate
+        to="/login"
+        replace
+      />
+    );
   }
 
-  if (!roles.includes(user.role)) {
-    return <Navigate to="/dashboard" />;
+  if (
+    !roles.includes(
+      user.role
+    )
+  ) {
+    return (
+      <Navigate
+        to="/dashboard"
+        replace
+      />
+    );
   }
 
   return children;
 }
 
-//
-// =======================
-// 🚀 APP
-// =======================
+/* =======================
+   🚀 APP
+======================= */
 function App() {
   return (
     <Router>
       <Routes>
 
-        {/* ================= PUBLIC ================= */}
-        <Route path="/" element={<Landing />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/login" element={<Login />} />
+        {/* PUBLIC */}
+        <Route
+          path="/"
+          element={<Landing />}
+        />
 
-        {/* ================= PRIVATE APP ================= */}
+        <Route
+          path="/signup"
+          element={<Signup />}
+        />
+
+        <Route
+          path="/login"
+          element={<Login />}
+        />
+
+        {/* PRIVATE */}
         <Route
           element={
             <ProtectedRoute>
@@ -100,27 +138,63 @@ function App() {
         >
 
           {/* CORE */}
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/tasks" element={<Tasks />} />
-          <Route path="/schedule" element={<Schedule />} />
-          <Route path="/calendar" element={<ScheduleCalendar />} />
-          <Route path="/work-session" element={<WorkSession />} />
+          <Route
+            path="/dashboard"
+            element={
+              <Dashboard />
+            }
+          />
 
-          {/* 🔒 ANNOUNCEMENTS (MANAGER + ADMIN ONLY) */}
+          <Route
+            path="/tasks"
+            element={<Tasks />}
+          />
+
+          <Route
+            path="/schedule"
+            element={
+              <Schedule />
+            }
+          />
+
+          <Route
+            path="/calendar"
+            element={
+              <ScheduleCalendar />
+            }
+          />
+
+          <Route
+            path="/work-session"
+            element={
+              <WorkSession />
+            }
+          />
+
+          {/* MANAGER / ADMIN */}
           <Route
             path="/announcements"
             element={
-              <RoleRoute roles={["manager", "admin"]}>
+              <RoleRoute
+                roles={[
+                  "manager",
+                  "admin",
+                ]}
+              >
                 <Announcements />
               </RoleRoute>
             }
           />
 
-          {/* 🔒 MANAGER + ADMIN */}
           <Route
             path="/holiday-requests"
             element={
-              <RoleRoute roles={["manager", "admin"]}>
+              <RoleRoute
+                roles={[
+                  "manager",
+                  "admin",
+                ]}
+              >
                 <HolidayRequests />
               </RoleRoute>
             }
@@ -129,7 +203,12 @@ function App() {
           <Route
             path="/employees"
             element={
-              <RoleRoute roles={["manager", "admin"]}>
+              <RoleRoute
+                roles={[
+                  "manager",
+                  "admin",
+                ]}
+              >
                 <Employees />
               </RoleRoute>
             }
@@ -138,17 +217,26 @@ function App() {
           <Route
             path="/locations"
             element={
-              <RoleRoute roles={["manager", "admin"]}>
+              <RoleRoute
+                roles={[
+                  "manager",
+                  "admin",
+                ]}
+              >
                 <Locations />
               </RoleRoute>
             }
           />
 
-          {/* 🔒 BUSINESS */}
           <Route
             path="/performance"
             element={
-              <RoleRoute roles={["manager", "admin"]}>
+              <RoleRoute
+                roles={[
+                  "manager",
+                  "admin",
+                ]}
+              >
                 <Performance />
               </RoleRoute>
             }
@@ -157,31 +245,65 @@ function App() {
           <Route
             path="/reports"
             element={
-              <RoleRoute roles={["manager", "admin"]}>
+              <RoleRoute
+                roles={[
+                  "manager",
+                  "admin",
+                ]}
+              >
                 <Reports />
               </RoleRoute>
             }
           />
 
-          {/* 🔒 ADMIN ONLY */}
+          {/* ADMIN ONLY */}
           <Route
             path="/billing"
             element={
-              <RoleRoute roles={["admin"]}>
+              <RoleRoute
+                roles={[
+                  "admin",
+                ]}
+              >
                 <Billing />
               </RoleRoute>
             }
           />
 
-          {/* ACCOUNT */}
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/upgrade" element={<Upgrade />} />
-          <Route path="/success" element={<Success />} />
+          {/* USER */}
+          <Route
+            path="/profile"
+            element={
+              <Profile />
+            }
+          />
+
+          <Route
+            path="/upgrade"
+            element={
+              <Upgrade />
+            }
+          />
+
+          <Route
+            path="/success"
+            element={
+              <Success />
+            }
+          />
 
         </Route>
 
         {/* FALLBACK */}
-        <Route path="*" element={<Navigate to="/" />} />
+        <Route
+          path="*"
+          element={
+            <Navigate
+              to="/"
+              replace
+            />
+          }
+        />
 
       </Routes>
     </Router>

@@ -1,207 +1,390 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  ArrowRight,
+  CheckCircle2,
+  BarChart3,
+  Users,
+  MapPinned,
+  Shield,
+  Clock3,
+} from "lucide-react";
 
-function Landing() {
+export default function Landing() {
   const navigate = useNavigate();
 
+  const stats = [
+    {
+      label: "Shifts Tracked",
+      value: "12k+",
+    },
+    {
+      label: "Active Users",
+      value: "800+",
+    },
+    {
+      label: "Tasks Completed",
+      value: "5k+",
+    },
+    {
+      label: "Uptime",
+      value: "99.9%",
+    },
+  ];
+
+  const features = [
+    {
+      icon: <Clock3 size={18} />,
+      title: "Real-time operations",
+      text:
+        "See who is clocked in, active and where your team is right now.",
+    },
+    {
+      icon: <Users size={18} />,
+      title: "Team management",
+      text:
+        "Run schedules, staff permissions and tasks from one dashboard.",
+    },
+    {
+      icon: <MapPinned size={18} />,
+      title: "Location control",
+      text:
+        "Track approved sites and ensure teams are where they should be.",
+    },
+    {
+      icon: <BarChart3 size={18} />,
+      title: "Analytics",
+      text:
+        "Use reports and performance insights to improve output.",
+    },
+    {
+      icon: <Shield size={18} />,
+      title: "Secure access",
+      text:
+        "Role-based permissions for admins, managers and staff.",
+    },
+    {
+      icon: <CheckCircle2 size={18} />,
+      title: "Simple setup",
+      text:
+        "Create your workspace and onboard staff in minutes.",
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-black text-white overflow-hidden">
+    <div className="min-h-screen bg-[#020617] text-white overflow-hidden">
 
-      {/* NAV */}
-      <div className="max-w-7xl mx-auto px-6 py-6 flex justify-between items-center">
-        <h1 className="text-sm font-semibold tracking-wide text-white/90">
-          FieldSync
-        </h1>
-
-        <div className="flex items-center gap-6">
-          <button
-            onClick={() => navigate('/login')}
-            className="text-sm text-gray-400 hover:text-white transition"
-          >
-            Sign in
-          </button>
-
-          <button
-            onClick={() => navigate('/signup')}
-            className="bg-white text-black px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition"
-          >
-            Get Started
-          </button>
-        </div>
+      {/* BACKGROUND */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-indigo-600/20 blur-3xl rounded-full" />
+        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-cyan-500/10 blur-3xl rounded-full" />
       </div>
 
-      {/* HERO */}
-      <div className="max-w-6xl mx-auto px-6 pt-20 pb-24 text-center relative">
+      {/* NAV */}
+      <div className="relative z-10 max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
 
-        {/* glow */}
-        <div className="absolute inset-0 flex justify-center pointer-events-none animate-pulse">
-          <div className="w-[600px] h-[600px] bg-indigo-600 opacity-20 blur-3xl rounded-full" />
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">
+            FieldSync
+          </h1>
+
+          <p className="text-xs text-gray-500">
+            Workforce OS
+          </p>
         </div>
 
-        <h1 className="text-5xl md:text-7xl font-semibold tracking-tight leading-tight">
-          The operating system
-          <br />
-          <span className="text-white/40">for your workforce</span>
-        </h1>
-
-        <p className="mt-6 text-lg text-gray-400 max-w-2xl mx-auto">
-          Track shifts, manage teams, and run your operations in real time —
-          without spreadsheets, guesswork, or chaos.
-        </p>
-
-        <div className="mt-10 flex justify-center gap-4">
-          <button
-            onClick={() => navigate('/signup')}
-            className="bg-indigo-600 hover:bg-indigo-500 px-6 py-3 rounded-xl text-sm font-medium transition hover:scale-105"
-          >
-            Start Free
-          </button>
+        <div className="flex items-center gap-3">
 
           <button
-            onClick={() => navigate('/login')}
-            className="bg-white/10 hover:bg-white/20 px-6 py-3 rounded-xl text-sm transition hover:scale-105"
+            onClick={() =>
+              navigate("/login")
+            }
+            className="px-4 py-2 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition"
           >
             Sign In
           </button>
-        </div>
-      </div>
 
-      {/* TRUST / STATS */}
-      <div className="border-y border-white/10 bg-white/5">
-        <div className="max-w-5xl mx-auto px-6 py-12 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-
-          <div>
-            <p className="text-2xl font-semibold">12,000+</p>
-            <p className="text-gray-500 text-xs mt-1">Shifts tracked</p>
-          </div>
-
-          <div>
-            <p className="text-2xl font-semibold">800+</p>
-            <p className="text-gray-500 text-xs mt-1">Active users</p>
-          </div>
-
-          <div>
-            <p className="text-2xl font-semibold">5,000+</p>
-            <p className="text-gray-500 text-xs mt-1">Tasks completed</p>
-          </div>
-
-          <div>
-            <p className="text-2xl font-semibold">99.9%</p>
-            <p className="text-gray-500 text-xs mt-1">System uptime</p>
-          </div>
+          <button
+            onClick={() =>
+              navigate("/signup")
+            }
+            className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-sm font-medium transition"
+          >
+            Get Started
+          </button>
 
         </div>
+
       </div>
 
-      {/* PRODUCT PREVIEW */}
-      <div className="max-w-6xl mx-auto px-6 py-24">
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur transition">
+      {/* HERO */}
+      <div className="relative z-10 max-w-7xl mx-auto px-6 pt-14 pb-24">
 
-          <div className="grid md:grid-cols-3 gap-4 mb-6">
+        <div className="grid lg:grid-cols-2 gap-14 items-center">
 
-            <div className="bg-white/10 rounded-xl p-4 hover:bg-white/20 transition">
-              <p className="text-xs text-gray-400">Active Workers</p>
-              <p className="text-lg mt-2">14</p>
+          {/* LEFT */}
+          <motion.div
+            initial={{
+              opacity: 0,
+              y: 25,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+          >
+
+            <div className="inline-flex px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs mb-6">
+              Modern Workforce Management
             </div>
 
-            <div className="bg-white/10 rounded-xl p-4 hover:bg-white/20 transition">
-              <p className="text-xs text-gray-400">Tasks Today</p>
-              <p className="text-lg mt-2">32</p>
+            <h1 className="text-5xl md:text-7xl font-semibold leading-tight tracking-tight">
+              Run your team
+              <br />
+              <span className="text-gray-400">
+                without chaos
+              </span>
+            </h1>
+
+            <p className="mt-6 text-lg text-gray-400 max-w-xl leading-relaxed">
+              Scheduling, tracking,
+              tasks, locations,
+              reporting and team
+              performance — all in
+              one clean platform.
+            </p>
+
+            <div className="mt-8 flex flex-wrap gap-4">
+
+              <button
+                onClick={() =>
+                  navigate(
+                    "/signup"
+                  )
+                }
+                className="px-7 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-medium flex items-center gap-2 transition"
+              >
+                Start Free
+                <ArrowRight
+                  size={16}
+                />
+              </button>
+
+              <button
+                onClick={() =>
+                  navigate(
+                    "/login"
+                  )
+                }
+                className="px-7 py-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition"
+              >
+                Login
+              </button>
+
             </div>
 
-            <div className="bg-white/10 rounded-xl p-4 hover:bg-white/20 transition">
-              <p className="text-xs text-gray-400">Locations</p>
-              <p className="text-lg mt-2">6</p>
+          </motion.div>
+
+          {/* RIGHT */}
+          <motion.div
+            initial={{
+              opacity: 0,
+              y: 25,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            transition={{
+              delay: 0.1,
+            }}
+            className="rounded-3xl p-[1px] bg-gradient-to-b from-white/15 to-transparent"
+          >
+            <div className="bg-[#020617]/95 border border-white/10 rounded-3xl p-6">
+
+              <div className="grid grid-cols-2 gap-4">
+
+                <Panel
+                  title="Live Staff"
+                  value="14"
+                />
+
+                <Panel
+                  title="Tasks Today"
+                  value="32"
+                />
+
+                <Panel
+                  title="Late Arrivals"
+                  value="1"
+                />
+
+                <Panel
+                  title="Locations"
+                  value="6"
+                />
+
+              </div>
+
+              <div className="mt-5 rounded-2xl bg-white/5 border border-white/10 p-4">
+
+                <div className="flex justify-between text-sm mb-3">
+                  <span className="text-gray-400">
+                    Productivity
+                  </span>
+
+                  <span>
+                    87%
+                  </span>
+                </div>
+
+                <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full w-[87%] bg-indigo-500 rounded-full" />
+                </div>
+
+              </div>
+
             </div>
+          </motion.div>
 
-          </div>
+        </div>
 
-          <div className="h-40 bg-gradient-to-r from-indigo-500 to-transparent opacity-10 rounded-xl animate-pulse" />
+      </div>
+
+      {/* STATS */}
+      <div className="relative z-10 border-y border-white/10 bg-white/5">
+        <div className="max-w-7xl mx-auto px-6 py-10 grid grid-cols-2 md:grid-cols-4 gap-6">
+
+          {stats.map((item) => (
+            <div
+              key={item.label}
+              className="text-center"
+            >
+              <p className="text-3xl font-semibold">
+                {item.value}
+              </p>
+
+              <p className="text-xs text-gray-500 mt-1 uppercase tracking-wider">
+                {item.label}
+              </p>
+            </div>
+          ))}
+
         </div>
       </div>
 
       {/* FEATURES */}
-      <div className="max-w-6xl mx-auto px-6 py-24 grid md:grid-cols-3 gap-8">
+      <div className="relative z-10 max-w-7xl mx-auto px-6 py-24">
 
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition">
-          <h3 className="text-lg font-medium mb-2">Real-time tracking</h3>
-          <p className="text-gray-400 text-sm">
-            Know exactly where your team is and what they’re doing instantly.
+        <div className="text-center mb-14">
+
+          <h2 className="text-4xl font-semibold">
+            Everything in one system
+          </h2>
+
+          <p className="text-gray-400 mt-4">
+            Replace spreadsheets,
+            WhatsApp groups and
+            messy admin work.
           </p>
+
         </div>
 
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition">
-          <h3 className="text-lg font-medium mb-2">Task management</h3>
-          <p className="text-gray-400 text-sm">
-            Assign and track work with full visibility across your workforce.
-          </p>
-        </div>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
 
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition">
-          <h3 className="text-lg font-medium mb-2">Location control</h3>
-          <p className="text-gray-400 text-sm">
-            Ensure employees are exactly where they should be at all times.
-          </p>
+          {features.map(
+            (item) => (
+              <div
+                key={item.title}
+                className="rounded-2xl bg-white/5 border border-white/10 p-6 hover:bg-white/10 transition"
+              >
+
+                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-4">
+                  {item.icon}
+                </div>
+
+                <h3 className="font-medium text-lg">
+                  {item.title}
+                </h3>
+
+                <p className="text-sm text-gray-400 mt-2 leading-relaxed">
+                  {item.text}
+                </p>
+
+              </div>
+            )
+          )}
+
         </div>
 
       </div>
 
       {/* PRICING */}
-      <div className="border-t border-white/10">
-        <div className="max-w-6xl mx-auto px-6 py-24 text-center">
+      <div className="relative z-10 border-t border-white/10">
+        <div className="max-w-5xl mx-auto px-6 py-24 text-center">
 
-          <h2 className="text-3xl font-semibold mb-4">
-            Simple, scalable pricing
+          <h2 className="text-4xl font-semibold">
+            Simple pricing
           </h2>
 
-          <p className="text-gray-400 mb-12">
-            £6 per employee per month. No hidden fees.
+          <p className="text-gray-400 mt-4 mb-12">
+            £6 per employee / month
           </p>
 
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="max-w-xl mx-auto rounded-3xl p-[1px] bg-gradient-to-b from-indigo-500/30 to-transparent">
 
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
-              <h3 className="text-xl font-medium mb-2">Starter</h3>
-              <p className="text-3xl font-semibold mb-6">Free</p>
+            <div className="bg-[#020617] border border-white/10 rounded-3xl p-8">
 
-              <ul className="text-sm text-gray-400 space-y-2 mb-6">
-                <li>✔ Up to 3 employees</li>
-                <li>✔ Shift tracking</li>
-                <li>✔ Basic tasks</li>
-              </ul>
-
-              <button
-                onClick={() => navigate('/signup')}
-                className="bg-white/10 hover:bg-white/20 w-full py-3 rounded-xl transition"
-              >
-                Get Started
-              </button>
-            </div>
-
-            <div className="bg-indigo-600/20 border border-indigo-500/30 rounded-2xl p-8 relative">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs bg-indigo-600 px-3 py-1 rounded-full">
-                Most popular
+              <div className="inline-flex px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-300 text-xs mb-5">
+                Most Popular
               </div>
 
-              <h3 className="text-xl font-medium mb-2">Pro</h3>
+              <h3 className="text-2xl font-semibold">
+                Pro Plan
+              </h3>
 
-              <p className="text-3xl font-semibold mb-2">
+              <p className="text-5xl font-semibold mt-4">
                 £6
-                <span className="text-sm text-gray-400"> / employee / month</span>
               </p>
 
-              <ul className="text-sm text-gray-400 space-y-2 mb-6">
-                <li>✔ Unlimited employees</li>
-                <li>✔ Analytics dashboard</li>
-                <li>✔ Multiple locations</li>
-                <li>✔ Real-time tracking</li>
-              </ul>
+              <p className="text-sm text-gray-400 mt-1">
+                per employee / month
+              </p>
+
+              <div className="mt-8 space-y-3 text-sm text-gray-300 text-left">
+
+                <p>
+                  ✔ Unlimited
+                  employees
+                </p>
+
+                <p>
+                  ✔ Full analytics
+                </p>
+
+                <p>
+                  ✔ Multiple
+                  locations
+                </p>
+
+                <p>
+                  ✔ Real-time
+                  tracking
+                </p>
+
+              </div>
 
               <button
-                onClick={() => navigate('/signup')}
-                className="bg-indigo-600 hover:bg-indigo-500 w-full py-3 rounded-xl transition hover:scale-105"
+                onClick={() =>
+                  navigate(
+                    "/signup"
+                  )
+                }
+                className="mt-8 w-full py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-medium transition"
               >
                 Start Free Trial
               </button>
+
             </div>
 
           </div>
@@ -210,25 +393,45 @@ function Landing() {
       </div>
 
       {/* CTA */}
-      <div className="max-w-4xl mx-auto px-6 py-24 text-center">
-        <h2 className="text-3xl font-semibold">
-          Take control of your workforce
+      <div className="relative z-10 max-w-4xl mx-auto px-6 pb-24 text-center">
+
+        <h2 className="text-4xl font-semibold">
+          Ready to scale?
         </h2>
 
         <p className="text-gray-400 mt-4">
-          Everything you need to manage your team — in one place.
+          Launch your workspace in
+          minutes.
         </p>
 
         <button
-          onClick={() => navigate('/signup')}
-          className="mt-8 bg-indigo-600 hover:bg-indigo-500 px-8 py-3 rounded-xl font-medium transition hover:scale-105"
+          onClick={() =>
+            navigate("/signup")
+          }
+          className="mt-8 px-8 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-medium transition"
         >
-          Get Started Free
+          Create Workspace
         </button>
+
       </div>
 
     </div>
   );
 }
 
-export default Landing;
+function Panel({
+  title,
+  value,
+}) {
+  return (
+    <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
+      <p className="text-xs text-gray-400">
+        {title}
+      </p>
+
+      <h3 className="text-2xl font-semibold mt-2">
+        {value}
+      </h3>
+    </div>
+  );
+}

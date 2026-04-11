@@ -1,91 +1,242 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 
 export function useAuth() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  const [user, setUser] =
+    useState(null);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  /* ------------------ */
+  /* TOKEN DECODE */
+  /* ------------------ */
+  const decodeToken = (
+    token
+  ) => {
+    try {
+      const payload =
+        token.split(".")[1];
+
+      const base64 =
+        payload
+          .replace(
+            /-/g,
+            "+"
+          )
+          .replace(
+            /_/g,
+            "/"
+          );
+
+      return JSON.parse(
+        atob(base64)
+      );
+
+    } catch {
+      return null;
+    }
+  };
+
+  /* ------------------ */
+  /* LOAD USER */
+  /* ------------------ */
+  const loadUser =
+    useCallback(() => {
+      try {
+        setLoading(true);
+
+        const token =
+          localStorage.getItem(
+            "token"
+          );
+
+        const savedUser =
+          localStorage.getItem(
+            "user"
+          );
+
+        if (
+          !token ||
+          token ===
+            "undefined" ||
+          token === "null"
+        ) {
+          setUser(null);
+          return;
+        }
+
+        /* PRIORITY 1 */
+        if (
+          savedUser &&
+          savedUser !==
+            "undefined" &&
+          savedUser !==
+            "null"
+        ) {
+          const parsed =
+            JSON.parse(
+              savedUser
+            );
+
+          setUser(parsed);
+          return;
+        }
+
+        /* PRIORITY 2 */
+        const decoded =
+          decodeToken(
+            token
+          );
+
+        if (!decoded) {
+          throw new Error(
+            "Invalid token"
+          );
+        }
+
+        const userData = {
+          id:
+            decoded.id,
+          email:
+            decoded.email,
+          name:
+            decoded.name ||
+            "",
+          phone:
+            decoded.phone ||
+            "",
+          companyName:
+            decoded.companyName ||
+            "",
+          jobTitle:
+            decoded.jobTitle ||
+            "",
+          role:
+            decoded.role ||
+            "employee",
+          companyId:
+            decoded.companyId ||
+            null,
+          isPro:
+            decoded.isPro ||
+            false,
+        };
+
+        localStorage.setItem(
+          "user",
+          JSON.stringify(
+            userData
+          )
+        );
+
+        setUser(userData);
+
+      } catch (err) {
+        console.error(
+          "AUTH ERROR:",
+          err
+        );
+
+        localStorage.removeItem(
+          "token"
+        );
+
+        localStorage.removeItem(
+          "user"
+        );
+
+        setUser(null);
+
+      } finally {
+        setLoading(false);
+      }
+    }, []);
 
   useEffect(() => {
     loadUser();
-  }, []);
+  }, [loadUser]);
 
-  const loadUser = () => {
-    const token = localStorage.getItem("token");
-    const savedUser = localStorage.getItem("user");
-
-    if (!token || token === "undefined" || token === "null") {
-      setUser(null);
-      setLoading(false);
+  /* ------------------ */
+  /* LOGIN */
+  /* ------------------ */
+  const login = (
+    data
+  ) => {
+    if (!data?.token)
       return;
+
+    localStorage.setItem(
+      "token",
+      data.token
+    );
+
+    if (data.user) {
+      localStorage.setItem(
+        "user",
+        JSON.stringify(
+          data.user
+        )
+      );
+
+      setUser(
+        data.user
+      );
+
+    } else {
+      loadUser();
     }
 
-    try {
-      // ✅ PRIORITY = saved user object
-      if (savedUser) {
-        const parsed = JSON.parse(savedUser);
+    navigate(
+      "/dashboard"
+    );
+  };
 
-        setUser(parsed);
-        setLoading(false);
-        return;
+  /* ------------------ */
+  /* UPDATE USER */
+  /* ------------------ */
+  const updateUser = (
+    data
+  ) => {
+    setUser(
+      (prev) => {
+        const updated =
+          {
+            ...prev,
+            ...data,
+          };
+
+        localStorage.setItem(
+          "user",
+          JSON.stringify(
+            updated
+          )
+        );
+
+        return updated;
       }
-
-      // fallback to token decode
-      const payload = token.split(".")[1];
-
-      const base64 = payload
-        .replace(/-/g, "+")
-        .replace(/_/g, "/");
-
-      const decoded = JSON.parse(atob(base64));
-
-      setUser({
-        id: decoded.id,
-        email: decoded.email,
-        name: decoded.name || "User",
-        role: decoded.role || "employee",
-        companyId: decoded.companyId || null,
-        isPro: decoded.isPro || false,
-      });
-
-    } catch (err) {
-      console.error("❌ Auth error:", err);
-
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-
-      setUser(null);
-    }
-
-    setLoading(false);
-  };
-
-  const login = (data) => {
-    localStorage.setItem("token", data.token);
-    localStorage.setItem(
-      "user",
-      JSON.stringify(data.user)
     );
-
-    setUser(data.user);
-
-    window.location.href = "/";
   };
 
-  const updateUser = (data) => {
-    localStorage.setItem(
-      "user",
-      JSON.stringify(data)
-    );
-
-    setUser(data);
-  };
-
+  /* ------------------ */
+  /* LOGOUT */
+  /* ------------------ */
   const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    localStorage.removeItem(
+      "token"
+    );
+
+    localStorage.removeItem(
+      "user"
+    );
 
     setUser(null);
 
-    window.location.href = "/login";
+    navigate(
+      "/login"
+    );
   };
 
   return {
@@ -94,5 +245,18 @@ export function useAuth() {
     login,
     logout,
     updateUser,
+    reloadUser:
+      loadUser,
+    isAdmin:
+      user?.role ===
+      "admin",
+    isManager:
+      user?.role ===
+        "manager" ||
+      user?.role ===
+        "admin",
+    isEmployee:
+      user?.role ===
+      "employee",
   };
 }

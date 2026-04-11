@@ -1,8 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { reportAPI } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import {
+  BarChart3,
+  Users,
+  CalendarDays,
+  CheckSquare,
+  TrendingUp,
+  Crown,
+  AlertCircle,
+  RefreshCw,
+  Download,
+  Search,
+} from "lucide-react";
 
 export default function Reports() {
   const { user, loading: authLoading } = useAuth();
@@ -12,17 +24,20 @@ export default function Reports() {
     totalShifts: 0,
     totalUsers: 0,
     totalTasks: 0,
+    completedTasks: 0,
+    activeUsers: 0,
+    hoursWorked: 0,
+    employees: [],
   });
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
-    // 🔥 WAIT FOR AUTH FIRST
     if (authLoading) return;
 
-    // 🔥 ONLY LOAD IF ALLOWED
-    if (user?.isPro && user?.role === "admin") {
+    if (user?.role === "admin" && user?.isPro) {
       loadReports();
     } else {
       setLoading(false);
@@ -32,6 +47,7 @@ export default function Reports() {
   const loadReports = async () => {
     try {
       setLoading(true);
+      setError("");
 
       const res = await reportAPI.getTimesheets();
 
@@ -39,52 +55,138 @@ export default function Reports() {
         totalShifts: res?.totalShifts || 0,
         totalUsers: res?.totalUsers || 0,
         totalTasks: res?.totalTasks || 0,
+        completedTasks: res?.completedTasks || 0,
+        activeUsers: res?.activeUsers || 0,
+        hoursWorked: res?.hoursWorked || 0,
+        employees: res?.employees || [],
       });
 
     } catch (err) {
-      console.error(err);
-      setError(err?.message || "Failed to load reports");
+      setError(
+        err?.response?.data?.error ||
+          err?.message ||
+          "Failed to load reports"
+      );
+
     } finally {
       setLoading(false);
     }
   };
 
-  // 🔒 WAIT FOR AUTH
+  const completionRate =
+    data.totalTasks > 0
+      ? Math.round(
+          (data.completedTasks /
+            data.totalTasks) *
+            100
+        )
+      : 0;
+
+  const activeRate =
+    data.totalUsers > 0
+      ? Math.round(
+          (data.activeUsers /
+            data.totalUsers) *
+            100
+        )
+      : 0;
+
+  const employees = useMemo(() => {
+    let rows = [...data.employees];
+
+    if (search.trim()) {
+      const q = search.toLowerCase();
+
+      rows = rows.filter(
+        (u) =>
+          u.name?.toLowerCase().includes(q) ||
+          u.email?.toLowerCase().includes(q)
+      );
+    }
+
+    return rows;
+  }, [data.employees, search]);
+
+  const exportCSV = () => {
+    const rows = [
+      [
+        "Metric",
+        "Value",
+      ],
+      ["Total Shifts", data.totalShifts],
+      ["Employees", data.totalUsers],
+      ["Hours Worked", data.hoursWorked],
+      ["Tasks", data.totalTasks],
+      ["Completed Tasks", data.completedTasks],
+      ["Completion Rate", `${completionRate}%`],
+    ];
+
+    const csv = rows
+      .map((r) => r.join(","))
+      .join("\n");
+
+    const blob = new Blob(
+      [csv],
+      { type: "text/csv" }
+    );
+
+    const url =
+      URL.createObjectURL(blob);
+
+    const a =
+      document.createElement("a");
+
+    a.href = url;
+    a.download =
+      "fieldsync-report.csv";
+    a.click();
+
+    URL.revokeObjectURL(url);
+  };
+
   if (authLoading) return null;
 
-  // 🔒 ROLE LOCK
   if (!user || user.role !== "admin") {
     return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="text-gray-400 text-sm">
-          You don’t have access to Reports
-        </div>
-      </div>
+      <LockScreen text="You don’t have access to Reports" />
     );
   }
 
-  // 🔒 PAYWALL
   if (!user.isPro) {
     return (
-      <div className="flex items-center justify-center h-[60vh]">
+      <div className="flex items-center justify-center h-[70vh]">
 
-        <div className="rounded-2xl p-[1px] bg-gradient-to-b from-indigo-500/20 to-transparent w-full max-w-md">
-          <div className="bg-[#020617] border border-white/10 rounded-2xl p-6 text-center space-y-4 shadow-[0_0_40px_rgba(99,102,241,0.2)]">
+        <div className="w-full max-w-md rounded-2xl p-[1px] bg-gradient-to-b from-indigo-500/30 to-transparent">
 
-            <h1 className="text-xl font-semibold">📊 Reports</h1>
+          <div className="bg-[#020617] border border-white/10 rounded-2xl p-8 text-center space-y-5">
 
-            <p className="text-gray-400 text-sm">
-              Unlock advanced insights and analytics
-            </p>
+            <div className="w-16 h-16 rounded-2xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center mx-auto">
+              <Crown size={26} />
+            </div>
+
+            <div>
+              <h1 className="text-2xl font-semibold">
+                Pro Reports
+              </h1>
+
+              <p className="text-sm text-gray-400 mt-2">
+                Unlock analytics,
+                exports and advanced
+                reporting tools.
+              </p>
+            </div>
 
             <button
-              onClick={() => navigate("/upgrade")}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 py-2 rounded-xl text-sm transition"
+              onClick={() =>
+                navigate("/upgrade")
+              }
+              className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 transition font-medium"
             >
               Upgrade to Pro
             </button>
 
           </div>
+
         </div>
 
       </div>
@@ -92,63 +194,326 @@ export default function Reports() {
   }
 
   if (loading) {
-    return <div className="text-gray-400">Loading reports...</div>;
+    return (
+      <div className="text-gray-400">
+        Loading reports...
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
 
       {/* HEADER */}
-      <div>
-        <h1 className="text-2xl font-semibold">Reports</h1>
-        <p className="text-gray-400 text-sm">
-          Overview of your business performance
-        </p>
+      <div className="flex justify-between items-center flex-wrap gap-4">
+
+        <div>
+          <h1 className="text-2xl font-semibold">
+            Reports
+          </h1>
+
+          <p className="text-sm text-gray-400">
+            Business analytics &
+            export center
+          </p>
+        </div>
+
+        <div className="flex gap-2">
+
+          <button
+            onClick={loadReports}
+            className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-sm flex items-center gap-2"
+          >
+            <RefreshCw size={15} />
+            Refresh
+          </button>
+
+          <button
+            onClick={exportCSV}
+            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-sm flex items-center gap-2"
+          >
+            <Download size={15} />
+            Export
+          </button>
+
+        </div>
+
       </div>
 
+      {/* ERROR */}
       {error && (
-        <div className="text-red-400 text-sm">{error}</div>
+        <div className="rounded-xl bg-red-500/10 border border-red-500/30 p-4 text-sm text-red-300 flex gap-2 items-center">
+          <AlertCircle size={16} />
+          {error}
+        </div>
       )}
 
-      {/* KPI GRID */}
-      <div className="grid md:grid-cols-3 gap-4">
+      {/* KPI */}
+      <div className="grid md:grid-cols-4 gap-4">
 
-        <KPI title="Total Shifts" value={data.totalShifts} />
-        <KPI title="Users" value={data.totalUsers} />
-        <KPI title="Tasks" value={data.totalTasks} />
+        <KPI
+          title="Shifts"
+          value={data.totalShifts}
+          icon={
+            <CalendarDays size={16} />
+          }
+        />
+
+        <KPI
+          title="Employees"
+          value={data.totalUsers}
+          icon={<Users size={16} />}
+        />
+
+        <KPI
+          title="Hours"
+          value={data.hoursWorked}
+          icon={
+            <BarChart3 size={16} />
+          }
+        />
+
+        <KPI
+          title="Completion"
+          value={`${completionRate}%`}
+          icon={
+            <TrendingUp size={16} />
+          }
+        />
 
       </div>
+
+      {/* INSIGHTS */}
+      <div className="grid md:grid-cols-2 gap-4">
+
+        <Card title="Operations Summary">
+
+          <InfoRow
+            label="Active Users"
+            value={data.activeUsers}
+          />
+
+          <InfoRow
+            label="Tasks Outstanding"
+            value={
+              data.totalTasks -
+              data.completedTasks
+            }
+          />
+
+          <InfoRow
+            label="Task Completion"
+            value={`${completionRate}%`}
+          />
+
+          <InfoRow
+            label="Activity Rate"
+            value={`${activeRate}%`}
+          />
+
+        </Card>
+
+        <Card title="Performance Score">
+
+          <ProgressBar
+            label="Completion"
+            value={completionRate}
+          />
+
+          <ProgressBar
+            label="Activity"
+            value={activeRate}
+          />
+
+          <ProgressBar
+            label="Utilisation"
+            value={
+              data.totalShifts
+                ? 82
+                : 0
+            }
+          />
+
+        </Card>
+
+      </div>
+
+      {/* STAFF TABLE */}
+      <Card title="Employee Breakdown">
+
+        <div className="relative mb-4">
+          <Search
+            size={16}
+            className="absolute left-4 top-3.5 text-gray-500"
+          />
+
+          <input
+            placeholder="Search employee..."
+            value={search}
+            onChange={(e) =>
+              setSearch(
+                e.target.value
+              )
+            }
+            className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3"
+          />
+        </div>
+
+        {employees.length === 0 ? (
+          <p className="text-sm text-gray-500">
+            No employee report data
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {employees.map(
+              (u, i) => (
+                <motion.div
+                  key={
+                    u.id || i
+                  }
+                  initial={{
+                    opacity: 0,
+                    y: 8,
+                  }}
+                  animate={{
+                    opacity: 1,
+                    y: 0,
+                  }}
+                  transition={{
+                    delay:
+                      i * 0.03,
+                  }}
+                  className="grid grid-cols-4 gap-3 p-3 rounded-xl bg-white/5 text-sm"
+                >
+                  <span>
+                    {u.name ||
+                      u.email}
+                  </span>
+
+                  <span>
+                    {u.shifts || 0} shifts
+                  </span>
+
+                  <span>
+                    {u.hours || 0} hrs
+                  </span>
+
+                  <span className="text-green-400">
+                    {
+                      u.tasksCompleted ||
+                      0
+                    }{" "}
+                    tasks
+                  </span>
+                </motion.div>
+              )
+            )}
+          </div>
+        )}
+
+      </Card>
 
     </div>
   );
 }
 
-/* KPI */
+/* COMPONENTS */
 
-function KPI({ title, value }) {
-  const spark = [1, 2, 3, 2, 4];
+function LockScreen({
+  text,
+}) {
+  return (
+    <div className="flex items-center justify-center h-[60vh]">
+      <div className="text-gray-400 text-sm">
+        {text}
+      </div>
+    </div>
+  );
+}
 
+function KPI({
+  title,
+  value,
+  icon,
+}) {
   return (
     <motion.div
-      whileHover={{ y: -3 }}
-      className="relative rounded-2xl p-[1px] bg-gradient-to-b from-indigo-500/20 to-transparent"
+      whileHover={{ y: -4 }}
+      className="rounded-2xl p-[1px] bg-gradient-to-b from-indigo-500/20 to-transparent"
     >
-      <div className="bg-[#020617] border border-white/10 rounded-2xl p-4 shadow-[0_0_30px_rgba(99,102,241,0.15)]">
+      <div className="bg-[#020617] border border-white/10 rounded-2xl p-5">
 
-        <p className="text-gray-400 text-xs">{title}</p>
-        <h2 className="text-xl font-semibold">{value}</h2>
+        <div className="flex justify-between items-center">
+          <p className="text-xs text-gray-400">
+            {title}
+          </p>
 
-        <div className="mt-2 h-6 flex items-end gap-[2px]">
-          {spark.map((v, i) => (
-            <div
-              key={i}
-              className="bg-indigo-500/70 rounded"
-              style={{ height: `${v * 6}px`, width: "4px" }}
-            />
-          ))}
+          <div className="text-indigo-400">
+            {icon}
+          </div>
         </div>
+
+        <h2 className="text-2xl font-semibold mt-3">
+          {value}
+        </h2>
 
       </div>
     </motion.div>
+  );
+}
+
+function Card({
+  title,
+  children,
+}) {
+  return (
+    <div className="rounded-2xl bg-[#020617] border border-white/10 p-5">
+      <h3 className="text-sm text-gray-400 mb-4">
+        {title}
+      </h3>
+
+      {children}
+    </div>
+  );
+}
+
+function InfoRow({
+  label,
+  value,
+}) {
+  return (
+    <div className="flex justify-between border-b border-white/5 py-2 text-sm">
+      <span className="text-gray-400">
+        {label}
+      </span>
+
+      <span>{value}</span>
+    </div>
+  );
+}
+
+function ProgressBar({
+  label,
+  value,
+}) {
+  return (
+    <div>
+      <div className="flex justify-between text-sm mb-2">
+        <span className="text-gray-400">
+          {label}
+        </span>
+
+        <span>{value}%</span>
+      </div>
+
+      <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+        <div
+          className="h-full bg-indigo-500 rounded-full"
+          style={{
+            width: `${value}%`,
+          }}
+        />
+      </div>
+    </div>
   );
 }

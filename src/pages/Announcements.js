@@ -1,124 +1,380 @@
 import { useEffect, useState } from "react";
-import api from "../services/api";
+import { announcementAPI } from "../services/api";
+import { motion } from "framer-motion";
+import {
+  Megaphone,
+  Plus,
+  Trash2,
+  AlertTriangle,
+  ShieldAlert,
+  Info,
+  Loader2,
+  RefreshCw,
+} from "lucide-react";
 
 export default function Announcements() {
-  const [items, setItems] = useState([]);
+  const [items, setItems] =
+    useState([]);
 
-  const [title, setTitle] = useState("");
-  const [message, setMessage] = useState("");
-  const [priority, setPriority] = useState("normal");
+  const [loading, setLoading] =
+    useState(true);
+
+  const [saving, setSaving] =
+    useState(false);
+
+  const [form, setForm] =
+    useState({
+      title: "",
+      message: "",
+      priority: "normal",
+    });
 
   useEffect(() => {
     load();
   }, []);
 
   const load = async () => {
-    const res = await api.get("/announcements");
-    setItems(res.data || []);
+    try {
+      setLoading(true);
+
+      const res =
+        await announcementAPI.getAll();
+
+      setItems(
+        Array.isArray(res)
+          ? res
+          : []
+      );
+
+    } catch (err) {
+      console.error(err);
+
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const submit = async () => {
-    await api.post("/announcements", {
-      title,
-      message,
-      priority,
-    });
+  const createItem =
+    async () => {
+      if (
+        !form.title.trim() ||
+        !form.message.trim()
+      ) {
+        return alert(
+          "Fill all fields"
+        );
+      }
 
-    setTitle("");
-    setMessage("");
-    setPriority("normal");
+      try {
+        setSaving(true);
 
-    load();
+        await announcementAPI.create(
+          form
+        );
+
+        setForm({
+          title: "",
+          message: "",
+          priority:
+            "normal",
+        });
+
+        await load();
+
+      } catch {
+        alert(
+          "Failed to send announcement"
+        );
+
+      } finally {
+        setSaving(false);
+      }
+    };
+
+  const deleteItem =
+    async (id) => {
+      if (
+        !window.confirm(
+          "Delete this announcement?"
+        )
+      )
+        return;
+
+      try {
+        await announcementAPI.delete(
+          id
+        );
+
+        load();
+
+      } catch {
+        alert(
+          "Delete failed"
+        );
+      }
+    };
+
+  const getStyles = (
+    priority
+  ) => {
+    if (
+      priority ===
+      "critical"
+    ) {
+      return "bg-red-500/10 border-red-500/30";
+    }
+
+    if (
+      priority ===
+      "warning"
+    ) {
+      return "bg-yellow-500/10 border-yellow-500/30";
+    }
+
+    return "bg-[#020617] border-white/10";
   };
 
-  const remove = async (id) => {
-    await api.delete(`/announcements/${id}`);
-    load();
+  const getIcon = (
+    priority
+  ) => {
+    if (
+      priority ===
+      "critical"
+    ) {
+      return (
+        <ShieldAlert
+          size={16}
+          className="text-red-400"
+        />
+      );
+    }
+
+    if (
+      priority ===
+      "warning"
+    ) {
+      return (
+        <AlertTriangle
+          size={16}
+          className="text-yellow-400"
+        />
+      );
+    }
+
+    return (
+      <Info
+        size={16}
+        className="text-indigo-400"
+      />
+    );
   };
+
+  if (loading) {
+    return (
+      <div className="text-gray-400">
+        Loading announcements...
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
 
-      <div>
-        <h1 className="text-2xl font-semibold">
-          Announcements
-        </h1>
+      {/* HEADER */}
+      <div className="flex justify-between items-center gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-semibold">
+            Announcements
+          </h1>
 
-        <p className="text-sm text-gray-400">
-          Send company-wide messages
-        </p>
+          <p className="text-sm text-gray-400">
+            Broadcast updates to your workforce
+          </p>
+        </div>
+
+        <button
+          onClick={load}
+          className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-sm flex items-center gap-2"
+        >
+          <RefreshCw size={14} />
+          Refresh
+        </button>
       </div>
 
       {/* CREATE */}
-      <div className="p-6 rounded-2xl bg-[#020617] border border-white/10 space-y-4">
+      <div className="rounded-3xl p-[1px] bg-gradient-to-r from-indigo-500/30 to-transparent">
+        <div className="bg-[#020617] border border-white/10 rounded-3xl p-6 space-y-4">
 
-        <input
-          placeholder="Title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="w-full px-4 py-3 rounded-xl bg-[#111827]"
-        />
+          <div className="flex items-center gap-2">
+            <Plus size={16} />
 
-        <textarea
-          placeholder="Message"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          className="w-full px-4 py-3 rounded-xl bg-[#111827] min-h-[120px]"
-        />
+            <h3 className="font-medium">
+              New Message
+            </h3>
+          </div>
 
-        <select
-          value={priority}
-          onChange={(e) => setPriority(e.target.value)}
-          className="w-full px-4 py-3 rounded-xl bg-[#111827]"
-        >
-          <option value="normal">Normal</option>
-          <option value="warning">Warning</option>
-          <option value="critical">Critical</option>
-        </select>
+          <input
+            value={form.title}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                title:
+                  e.target.value,
+              })
+            }
+            placeholder="Title"
+            maxLength={80}
+            className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3"
+          />
 
-        <button
-          onClick={submit}
-          className="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500"
-        >
-          Send Announcement
-        </button>
+          <textarea
+            rows="5"
+            value={form.message}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                message:
+                  e.target.value,
+              })
+            }
+            placeholder="Write your message..."
+            className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 resize-none"
+          />
 
+          <select
+            value={
+              form.priority
+            }
+            onChange={(e) =>
+              setForm({
+                ...form,
+                priority:
+                  e.target.value,
+              })
+            }
+            className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3"
+          >
+            <option value="normal">
+              Normal
+            </option>
+
+            <option value="warning">
+              Warning
+            </option>
+
+            <option value="critical">
+              Critical
+            </option>
+          </select>
+
+          <button
+            onClick={
+              createItem
+            }
+            disabled={
+              saving
+            }
+            className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 py-3 rounded-2xl font-medium flex items-center justify-center gap-2"
+          >
+            {saving ? (
+              <Loader2
+                size={16}
+                className="animate-spin"
+              />
+            ) : (
+              <Megaphone
+                size={16}
+              />
+            )}
+
+            Send Announcement
+          </button>
+
+        </div>
       </div>
 
       {/* LIST */}
-      <div className="space-y-3">
+      <div className="space-y-4">
 
-        {items.map((item) => (
-          <div
-            key={item.id}
-            className="p-4 rounded-2xl bg-[#020617] border border-white/10"
-          >
-            <div className="flex justify-between">
-
-              <div>
-                <p className="font-semibold">
-                  {item.title}
-                </p>
-
-                <p className="text-sm text-gray-400 mt-1">
-                  {item.message}
-                </p>
-
-                <p className="text-xs mt-2 text-indigo-400">
-                  {item.priority}
-                </p>
-              </div>
-
-              <button
-                onClick={() => remove(item.id)}
-                className="text-red-400"
-              >
-                Delete
-              </button>
-
-            </div>
+        {items.length === 0 && (
+          <div className="text-gray-500">
+            No announcements yet
           </div>
-        ))}
+        )}
+
+        {items.map(
+          (item, i) => (
+            <motion.div
+              key={item.id}
+              initial={{
+                opacity: 0,
+                y: 18,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+              }}
+              transition={{
+                delay:
+                  i * 0.04,
+              }}
+              className="rounded-2xl p-[1px] bg-gradient-to-b from-white/10 to-transparent"
+            >
+              <div
+                className={`border rounded-2xl p-5 ${getStyles(
+                  item.priority
+                )}`}
+              >
+
+                <div className="flex justify-between gap-4">
+
+                  <div className="flex-1">
+
+                    <div className="flex items-center gap-2">
+                      {getIcon(
+                        item.priority
+                      )}
+
+                      <h3 className="font-medium">
+                        {
+                          item.title
+                        }
+                      </h3>
+
+                      <span className="text-[10px] uppercase tracking-wider text-gray-400 ml-auto">
+                        {
+                          item.priority
+                        }
+                      </span>
+                    </div>
+
+                    <p className="text-sm text-gray-300 mt-3 leading-relaxed">
+                      {
+                        item.message
+                      }
+                    </p>
+
+                  </div>
+
+                  <button
+                    onClick={() =>
+                      deleteItem(
+                        item.id
+                      )
+                    }
+                    className="text-red-400 hover:text-red-300"
+                  >
+                    <Trash2
+                      size={16}
+                    />
+                  </button>
+
+                </div>
+
+              </div>
+            </motion.div>
+          )
+        )}
 
       </div>
 

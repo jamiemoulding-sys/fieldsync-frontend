@@ -1,168 +1,320 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import api from "../services/api";
+import { motion } from "framer-motion";
+import {
+  Mail,
+  Lock,
+  Building2,
+  ArrowRight,
+  Loader2,
+  Sparkles,
+} from "lucide-react";
 
-function Signup() {
+export default function Signup() {
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({
-    email: '',
-    password: '',
-    confirmPassword: '',
-    companyName: '',
-  });
+  const [form, setForm] =
+    useState({
+      email: "",
+      password: "",
+      confirmPassword: "",
+      companyName: "",
+    });
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [loading, setLoading] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
 
   const handleChange = (e) => {
     setForm({
       ...form,
-      [e.target.name]: e.target.value,
+      [e.target.name]:
+        e.target.value,
     });
   };
 
- const handleSignup = async (e) => {
-  e.preventDefault();
-  setError('');
+  const handleSignup =
+    async (e) => {
+      e.preventDefault();
+      setError("");
 
-  if (form.password !== form.confirmPassword) {
-    return setError('Passwords do not match');
-  }
+      if (
+        form.password !==
+        form.confirmPassword
+      ) {
+        return setError(
+          "Passwords do not match"
+        );
+      }
 
-  if (!form.companyName) {
-    return setError('Company name required');
-  }
+      if (
+        !form.companyName
+      ) {
+        return setError(
+          "Company name required"
+        );
+      }
 
-  setLoading(true);
+      try {
+        setLoading(true);
 
-  try {
-    // ✅ 1. REGISTER
-    await api.post('/auth/register', {
-      email: form.email,
-      password: form.password,
-      name: "User"
-    });
+        /* REGISTER */
+        await api.post(
+          "/auth/register",
+          {
+            email:
+              form.email,
+            password:
+              form.password,
+            name: "User",
+          }
+        );
 
-    // ✅ 2. LOGIN (THIS IS CRITICAL)
-    const loginRes = await api.post('/auth/login', {
-      email: form.email,
-      password: form.password
-    });
+        /* LOGIN */
+        const loginRes =
+          await api.post(
+            "/auth/login",
+            {
+              email:
+                form.email,
+              password:
+                form.password,
+            }
+          );
 
-    console.log("🔥 LOGIN RESPONSE:", loginRes.data);
+        localStorage.setItem(
+          "token",
+          loginRes.data.token
+        );
 
-    // ✅ 3. STORE TOKEN
-    localStorage.setItem('token', loginRes.data.token);
+        /* CREATE COMPANY */
+        const companyRes =
+          await api.post(
+            "/companies/create-company",
+            {
+              name:
+                form.companyName,
+            }
+          );
 
-    // ✅ 4. CREATE COMPANY (NOW TOKEN EXISTS)
-    const companyRes = await api.post('/companies/create-company', {
-      name: form.companyName,
-    });
+        if (
+          companyRes.data
+            ?.token
+        ) {
+          localStorage.setItem(
+            "token",
+            companyRes.data
+              .token
+          );
+        }
 
-    // optional new token
-    if (companyRes.data.token) {
-      localStorage.setItem('token', companyRes.data.token);
-    }
+        navigate(
+          "/dashboard"
+        );
 
-    navigate('/dashboard');
+      } catch (err) {
+        setError(
+          err?.response
+            ?.data
+            ?.message ||
+            err
+              ?.response
+              ?.data
+              ?.error ||
+            err?.message ||
+            "Signup failed"
+        );
 
-  } catch (err) {
-    console.log("🔥 FRONTEND ERROR:", err.response?.data || err.message);
-
-    setError(
-      err.response?.data?.message ||
-      err.response?.data?.error ||
-      err.message ||
-      'Signup failed'
-    );
-  } finally {
-    setLoading(false);
-  }
-};
+      } finally {
+        setLoading(false);
+      }
+    };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-6">
-      <div className="w-full max-w-md bg-white/[0.03] border border-white/[0.08] rounded-2xl p-8 backdrop-blur">
+    <div className="min-h-screen bg-[#020617] text-white flex items-center justify-center px-6 relative overflow-hidden">
 
-        <div className="mb-8 text-center">
-          <h1 className="text-xl font-semibold">FieldSync</h1>
-          <p className="text-gray-400 text-sm mt-2">
-            Create your workspace
-          </p>
-        </div>
+      {/* BG */}
+      <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/20 via-transparent to-cyan-500/10" />
 
-        {error && (
-          <div className="mb-4 bg-red-500/10 text-red-400 px-4 py-3 rounded-lg text-sm">
-            {error}
+      <motion.div
+        initial={{
+          opacity: 0,
+          y: 20,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        className="relative z-10 w-full max-w-md rounded-3xl p-[1px] bg-gradient-to-b from-white/15 to-transparent"
+      >
+        <div className="bg-[#020617]/95 backdrop-blur-xl border border-white/10 rounded-3xl p-8">
+
+          {/* TOP */}
+          <div className="text-center mb-8">
+
+            <div className="w-16 h-16 rounded-2xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center mx-auto mb-5">
+              <Sparkles size={28} />
+            </div>
+
+            <h1 className="text-3xl font-semibold">
+              Create Workspace
+            </h1>
+
+            <p className="text-sm text-gray-400 mt-2">
+              Launch your team
+              on FieldSync
+            </p>
+
           </div>
-        )}
 
-        <form onSubmit={handleSignup} className="space-y-5">
+          {/* ERROR */}
+          {error && (
+            <div className="mb-5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300 px-4 py-3 text-sm">
+              {error}
+            </div>
+          )}
 
-          <input
-            type="email"
-            name="email"
-            placeholder="Email"
-            value={form.email}
-            onChange={handleChange}
-            className="w-full px-4 py-3 rounded-xl bg-[#111] border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            required
-          />
-
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={form.password}
-            onChange={handleChange}
-            className="w-full px-4 py-3 rounded-xl bg-[#111] border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            required
-          />
-
-          <input
-            type="password"
-            name="confirmPassword"
-            placeholder="Confirm password"
-            value={form.confirmPassword}
-            onChange={handleChange}
-            className="w-full px-4 py-3 rounded-xl bg-[#111] border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            required
-          />
-
-          <input
-            type="text"
-            name="companyName"
-            placeholder="Company name"
-            value={form.companyName}
-            onChange={handleChange}
-            className="w-full px-4 py-3 rounded-xl bg-[#111] border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            required
-          />
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-medium transition disabled:opacity-50"
+          {/* FORM */}
+          <form
+            onSubmit={
+              handleSignup
+            }
+            className="space-y-4"
           >
-            {loading ? 'Creating workspace...' : 'Create account'}
-          </button>
 
-        </form>
+            <Input
+              icon={
+                <Mail
+                  size={16}
+                />
+              }
+              type="email"
+              name="email"
+              placeholder="Email"
+              value={
+                form.email
+              }
+              onChange={
+                handleChange
+              }
+            />
 
-        <div className="mt-6 text-center text-sm text-gray-400">
-          Already have an account?{' '}
-          <span
-            onClick={() => navigate('/login')}
-            className="text-white cursor-pointer hover:underline"
-          >
-            Sign in
-          </span>
+            <Input
+              icon={
+                <Lock
+                  size={16}
+                />
+              }
+              type="password"
+              name="password"
+              placeholder="Password"
+              value={
+                form.password
+              }
+              onChange={
+                handleChange
+              }
+            />
+
+            <Input
+              icon={
+                <Lock
+                  size={16}
+                />
+              }
+              type="password"
+              name="confirmPassword"
+              placeholder="Confirm password"
+              value={
+                form.confirmPassword
+              }
+              onChange={
+                handleChange
+              }
+            />
+
+            <Input
+              icon={
+                <Building2
+                  size={16}
+                />
+              }
+              type="text"
+              name="companyName"
+              placeholder="Company name"
+              value={
+                form.companyName
+              }
+              onChange={
+                handleChange
+              }
+            />
+
+            <button
+              type="submit"
+              disabled={
+                loading
+              }
+              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 py-4 rounded-2xl font-medium flex items-center justify-center gap-2 transition"
+            >
+              {loading ? (
+                <Loader2
+                  size={16}
+                  className="animate-spin"
+                />
+              ) : (
+                <ArrowRight
+                  size={16}
+                />
+              )}
+
+              {loading
+                ? "Creating..."
+                : "Create Account"}
+            </button>
+
+          </form>
+
+          {/* FOOTER */}
+          <div className="mt-6 text-center text-sm text-gray-400">
+
+            Already have an
+            account?{" "}
+
+            <Link
+              to="/login"
+              className="text-indigo-400 hover:text-indigo-300"
+            >
+              Sign in
+            </Link>
+
+          </div>
+
         </div>
+      </motion.div>
 
-      </div>
     </div>
   );
 }
 
-export default Signup;
+function Input({
+  icon,
+  ...props
+}) {
+  return (
+    <div className="relative">
+      <div className="absolute left-4 top-4 text-gray-500">
+        {icon}
+      </div>
+
+      <input
+        {...props}
+        required
+        className="w-full pl-11 pr-4 py-4 rounded-2xl bg-white/5 border border-white/10 outline-none focus:ring-2 focus:ring-indigo-500"
+      />
+    </div>
+  );
+}
