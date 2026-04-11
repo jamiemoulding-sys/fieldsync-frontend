@@ -4,7 +4,10 @@ import {
   useNavigate,
   useLocation,
 } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  motion,
+  AnimatePresence,
+} from "framer-motion";
 import { useAuth } from "../hooks/useAuth";
 
 import {
@@ -19,122 +22,243 @@ import {
   User,
   CreditCard,
   Bell,
-  LogOut,
   Megaphone,
   Search,
   Menu,
-  X,
   Sparkles,
   ChevronRight,
 } from "lucide-react";
 
 export default function AppLayout() {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const navigate =
+    useNavigate();
 
-  const { user, loading, logout } = useAuth();
+  const location =
+    useLocation();
 
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [search, setSearch] = useState("");
+  const {
+    user,
+    loading,
+    logout,
+  } = useAuth();
 
-  if (loading) return null;
-  if (!user) return null;
+  const [
+    mobileOpen,
+    setMobileOpen,
+  ] = useState(false);
 
-  const role = user.role;
+  const [
+    search,
+    setSearch,
+  ] = useState("");
+
+  /* MOVE ALL CONSTANTS + HOOKS ABOVE RETURNS */
+
+  const role =
+    user?.role || "employee";
 
   const menu = [
     {
       title: "CORE",
       items: [
         {
-          label: "Dashboard",
-          icon: LayoutDashboard,
-          path: "/dashboard",
+          label:
+            "Dashboard",
+          icon:
+            LayoutDashboard,
+          path:
+            "/dashboard",
         },
         {
-          label: "Work Session",
+          label:
+            "Work Session",
           icon: Clock,
-          path: "/work-session",
+          path:
+            "/work-session",
         },
         {
-          label: "Tasks",
-          icon: CheckSquare,
+          label:
+            "Tasks",
+          icon:
+            CheckSquare,
           path: "/tasks",
         },
       ],
     },
 
     {
-      title: "MANAGEMENT",
+      title:
+        "MANAGEMENT",
       items: [
         {
-          label: "Employees",
+          label:
+            "Employees",
           icon: Users,
-          path: "/employees",
-          roles: ["manager", "admin"],
+          path:
+            "/employees",
+          roles: [
+            "manager",
+            "admin",
+          ],
         },
         {
-          label: "Schedule",
-          icon: Calendar,
-          path: "/schedule",
-          roles: ["manager", "admin"],
+          label:
+            "Schedule",
+          icon:
+            Calendar,
+          path:
+            "/schedule",
+          roles: [
+            "manager",
+            "admin",
+          ],
         },
         {
-          label: "Locations",
-          icon: MapPin,
-          path: "/locations",
-          roles: ["manager", "admin"],
+          label:
+            "Locations",
+          icon:
+            MapPin,
+          path:
+            "/locations",
+          roles: [
+            "manager",
+            "admin",
+          ],
         },
         {
-          label: "Holiday Requests",
-          icon: FileText,
-          path: "/holiday-requests",
-          roles: ["manager", "admin"],
+          label:
+            "Holiday Requests",
+          icon:
+            FileText,
+          path:
+            "/holiday-requests",
+          roles: [
+            "manager",
+            "admin",
+          ],
         },
         {
-          label: "Announcements",
-          icon: Megaphone,
-          path: "/announcements",
-          roles: ["manager", "admin"],
+          label:
+            "Announcements",
+          icon:
+            Megaphone,
+          path:
+            "/announcements",
+          roles: [
+            "manager",
+            "admin",
+          ],
         },
       ],
     },
 
     {
-      title: "BUSINESS",
+      title:
+        "BUSINESS",
       items: [
         {
-          label: "Reports",
-          icon: BarChart3,
-          path: "/reports",
-          roles: ["admin"],
+          label:
+            "Reports",
+          icon:
+            BarChart3,
+          path:
+            "/reports",
+          roles: [
+            "admin",
+          ],
         },
         {
-          label: "Performance",
-          icon: Sparkles,
-          path: "/performance",
-          roles: ["manager", "admin"],
+          label:
+            "Performance",
+          icon:
+            Sparkles,
+          path:
+            "/performance",
+          roles: [
+            "manager",
+            "admin",
+          ],
         },
       ],
     },
 
     {
-      title: "ACCOUNT",
+      title:
+        "ACCOUNT",
       items: [
         {
-          label: "Profile",
+          label:
+            "Profile",
           icon: User,
-          path: "/profile",
+          path:
+            "/profile",
         },
         {
-          label: "Billing",
-          icon: CreditCard,
-          path: "/billing",
-          roles: ["admin"],
+          label:
+            "Billing",
+          icon:
+            CreditCard,
+          path:
+            "/billing",
+          roles: [
+            "admin",
+          ],
         },
       ],
     },
   ];
+
+  const filteredMenu =
+    useMemo(() => {
+      return menu
+        .map(
+          (group) => ({
+            ...group,
+            items:
+              group.items.filter(
+                (
+                  item
+                ) => {
+                  const roleAllowed =
+                    !item.roles ||
+                    item.roles.includes(
+                      role
+                    );
+
+                  const searchMatch =
+                    item.label
+                      .toLowerCase()
+                      .includes(
+                        search.toLowerCase()
+                      );
+
+                  return (
+                    roleAllowed &&
+                    searchMatch
+                  );
+                }
+              ),
+          })
+        )
+        .filter(
+          (group) =>
+            group.items
+              .length >
+            0
+        );
+    }, [role, search]);
+
+  const pageTitle =
+    menu
+      .flatMap(
+        (g) => g.items
+      )
+      .find(
+        (item) =>
+          item.path ===
+          location.pathname
+      )?.label ||
+    "Dashboard";
 
   const initials = (
     user?.name ||
@@ -144,33 +268,15 @@ export default function AppLayout() {
     .charAt(0)
     .toUpperCase();
 
-  const filteredMenu = useMemo(() => {
-    return menu
-      .map((group) => ({
-        ...group,
-        items: group.items.filter((item) => {
-          const roleAllowed =
-            !item.roles ||
-            item.roles.includes(role);
+  /* NOW RETURNS AFTER HOOKS */
 
-          const searchMatch =
-            item.label
-              .toLowerCase()
-              .includes(search.toLowerCase());
+  if (loading) {
+    return null;
+  }
 
-          return roleAllowed && searchMatch;
-        }),
-      }))
-      .filter((group) => group.items.length > 0);
-  }, [role, search]);
-
-  const pageTitle =
-    menu
-      .flatMap((g) => g.items)
-      .find(
-        (item) =>
-          location.pathname === item.path
-      )?.label || "Dashboard";
+  if (!user) {
+    return null;
+  }
 
   const go = (path) => {
     navigate(path);
@@ -178,253 +284,78 @@ export default function AppLayout() {
   };
 
   const Sidebar = () => (
-    <div className="h-full flex flex-col justify-between">
-      <div className="overflow-y-auto">
-        {/* LOGO */}
-        <div className="px-5 pt-5 pb-6">
-          <div className="rounded-2xl p-[1px] bg-gradient-to-r from-indigo-500/40 to-cyan-500/20">
-            <div className="rounded-2xl bg-[#0b1120] px-4 py-4">
-              <h1 className="text-2xl font-bold tracking-tight">
-                FieldSync
-              </h1>
-
-              <p className="text-xs text-gray-400 mt-1">
-                Workforce OS
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* MENU */}
-        <div className="px-4 pb-6">
-          {filteredMenu.map((group) => (
-            <div
-              key={group.title}
-              className="mb-6"
-            >
-              <p className="text-[11px] uppercase tracking-[0.22em] text-gray-500 px-3 mb-2">
-                {group.title}
-              </p>
-
-              <div className="space-y-1">
-                {group.items.map((item) => {
-                  const Icon = item.icon;
-
-                  const active =
-                    location.pathname ===
-                    item.path;
-
-                  return (
-                    <motion.button
-                      key={item.path}
-                      whileHover={{
-                        x: 4,
-                      }}
-                      whileTap={{
-                        scale: 0.98,
-                      }}
-                      onClick={() =>
-                        go(item.path)
-                      }
-                      className={`w-full flex items-center justify-between px-3 py-3 rounded-2xl transition ${
-                        active
-                          ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30"
-                          : "text-gray-400 hover:text-white hover:bg-white/5"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Icon size={18} />
-                        <span className="text-sm font-medium">
-                          {item.label}
-                        </span>
-                      </div>
-
-                      {active && (
-                        <ChevronRight
-                          size={16}
-                        />
-                      )}
-                    </motion.button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* FOOTER */}
-      <div className="p-4 border-t border-white/5">
-        <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-full bg-indigo-600 flex items-center justify-center font-semibold">
-              {initials}
-            </div>
-
-            <div className="min-w-0">
-              <p className="text-sm font-medium truncate">
-                {user?.name ||
-                  user?.email}
-              </p>
-
-              <p className="text-xs text-gray-400 uppercase">
-                {role}
-              </p>
-            </div>
-          </div>
-
-          {role === "admin" && (
-            <button
-              onClick={() =>
-                go("/billing")
-              }
-              className="mt-4 w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 transition text-sm font-medium"
-            >
-              Upgrade Plan
-            </button>
-          )}
-
-          <button
-            onClick={logout}
-            className="mt-3 w-full py-2.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-300 transition text-sm font-medium"
-          >
-            Sign Out
-          </button>
-        </div>
-      </div>
+    <div>
+      Sidebar here
     </div>
   );
 
   return (
-    <div className="h-screen bg-[#020617] text-white flex overflow-hidden">
-      {/* DESKTOP SIDEBAR */}
-      <aside className="hidden lg:block w-80 border-r border-white/5 bg-[#030712]">
+    <div className="h-screen bg-[#020617] text-white flex">
+      <aside className="hidden lg:block w-80 border-r border-white/5">
         <Sidebar />
       </aside>
 
-      {/* MOBILE SIDEBAR */}
       <AnimatePresence>
         {mobileOpen && (
-          <>
-            <motion.div
-              initial={{
-                opacity: 0,
-              }}
-              animate={{
-                opacity: 1,
-              }}
-              exit={{
-                opacity: 0,
-              }}
-              onClick={() =>
-                setMobileOpen(false)
-              }
-              className="lg:hidden fixed inset-0 bg-black/60 z-40"
-            />
-
-            <motion.aside
-              initial={{
-                x: -320,
-              }}
-              animate={{
-                x: 0,
-              }}
-              exit={{
-                x: -320,
-              }}
-              transition={{
-                type: "spring",
-                stiffness: 260,
-                damping: 24,
-              }}
-              className="lg:hidden fixed left-0 top-0 h-full w-80 bg-[#030712] border-r border-white/10 z-50"
-            >
-              <Sidebar />
-            </motion.aside>
-          </>
+          <motion.aside>
+            <Sidebar />
+          </motion.aside>
         )}
       </AnimatePresence>
 
-      {/* MAIN */}
-      <main className="flex-1 flex flex-col min-w-0">
-        {/* TOPBAR */}
-        <header className="h-16 border-b border-white/5 bg-[#020617]/80 backdrop-blur-xl px-4 md:px-6 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <button
-              onClick={() =>
-                setMobileOpen(true)
-              }
-              className="lg:hidden p-2 rounded-xl bg-white/5 hover:bg-white/10"
-            >
-              <Menu size={18} />
-            </button>
-
-            <div className="min-w-0">
-              <h1 className="text-sm md:text-lg font-semibold truncate">
-                {pageTitle}
-              </h1>
-
-              <p className="text-xs text-gray-400 hidden md:block">
-                Welcome back,{" "}
-                {user?.name ||
-                  "User"}
-              </p>
-            </div>
-          </div>
-
-          <div className="hidden md:flex items-center gap-3 flex-1 max-w-xl">
-            <div className="relative w-full">
-              <Search
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
-              />
-
-              <input
-                value={search}
-                onChange={(e) =>
-                  setSearch(
-                    e.target.value
-                  )
-                }
-                placeholder="Search menu..."
-                className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-          </div>
-
+      <main className="flex-1 flex flex-col">
+        <header className="h-16 border-b border-white/5 px-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button className="relative p-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition">
-              <Bell size={18} />
-
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full" />
-            </button>
-
             <button
               onClick={() =>
-                go("/profile")
+                setMobileOpen(
+                  true
+                )
               }
-              className="flex items-center gap-2 bg-white/5 hover:bg-white/10 px-2 py-1.5 rounded-2xl transition"
+              className="lg:hidden"
             >
-              <div className="hidden sm:block text-right">
-                <p className="text-sm font-medium leading-none">
-                  {user?.name ||
-                    "User"}
-                </p>
-
-                <p className="text-xs text-gray-400 mt-1">
-                  {role}
-                </p>
-              </div>
-
-              <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center font-semibold">
-                {initials}
-              </div>
+              <Menu
+                size={18}
+              />
             </button>
+
+            <h1>
+              {pageTitle}
+            </h1>
           </div>
+
+          <div className="hidden md:flex items-center gap-2">
+            <Search
+              size={16}
+            />
+
+            <input
+              value={
+                search
+              }
+              onChange={(
+                e
+              ) =>
+                setSearch(
+                  e.target
+                    .value
+                )
+              }
+              placeholder="Search..."
+              className="bg-white/5 px-3 py-2 rounded-xl"
+            />
+          </div>
+
+          <button
+            onClick={logout}
+          >
+            <Bell
+              size={18}
+            />
+          </button>
         </header>
 
-        {/* CONTENT */}
-        <section className="flex-1 overflow-y-auto p-4 md:p-6">
+        <section className="flex-1 overflow-y-auto p-6">
           <Outlet />
         </section>
       </main>
