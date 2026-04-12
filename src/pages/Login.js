@@ -3,6 +3,8 @@ import { authAPI } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { createClient } from "@supabase/supabase-js";
+
 import {
   Mail,
   Lock,
@@ -10,6 +12,11 @@ import {
   Loader2,
   ShieldCheck,
 } from "lucide-react";
+
+const supabase = createClient(
+  process.env.REACT_APP_SUPABASE_URL,
+  process.env.REACT_APP_SUPABASE_ANON_KEY
+);
 
 export default function Login() {
   const { login } = useAuth();
@@ -23,6 +30,12 @@ export default function Login() {
   const [loading, setLoading] =
     useState(false);
 
+  const [resetLoading, setResetLoading] =
+    useState(false);
+
+  /* =====================================
+     LOGIN
+  ===================================== */
   const handleLogin = async (e) => {
     e.preventDefault();
 
@@ -61,6 +74,45 @@ export default function Login() {
       setLoading(false);
     }
   };
+
+  /* =====================================
+     FORGOT PASSWORD
+  ===================================== */
+  const handleForgotPassword =
+    async () => {
+      try {
+        if (!email) {
+          return alert(
+            "Enter your email first"
+          );
+        }
+
+        setResetLoading(true);
+
+        const { error } =
+          await supabase.auth.resetPasswordForEmail(
+            email,
+            {
+              redirectTo:
+                "https://app.zorviatech.co.uk/reset-password",
+            }
+          );
+
+        if (error) throw error;
+
+        alert(
+          "Password reset email sent"
+        );
+
+      } catch (err) {
+        alert(
+          err.message ||
+            "Failed to send reset email"
+        );
+      } finally {
+        setResetLoading(false);
+      }
+    };
 
   return (
     <div className="min-h-screen bg-[#020617] text-white flex items-center justify-center px-6 relative overflow-hidden">
@@ -145,6 +197,24 @@ export default function Login() {
                 }
                 className="w-full pl-11 pr-4 py-4 rounded-2xl bg-white/5 border border-white/10 outline-none focus:ring-2 focus:ring-indigo-500"
               />
+            </div>
+
+            {/* FORGOT PASSWORD */}
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={
+                  handleForgotPassword
+                }
+                disabled={
+                  resetLoading
+                }
+                className="text-sm text-indigo-400 hover:text-indigo-300 transition"
+              >
+                {resetLoading
+                  ? "Sending..."
+                  : "Forgot Password?"}
+              </button>
             </div>
 
             <button
