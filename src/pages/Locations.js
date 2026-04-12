@@ -1,72 +1,57 @@
-import { useState, useEffect } from "react";
-import { locationAPI } from "../services/api";
-import LocationPicker from "../components/LocationPicker";
-import { motion, AnimatePresence } from "framer-motion";
+/* =========================================================
+src/pages/Locations.js
+FULL FILE
+========================================================= */
+
 import {
-  MapPin,
-  Plus,
-  Pencil,
-  Trash2,
-  Radius,
-  Search,
-} from "lucide-react";
+  useState,
+  useEffect,
+} from "react";
+
+import {
+  locationAPI,
+} from "../services/api";
+
+import LocationPicker from "../components/LocationPicker";
 
 export default function Locations() {
-  const [locations, setLocations] = useState([]);
-  const [filtered, setFiltered] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [locations, setLocations] =
+    useState([]);
 
-  const [search, setSearch] = useState("");
-  const [showModal, setShowModal] = useState(false);
-  const [editingLocation, setEditingLocation] = useState(null);
+  const [showModal, setShowModal] =
+    useState(false);
 
-  const [position, setPosition] = useState(null);
+  const [editing, setEditing] =
+    useState(null);
 
-  const [formData, setFormData] = useState({
-    name: "",
-    address: "",
-    radius: 100,
-  });
+  const [position, setPosition] =
+    useState(null);
 
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [form, setForm] =
+    useState({
+      name: "",
+      address: "",
+      radius: 100,
+    });
+
+  const load =
+    async () => {
+      const data =
+        await locationAPI.getLocations();
+
+      setLocations(data || []);
+    };
 
   useEffect(() => {
-    loadLocations();
+    load();
   }, []);
 
-  useEffect(() => {
-    const q = search.toLowerCase();
+  const reset = () => {
+    setEditing(null);
 
-    const data = locations.filter(
-      (l) =>
-        l.name?.toLowerCase().includes(q) ||
-        l.address?.toLowerCase().includes(q)
-    );
-
-    setFiltered(data);
-  }, [search, locations]);
-
-  const loadLocations = async () => {
-    try {
-      setLoading(true);
-      const data = await locationAPI.getLocations();
-      const list = Array.isArray(data) ? data : [];
-
-      setLocations(list);
-      setFiltered(list);
-    } catch (err) {
-      setError("Failed to load locations");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resetForm = () => {
-    setEditingLocation(null);
     setPosition(null);
 
-    setFormData({
+    setForm({
       name: "",
       address: "",
       radius: 100,
@@ -74,326 +59,263 @@ export default function Locations() {
   };
 
   const openCreate = () => {
-    resetForm();
+    reset();
     setShowModal(true);
   };
 
-  const handleEdit = (loc) => {
-    setEditingLocation(loc);
+  const edit = (row) => {
+    setEditing(row);
 
-    setFormData({
-      name: loc.name,
-      address: loc.address || "",
-      radius: loc.radius || 100,
+    setForm({
+      name: row.name,
+      address:
+        row.address,
+      radius:
+        row.radius,
     });
 
     setPosition({
-      lat: loc.latitude,
-      lng: loc.longitude,
+      lat: row.latitude,
+      lng: row.longitude,
     });
 
     setShowModal(true);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const save =
+    async (e) => {
+      e.preventDefault();
 
-    setError("");
-    setSuccess("");
-
-    if (!position) {
-      return setError("Select map position");
-    }
-
-    try {
       const payload = {
-        ...formData,
-        latitude: position.lat,
-        longitude: position.lng,
+        ...form,
+        latitude:
+          position.lat,
+        longitude:
+          position.lng,
       };
 
-      if (editingLocation) {
-        await locationAPI.update(editingLocation.id, payload);
-        setSuccess("Location updated");
+      if (editing) {
+        await locationAPI.update(
+          editing.id,
+          payload
+        );
       } else {
-        await locationAPI.create(payload);
-        setSuccess("Location created");
+        await locationAPI.create(
+          payload
+        );
       }
 
       setShowModal(false);
-      resetForm();
-      loadLocations();
+      reset();
+      load();
+    };
 
-    } catch (err) {
-      setError(err?.message || "Save failed");
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this location?")) return;
-
-    try {
-      await locationAPI.delete(id);
-      loadLocations();
-    } catch {
-      setError("Delete failed");
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="text-gray-400">
-        Loading locations...
-      </div>
-    );
-  }
+  const remove =
+    async (id) => {
+      await locationAPI.delete(
+        id
+      );
+      load();
+    };
 
   return (
     <div className="space-y-6">
 
-      {/* HEADER */}
-      <div className="flex justify-between items-center flex-wrap gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">
-            Locations
-          </h1>
-
-          <p className="text-sm text-gray-400">
-            Manage geofence work zones
-          </p>
-        </div>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-semibold">
+          Locations
+        </h1>
 
         <button
-          onClick={openCreate}
-          className="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-xl text-sm flex items-center gap-2"
+          onClick={
+            openCreate
+          }
+          className="bg-indigo-600 px-4 py-2 rounded-xl"
         >
-          <Plus size={16} />
           Add Location
         </button>
       </div>
 
-      {/* KPI */}
-      <div className="grid md:grid-cols-3 gap-4">
-        <StatCard title="Total Locations" value={locations.length} />
-        <StatCard
-          title="Avg Radius"
-          value={
-            locations.length
-              ? `${Math.round(
-                  locations.reduce(
-                    (a, b) => a + Number(b.radius || 0),
-                    0
-                  ) / locations.length
-                )}m`
-              : "0m"
-          }
-        />
-        <StatCard
-          title="Search Results"
-          value={filtered.length}
-        />
-      </div>
-
-      {/* SEARCH */}
-      <div className="relative">
-        <Search
-          size={16}
-          className="absolute left-4 top-3.5 text-gray-500"
-        />
-
-        <input
-          placeholder="Search locations..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full bg-[#020617] border border-white/10 rounded-2xl pl-11 pr-4 py-3"
-        />
-      </div>
-
-      {/* LIST */}
-      {filtered.length === 0 ? (
-        <div className="text-center text-gray-500 py-10">
-          No locations found
-        </div>
-      ) : (
-        <div className="grid md:grid-cols-2 gap-4">
-          {filtered.map((loc, i) => (
-            <motion.div
+      <div className="grid md:grid-cols-2 gap-4">
+        {locations.map(
+          (loc) => (
+            <div
               key={loc.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.03 }}
-              className="rounded-2xl p-[1px] bg-gradient-to-b from-white/10 to-transparent"
+              className="border border-white/10 rounded-2xl p-5"
             >
-              <div className="bg-[#020617] border border-white/10 rounded-2xl p-5">
-
-                <div className="flex justify-between gap-4">
-                  <div>
-                    <p className="font-medium text-lg">
-                      {loc.name}
-                    </p>
-
-                    <p className="text-sm text-gray-400 mt-1 flex gap-2 items-start">
-                      <MapPin size={14} />
-                      {loc.address || "No address"}
-                    </p>
-
-                    <p className="text-xs text-indigo-400 mt-3 flex gap-2 items-center">
-                      <Radius size={14} />
-                      Radius {loc.radius || 100}m
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 mt-5">
-                  <button
-                    onClick={() => handleEdit(loc)}
-                    className="py-2 rounded-xl bg-white/5 hover:bg-white/10 text-sm flex items-center justify-center gap-2"
-                  >
-                    <Pencil size={14} />
-                    Edit
-                  </button>
-
-                  <button
-                    onClick={() => handleDelete(loc.id)}
-                    className="py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm flex items-center justify-center gap-2"
-                  >
-                    <Trash2 size={14} />
-                    Delete
-                  </button>
-                </div>
-
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      )}
-
-      {/* MODAL */}
-      <AnimatePresence>
-        {showModal && (
-          <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-
-            <motion.div
-              initial={{ opacity: 0, scale: 0.94 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.94 }}
-              className="bg-[#020617] border border-white/10 rounded-2xl w-full max-w-xl p-6"
-            >
-              <h2 className="text-lg font-semibold mb-5">
-                {editingLocation
-                  ? "Edit Location"
-                  : "Create Location"}
+              <h2 className="font-semibold text-lg">
+                {loc.name}
               </h2>
 
-              <form
-                onSubmit={handleSubmit}
-                className="space-y-4"
-              >
-                <input
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      name: e.target.value,
-                    })
+              <p className="text-sm text-gray-400 mt-2">
+                {
+                  loc.address
+                }
+              </p>
+
+              <p className="text-sm mt-3">
+                Radius:{" "}
+                {
+                  loc.radius
+                }
+                m
+              </p>
+
+              <div className="flex gap-2 mt-4">
+                <button
+                  onClick={() =>
+                    edit(
+                      loc
+                    )
                   }
-                  placeholder="Location name"
-                  required
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
-                />
+                  className="px-3 py-2 rounded-xl bg-white/5"
+                >
+                  Edit
+                </button>
 
-                <input
-                  value={formData.address}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      address: e.target.value,
-                    })
+                <button
+                  onClick={() =>
+                    remove(
+                      loc.id
+                    )
                   }
-                  placeholder="Address"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
-                />
+                  className="px-3 py-2 rounded-xl bg-red-500/20 text-red-300"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          )
+        )}
+      </div>
 
-                <LocationPicker
-                  position={position}
-                  setPosition={setPosition}
-                />
+      {showModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
 
-                {position && (
-                  <p className="text-xs text-gray-400">
-                    {position.lat.toFixed(5)},{" "}
-                    {position.lng.toFixed(5)}
-                  </p>
-                )}
+          <div className="bg-[#020617] border border-white/10 rounded-2xl w-full max-w-2xl p-6 space-y-4">
 
-                <input
-                  type="number"
-                  min="10"
-                  value={formData.radius}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      radius: e.target.value,
-                    })
+            <h2 className="text-xl font-semibold">
+              {editing
+                ? "Edit Location"
+                : "Create Location"}
+            </h2>
+
+            <form
+              onSubmit={save}
+              className="space-y-4"
+            >
+
+              <input
+                value={
+                  form.name
+                }
+                onChange={(
+                  e
+                ) =>
+                  setForm({
+                    ...form,
+                    name:
+                      e.target
+                        .value,
+                  })
+                }
+                placeholder="Location name"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+                required
+              />
+
+              <input
+                value={
+                  form.address
+                }
+                onChange={(
+                  e
+                ) =>
+                  setForm({
+                    ...form,
+                    address:
+                      e.target
+                        .value,
+                  })
+                }
+                placeholder="Address"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+              />
+
+              <LocationPicker
+                position={
+                  position
+                }
+                setPosition={
+                  setPosition
+                }
+                radius={
+                  form.radius
+                }
+                onSelectAddress={(
+                  addr
+                ) =>
+                  setForm({
+                    ...form,
+                    address:
+                      addr,
+                    name:
+                      form.name ||
+                      addr.split(
+                        ","
+                      )[0],
+                  })
+                }
+              />
+
+              <input
+                type="number"
+                min="10"
+                value={
+                  form.radius
+                }
+                onChange={(
+                  e
+                ) =>
+                  setForm({
+                    ...form,
+                    radius:
+                      e.target
+                        .value,
+                  })
+                }
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+              />
+
+              <div className="grid grid-cols-2 gap-3">
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowModal(
+                      false
+                    )
                   }
-                  placeholder="Radius (meters)"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
-                />
+                  className="py-3 rounded-xl bg-white/5"
+                >
+                  Cancel
+                </button>
 
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowModal(false)}
-                    className="py-3 rounded-xl bg-white/5 hover:bg-white/10"
-                  >
-                    Cancel
-                  </button>
+                <button
+                  className="py-3 rounded-xl bg-indigo-600"
+                >
+                  Save
+                </button>
 
-                  <button
-                    className="py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500"
-                  >
-                    {editingLocation
-                      ? "Update"
-                      : "Create"}
-                  </button>
-                </div>
+              </div>
 
-              </form>
-            </motion.div>
+            </form>
 
           </div>
-        )}
-      </AnimatePresence>
 
-      {/* FEEDBACK */}
-      {error && (
-        <div className="text-red-400 text-sm">
-          {error}
         </div>
       )}
 
-      {success && (
-        <div className="text-green-400 text-sm">
-          {success}
-        </div>
-      )}
-
-    </div>
-  );
-}
-
-function StatCard({ title, value }) {
-  return (
-    <div className="rounded-2xl p-[1px] bg-gradient-to-b from-white/10 to-transparent">
-      <div className="bg-[#020617] border border-white/10 rounded-2xl p-4">
-        <p className="text-xs text-gray-400">
-          {title}
-        </p>
-
-        <h2 className="text-2xl font-semibold mt-2">
-          {value}
-        </h2>
-      </div>
     </div>
   );
 }

@@ -265,24 +265,60 @@ export const inviteAPI = {
    LOCATIONS
 ========================================================= */
 
+/* =========================================================
+src/services/api.js
+ONLY replace your locationAPI block with this
+========================================================= */
+
 export const locationAPI = {
-  getLocations:
-    async () => {
-      const {
-        data,
-        error,
-      } =
-        await supabase
-          .from(
-            "locations"
-          )
-          .select("*");
+  getLocations: async () => {
+    const { data, error } =
+      await supabase
+        .from("locations")
+        .select("*")
+        .order("created_at", {
+          ascending: false,
+        });
 
-      if (error)
-        throw error;
+    if (error) throw error;
+    return data;
+  },
 
-      return data;
-    },
+  create: async (payload) => {
+    const { data, error } =
+      await supabase
+        .from("locations")
+        .insert(payload)
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  update: async (id, payload) => {
+    const { data, error } =
+      await supabase
+        .from("locations")
+        .update(payload)
+        .eq("id", id)
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  delete: async (id) => {
+    const { error } =
+      await supabase
+        .from("locations")
+        .delete()
+        .eq("id", id);
+
+    if (error) throw error;
+    return true;
+  },
 };
 
 /* =========================================================
@@ -332,7 +368,9 @@ export const taskAPI = {
 
   complete:
     async (id) => {
-      const { error } =
+      const {
+        error,
+      } =
         await supabase
           .from("tasks")
           .update({
@@ -348,7 +386,9 @@ export const taskAPI = {
 
   delete:
     async (id) => {
-      const { error } =
+      const {
+        error,
+      } =
         await supabase
           .from("tasks")
           .delete()
@@ -416,8 +456,13 @@ export const scheduleAPI = {
     },
 
   update:
-    async (id, row) => {
-      const { error } =
+    async (
+      id,
+      row
+    ) => {
+      const {
+        error,
+      } =
         await supabase
           .from("schedules")
           .update(row)
@@ -431,7 +476,9 @@ export const scheduleAPI = {
 
   delete:
     async (id) => {
-      const { error } =
+      const {
+        error,
+      } =
         await supabase
           .from("schedules")
           .delete()
@@ -454,13 +501,10 @@ export const scheduleAPI = {
 export const holidayAPI = {
   getAll:
     async () => [],
-
   create:
     async () => true,
-
   update:
     async () => true,
-
   delete:
     async () => true,
 };
@@ -516,7 +560,9 @@ export const announcementAPI = {
 
   delete:
     async (id) => {
-      const { error } =
+      const {
+        error,
+      } =
         await supabase
           .from(
             "announcements"
