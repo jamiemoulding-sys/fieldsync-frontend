@@ -102,42 +102,21 @@ ANNOUNCEMENTS
 ========================================================= */
 
 export const announcementAPI = {
-  getAll: async () => {
-    const { data, error } =
-      await supabase
-        .from("announcements")
-        .select("*")
-        .order("created_at", {
-          ascending: false,
-        });
+  getAll: async () => [],
+  create: async () => true,
+  delete: async () => true,
+};
 
-    if (error) throw error;
+/* =========================================================
+TASKS
+========================================================= */
 
-    return data || [];
-  },
-
-  create: async (payload) => {
-    const { error } =
-      await supabase
-        .from("announcements")
-        .insert(payload);
-
-    if (error) throw error;
-
-    return true;
-  },
-
-  delete: async (id) => {
-    const { error } =
-      await supabase
-        .from("announcements")
-        .delete()
-        .eq("id", id);
-
-    if (error) throw error;
-
-    return true;
-  },
+export const taskAPI = {
+  getAll: async () => [],
+  getMine: async () => [],
+  create: async () => true,
+  update: async () => true,
+  delete: async () => true,
 };
 
 /* =========================================================
@@ -156,6 +135,10 @@ export const locationAPI = {
 
     return data || [];
   },
+
+  create: async () => true,
+  update: async () => true,
+  delete: async () => true,
 };
 
 /* =========================================================
@@ -163,136 +146,13 @@ SHIFTS
 ========================================================= */
 
 export const shiftAPI = {
-  getActive: async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    const { data, error } =
-      await supabase
-        .from("shifts")
-        .select("*")
-        .eq("user_id", user.id)
-        .is("clock_out_time", null)
-        .maybeSingle();
-
-    if (error) throw error;
-
-    return data;
-  },
-
-  getHistory: async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    const { data, error } =
-      await supabase
-        .from("shifts")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("clock_in_time", {
-          ascending: false,
-        });
-
-    if (error) throw error;
-
-    return data || [];
-  },
-
-  clockIn: async ({
-    location_id,
-    latitude,
-    longitude,
-  }) => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    const { data, error } =
-      await supabase
-        .from("shifts")
-        .insert({
-          user_id: user.id,
-          location_id,
-          latitude,
-          longitude,
-          clock_in_time:
-            new Date().toISOString(),
-          total_break_seconds: 0,
-        })
-        .select()
-        .single();
-
-    if (error) throw error;
-
-    return data;
-  },
-
-  clockOut: async () => {
-    const active =
-      await shiftAPI.getActive();
-
-    if (!active) return true;
-
-    const { error } =
-      await supabase
-        .from("shifts")
-        .update({
-          clock_out_time:
-            new Date().toISOString(),
-        })
-        .eq("id", active.id);
-
-    if (error) throw error;
-
-    return true;
-  },
-
-  startBreak: async () => {
-    const active =
-      await shiftAPI.getActive();
-
-    const { error } =
-      await supabase
-        .from("shifts")
-        .update({
-          break_started_at:
-            new Date().toISOString(),
-        })
-        .eq("id", active.id);
-
-    if (error) throw error;
-  },
-
-  endBreak: async () => {
-    const active =
-      await shiftAPI.getActive();
-
-    const started =
-      new Date(
-        active.break_started_at
-      ).getTime();
-
-    const seconds = Math.floor(
-      (Date.now() - started) / 1000
-    );
-
-    const total =
-      (active.total_break_seconds || 0) +
-      seconds;
-
-    const { error } =
-      await supabase
-        .from("shifts")
-        .update({
-          break_started_at: null,
-          total_break_seconds: total,
-        })
-        .eq("id", active.id);
-
-    if (error) throw error;
-  },
+  getActive: async () => null,
+  getHistory: async () => [],
+  clockIn: async () => true,
+  clockOut: async () => true,
+  startBreak: async () => true,
+  endBreak: async () => true,
+  updateLocation: async () => true,
 };
 
 /* =========================================================
@@ -300,27 +160,9 @@ SCHEDULE
 ========================================================= */
 
 export const scheduleAPI = {
-  getMine: async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    const { data, error } =
-      await supabase
-        .from("schedules")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("date");
-
-    if (error) throw error;
-
-    return data || [];
-  },
-
+  getMine: async () => [],
   getAll: async () => [],
-
   create: async () => true,
-
   delete: async () => true,
 };
 
@@ -329,51 +171,14 @@ HOLIDAYS
 ========================================================= */
 
 export const holidayAPI = {
-  getMine: async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    const { data, error } =
-      await supabase
-        .from("holiday_requests")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", {
-          ascending: false,
-        });
-
-    if (error) throw error;
-
-    return data || [];
-  },
-
-  create: async (payload) => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    const { error } =
-      await supabase
-        .from("holiday_requests")
-        .insert({
-          ...payload,
-          user_id: user.id,
-          status: "pending",
-        });
-
-    if (error) throw error;
-
-    return true;
-  },
-
+  getMine: async () => [],
+  create: async () => true,
   getAll: async () => [],
-
   update: async () => true,
 };
 
 /* =========================================================
-MISSING EXPORTS FIXED
+REPORTS / PERFORMANCE / BILLING
 ========================================================= */
 
 export const performanceAPI = {
@@ -381,32 +186,17 @@ export const performanceAPI = {
 };
 
 export const managerAPI = {
-  getDashboard: async () => ({
-    totalUsers: 0,
-    tasks: 0,
-    liveUsers: 0,
-    late: 0,
-  }),
+  getDashboard: async () => ({}),
 };
 
 export const reportAPI = {
-  getSummary: async () => ({
-    users: 0,
-    tasks: 0,
-    activeUsers: 0,
-  }),
-
+  getSummary: async () => ({}),
   getTimesheets: async () => [],
 };
 
 export const billingAPI = {
-  checkout: async () => ({
-    success: true,
-  }),
-
-  portal: async () => ({
-    success: true,
-  }),
+  checkout: async () => true,
+  portal: async () => true,
 };
 
 export default supabase;
