@@ -265,11 +265,6 @@ export const inviteAPI = {
    LOCATIONS
 ========================================================= */
 
-/* =========================================================
-src/services/api.js
-ONLY replace your locationAPI block with this
-========================================================= */
-
 export const locationAPI = {
   getLocations: async () => {
     const { data, error } =
@@ -284,55 +279,59 @@ export const locationAPI = {
     return data;
   },
 
-create: async (payload) => {
-  const {
-    data: authData,
-    error: authError,
-  } = await supabase.auth.getUser();
+  create: async (
+    payload
+  ) => {
+    const {
+      data: authData,
+    } =
+      await supabase.auth.getUser();
 
-  if (authError) throw authError;
+    const userId =
+      authData?.user?.id;
 
-  const userId =
-    authData?.user?.id;
+    const {
+      data: profile,
+      error: profileError,
+    } =
+      await supabase
+        .from("users")
+        .select(
+          "company_id"
+        )
+        .eq("id", userId)
+        .single();
 
-  if (!userId) {
-    throw new Error(
-      "No logged in user"
-    );
-  }
+    if (profileError)
+      throw profileError;
 
-  const {
-    data: profile,
-    error: profileError,
-  } = await supabase
-    .from("users")
-    .select("company_id")
-    .eq("id", userId)
-    .single();
+    const {
+      data,
+      error,
+    } =
+      await supabase
+        .from("locations")
+        .insert({
+          ...payload,
+          company_id:
+            profile.company_id,
+        })
+        .select()
+        .single();
 
-  if (profileError)
-    throw profileError;
+    if (error) throw error;
 
-  const {
-    data,
-    error,
-  } = await supabase
-    .from("locations")
-    .insert({
-      ...payload,
-      company_id:
-        profile.company_id,
-    })
-    .select()
-    .single();
+    return data;
+  },
 
-  if (error) throw error;
-
-  return data;
-},
-
-  update: async (id, payload) => {
-    const { data, error } =
+  update: async (
+    id,
+    payload
+  ) => {
+    const {
+      data,
+      error,
+    } =
       await supabase
         .from("locations")
         .update(payload)
@@ -341,10 +340,13 @@ create: async (payload) => {
         .single();
 
     if (error) throw error;
+
     return data;
   },
 
-  delete: async (id) => {
+  delete: async (
+    id
+  ) => {
     const { error } =
       await supabase
         .from("locations")
@@ -352,6 +354,7 @@ create: async (payload) => {
         .eq("id", id);
 
     if (error) throw error;
+
     return true;
   },
 };
@@ -403,9 +406,7 @@ export const taskAPI = {
 
   complete:
     async (id) => {
-      const {
-        error,
-      } =
+      const { error } =
         await supabase
           .from("tasks")
           .update({
@@ -421,9 +422,7 @@ export const taskAPI = {
 
   delete:
     async (id) => {
-      const {
-        error,
-      } =
+      const { error } =
         await supabase
           .from("tasks")
           .delete()
@@ -437,131 +436,79 @@ export const taskAPI = {
 };
 
 /* =========================================================
-   SCHEDULE
+   SHIFTS
 ========================================================= */
 
-export const scheduleAPI = {
-  getAll:
+export const shiftAPI = {
+  getActive:
     async () => {
       const {
-        data,
-        error,
+        data: authData,
       } =
-        await supabase
-          .from("schedules")
-          .select("*");
+        await supabase.auth.getUser();
 
-      if (error)
-        throw error;
+      const userId =
+        authData?.user?.id;
 
-      return data;
-    },
+      if (!userId)
+        return null;
 
-  getMine:
-    async () => {
       const {
         data,
         error,
       } =
         await supabase
-          .from("schedules")
-          .select("*");
-
-      if (error)
-        throw error;
-
-      return data;
-    },
-
-  create:
-    async (row) => {
-      const {
-        data,
-        error,
-      } =
-        await supabase
-          .from("schedules")
-          .insert(row)
-          .select();
-
-      if (error)
-        throw error;
-
-      return data;
-    },
-
-  update:
-    async (
-      id,
-      row
-    ) => {
-      const {
-        error,
-      } =
-        await supabase
-          .from("schedules")
-          .update(row)
-          .eq("id", id);
-
-      if (error)
-        throw error;
-
-      return true;
-    },
-
-  delete:
-    async (id) => {
-      const {
-        error,
-      } =
-        await supabase
-          .from("schedules")
-          .delete()
-          .eq("id", id);
-
-      if (error)
-        throw error;
-
-      return true;
-    },
-
-  getLate:
-    async () => [],
-};
-
-/* =========================================================
-   HOLIDAYS
-========================================================= */
-
-export const holidayAPI = {
-  getAll:
-    async () => [],
-  create:
-    async () => true,
-  update:
-    async () => true,
-  delete:
-    async () => true,
-};
-
-/* =========================================================
-   ANNOUNCEMENTS
-========================================================= */
-
-export const announcementAPI = {
-  getAll:
-    async () => {
-      const {
-        data,
-        error,
-      } =
-        await supabase
-          .from(
-            "announcements"
-          )
+          .from("shifts")
           .select("*")
+          .eq(
+            "user_id",
+            userId
+          )
+          .is(
+            "clock_out_time",
+            null
+          )
           .order(
-            "created_at",
+            "clock_in_time",
+            {
+              ascending:
+                false,
+            }
+          )
+          .maybeSingle();
+
+      if (error)
+        throw error;
+
+      return data || null;
+    },
+
+  getAllActive:
+    async () => {
+      const {
+        data,
+        error,
+      } =
+        await supabase
+          .from("shifts")
+          .select(`
+            *,
+            users (
+              id,
+              name,
+              email
+            ),
+            locations (
+              id,
+              name
+            )
+          `)
+          .is(
+            "clock_out_time",
+            null
+          )
+          .order(
+            "clock_in_time",
             {
               ascending:
                 false,
@@ -571,181 +518,9 @@ export const announcementAPI = {
       if (error)
         throw error;
 
-      return data;
+      return data || [];
     },
 
-  create:
-    async (row) => {
-      const {
-        data,
-        error,
-      } =
-        await supabase
-          .from(
-            "announcements"
-          )
-          .insert(row)
-          .select();
-
-      if (error)
-        throw error;
-
-      return data;
-    },
-
-  delete:
-    async (id) => {
-      const {
-        error,
-      } =
-        await supabase
-          .from(
-            "announcements"
-          )
-          .delete()
-          .eq("id", id);
-
-      if (error)
-        throw error;
-
-      return true;
-    },
-};
-
-/* =========================================================
-   REPORTS
-========================================================= */
-
-export const reportAPI = {
-  getSummary:
-    async () => ({
-      users: 0,
-      tasks: 0,
-    }),
-
-  getTimesheets:
-    async () => [],
-};
-
-/* =========================================================
-   PERFORMANCE
-========================================================= */
-
-export const performanceAPI = {
-  getAll:
-    async () => [],
-};
-
-/* =========================================================
-   MANAGER DASHBOARD
-========================================================= */
-
-export const managerAPI = {
-  getDashboard:
-    async () => {
-      const {
-        count:
-          totalUsers,
-      } =
-        await supabase
-          .from("users")
-          .select("*", {
-            count:
-              "exact",
-            head: true,
-          });
-
-      const {
-        count:
-          totalTasks,
-      } =
-        await supabase
-          .from("tasks")
-          .select("*", {
-            count:
-              "exact",
-            head: true,
-          });
-
-      return {
-        totalUsers:
-          totalUsers || 0,
-        tasks:
-          totalTasks || 0,
-        late: 0,
-      };
-    },
-};
-
-/* =========================================================
-SHIFTS
-FULL REPLACEMENT BLOCK FOR src/services/api.js
-Replaces your fake shiftAPI
-========================================================= */
-
-export const shiftAPI = {
-  /* CURRENT ACTIVE SHIFT */
-  getActive: async () => {
-    const {
-      data: authData,
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError) throw authError;
-
-    const userId =
-      authData?.user?.id;
-
-    if (!userId) return null;
-
-    const {
-      data,
-      error,
-    } = await supabase
-      .from("shifts")
-      .select("*")
-      .eq("user_id", userId)
-      .is("clock_out_time", null)
-      .order("clock_in_time", {
-        ascending: false,
-      })
-      .maybeSingle();
-
-    if (error) throw error;
-
-    return data || null;
-  },
-
-  /* ALL ACTIVE SHIFTS (dashboard live users) */
-  getAllActive: async () => {
-    const {
-      data,
-      error,
-    } = await supabase
-      .from("shifts")
-      .select(`
-        *,
-        users (
-          id,
-          name,
-          email
-        ),
-        locations (
-          id,
-          name
-        )
-      `)
-      .is("clock_out_time", null)
-      .order("clock_in_time", {
-        ascending: false,
-      });
-
-    if (error) throw error;
-
-    return data || [];
-  },
-
-  /* CLOCK IN */
   clockIn: async ({
     location_id,
     latitude,
@@ -753,96 +528,107 @@ export const shiftAPI = {
   }) => {
     const {
       data: authData,
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError) throw authError;
+    } =
+      await supabase.auth.getUser();
 
     const userId =
       authData?.user?.id;
 
-    if (!userId) {
+    if (!userId)
       throw new Error(
         "No logged in user"
       );
-    }
 
-    /* stop duplicate active shift */
-    const existing =
+    const {
+      data: profile,
+      error: profileError,
+    } =
+      await supabase
+        .from("users")
+        .select(
+          "company_id"
+        )
+        .eq("id", userId)
+        .single();
+
+    if (profileError)
+      throw profileError;
+
+    const {
+      data: existing,
+    } =
       await supabase
         .from("shifts")
-        .select("id")
-        .eq("user_id", userId)
+        .select("*")
+        .eq(
+          "user_id",
+          userId
+        )
         .is(
           "clock_out_time",
           null
         )
         .maybeSingle();
 
-    if (existing.data) {
-      return await shiftAPI.getActive();
-    }
+    if (existing)
+      return existing;
 
     const {
       data,
       error,
-    } = await supabase
-      .from("shifts")
-      .insert({
-        user_id: userId,
-        location_id,
-        latitude,
-        longitude,
-        clock_in_time:
-          new Date()
-            .toISOString(),
-      })
-      .select()
-      .single();
+    } =
+      await supabase
+        .from("shifts")
+        .insert({
+          user_id: userId,
+          company_id:
+            profile.company_id,
+          location_id,
+          latitude,
+          longitude,
+          clock_in_time:
+            new Date().toISOString(),
+          is_late: false,
+        })
+        .select()
+        .single();
 
     if (error) throw error;
 
     return data;
   },
 
-  /* CLOCK OUT */
-  clockOut: async () => {
-    const active =
-      await shiftAPI.getActive();
+  clockOut:
+    async () => {
+      const active =
+        await shiftAPI.getActive();
 
-    if (!active) return true;
+      if (!active)
+        return true;
 
-    const now =
-      new Date();
+      const now =
+        new Date();
 
-    const start =
-      new Date(
-        active.clock_in_time
-      );
+      const {
+        error,
+      } =
+        await supabase
+          .from("shifts")
+          .update({
+            clock_out_time:
+              now.toISOString(),
+          })
+          .eq(
+            "id",
+            active.id
+          );
 
-    const totalSeconds =
-      Math.floor(
-        (now - start) / 1000
-      );
+      if (error)
+        throw error;
 
-    const {
-      error,
-    } = await supabase
-      .from("shifts")
-      .update({
-        clock_out_time:
-          now.toISOString(),
-        total_seconds:
-          totalSeconds,
-      })
-      .eq("id", active.id);
+      return true;
+    },
 
-    if (error) throw error;
-
-    return true;
-  },
-
-  /* LIVE GPS UPDATE */
   updateLocation:
     async ({
       latitude,
@@ -851,20 +637,20 @@ export const shiftAPI = {
       const active =
         await shiftAPI.getActive();
 
-      if (!active) return true;
+      if (!active)
+        return true;
 
-      const {
-        error,
-      } = await supabase
-        .from("shifts")
-        .update({
-          latitude,
-          longitude,
-        })
-        .eq(
-          "id",
-          active.id
-        );
+      const { error } =
+        await supabase
+          .from("shifts")
+          .update({
+            latitude,
+            longitude,
+          })
+          .eq(
+            "id",
+            active.id
+          );
 
       if (error)
         throw error;
@@ -872,7 +658,6 @@ export const shiftAPI = {
       return true;
     },
 
-  /* HISTORY */
   getHistory:
     async () => {
       const {
