@@ -698,6 +698,48 @@ export const shiftAPI = {
 };
 
 /* =========================================================
+ANNOUNCEMENTS
+========================================================= */
+
+export const announcementAPI = {
+  getAll: async () => {
+    const { data, error } =
+      await supabase
+        .from("announcements")
+        .select("*")
+        .order("created_at", {
+          ascending: false,
+        });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  create: async (row) => {
+    const { data, error } =
+      await supabase
+        .from("announcements")
+        .insert(row)
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  delete: async (id) => {
+    const { error } =
+      await supabase
+        .from("announcements")
+        .delete()
+        .eq("id", id);
+
+    if (error) throw error;
+    return true;
+  },
+};
+
+/* =========================================================
    BILLING
 ========================================================= */
 
