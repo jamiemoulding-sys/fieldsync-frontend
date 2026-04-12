@@ -661,6 +661,77 @@ export const shiftAPI = {
 };
 
 /* =========================================================
+SCHEDULE
+========================================================= */
+
+export const scheduleAPI = {
+  getAll: async () => {
+    const { data, error } = await supabase
+      .from("schedules")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  getMine: async () => {
+    const { data: authData } =
+      await supabase.auth.getUser();
+
+    const userId = authData?.user?.id;
+
+    if (!userId) return [];
+
+    const { data, error } = await supabase
+      .from("schedules")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  create: async (row) => {
+    const { data, error } = await supabase
+      .from("schedules")
+      .insert(row)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  update: async (id, row) => {
+    const { data, error } = await supabase
+      .from("schedules")
+      .update(row)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  delete: async (id) => {
+    const { error } = await supabase
+      .from("schedules")
+      .delete()
+      .eq("id", id);
+
+    if (error) throw error;
+    return true;
+  },
+
+  getLate: async () => {
+    return [];
+  },
+};
+
+/* =========================================================
 ANNOUNCEMENTS
 ========================================================= */
 
