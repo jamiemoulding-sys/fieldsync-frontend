@@ -75,6 +75,49 @@ export const userAPI = {
 };
 
 /* =========================================================
+ANNOUNCEMENTS  <-- FIX ADDED
+========================================================= */
+
+export const announcementAPI = {
+  getAll: async () => {
+    const { data, error } =
+      await supabase
+        .from("announcements")
+        .select("*")
+        .order("created_at", {
+          ascending: false,
+        });
+
+    if (error) throw error;
+
+    return data || [];
+  },
+
+  create: async (payload) => {
+    const { error } =
+      await supabase
+        .from("announcements")
+        .insert(payload);
+
+    if (error) throw error;
+
+    return true;
+  },
+
+  delete: async (id) => {
+    const { error } =
+      await supabase
+        .from("announcements")
+        .delete()
+        .eq("id", id);
+
+    if (error) throw error;
+
+    return true;
+  },
+};
+
+/* =========================================================
 LOCATIONS
 ========================================================= */
 
@@ -93,7 +136,7 @@ export const locationAPI = {
 };
 
 /* =========================================================
-SHIFTS / CLOCKING
+SHIFTS
 ========================================================= */
 
 export const shiftAPI = {
@@ -230,7 +273,7 @@ export const shiftAPI = {
 };
 
 /* =========================================================
-EMPLOYEE SCHEDULE
+SCHEDULE
 ========================================================= */
 
 export const scheduleAPI = {
