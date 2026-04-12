@@ -8,28 +8,18 @@ import {
   MapPinned,
   Shield,
   Clock3,
+  Crown,
+  Building2,
 } from "lucide-react";
 
 export default function Landing() {
   const navigate = useNavigate();
 
   const stats = [
-    {
-      label: "Shifts Tracked",
-      value: "12k+",
-    },
-    {
-      label: "Active Users",
-      value: "800+",
-    },
-    {
-      label: "Tasks Completed",
-      value: "5k+",
-    },
-    {
-      label: "Uptime",
-      value: "99.9%",
-    },
+    { label: "Shifts Tracked", value: "12k+" },
+    { label: "Active Users", value: "800+" },
+    { label: "Tasks Completed", value: "5k+" },
+    { label: "Uptime", value: "99.9%" },
   ];
 
   const features = [
@@ -71,6 +61,54 @@ export default function Landing() {
     },
   ];
 
+  const pricing = [
+    {
+      name: "Starter",
+      price: "£49",
+      extra: "+ £7 per extra employee",
+      icon: <Users size={18} />,
+      featured: false,
+      items: [
+        "Up to 5 employees included",
+        "Staff scheduling",
+        "Clock in / out",
+        "GPS attendance",
+        "Holiday requests",
+        "Dashboard",
+      ],
+    },
+    {
+      name: "Pro",
+      price: "£89",
+      extra: "+ £8 per extra employee",
+      icon: <Crown size={18} />,
+      featured: true,
+      items: [
+        "Up to 10 employees included",
+        "Everything in Starter",
+        "Tasks & announcements",
+        "Reports & analytics",
+        "Performance rankings",
+        "Priority support",
+      ],
+    },
+    {
+      name: "Business",
+      price: "£149",
+      extra: "+ £10 per extra employee",
+      icon: <Building2 size={18} />,
+      featured: false,
+      items: [
+        "Up to 20 employees included",
+        "Everything in Pro",
+        "Multi-location management",
+        "Payroll exports",
+        "Advanced permissions",
+        "Dedicated support",
+      ],
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-[#020617] text-white overflow-hidden">
 
@@ -84,7 +122,7 @@ export default function Landing() {
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
 
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">
+          <h1 className="text-xl font-semibold">
             FieldSync
           </h1>
 
@@ -93,13 +131,13 @@ export default function Landing() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex gap-3">
 
           <button
             onClick={() =>
               navigate("/login")
             }
-            className="px-4 py-2 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition"
+            className="px-4 py-2 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5"
           >
             Sign In
           </button>
@@ -108,7 +146,7 @@ export default function Landing() {
             onClick={() =>
               navigate("/signup")
             }
-            className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-sm font-medium transition"
+            className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-sm font-medium"
           >
             Get Started
           </button>
@@ -122,7 +160,6 @@ export default function Landing() {
 
         <div className="grid lg:grid-cols-2 gap-14 items-center">
 
-          {/* LEFT */}
           <motion.div
             initial={{
               opacity: 0,
@@ -135,10 +172,10 @@ export default function Landing() {
           >
 
             <div className="inline-flex px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs mb-6">
-              Modern Workforce Management
+              14 Day Free Trial
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-semibold leading-tight tracking-tight">
+            <h1 className="text-5xl md:text-7xl font-semibold leading-tight">
               Run your team
               <br />
               <span className="text-gray-400">
@@ -147,36 +184,29 @@ export default function Landing() {
             </h1>
 
             <p className="mt-6 text-lg text-gray-400 max-w-xl leading-relaxed">
-              Scheduling, tracking,
+              Scheduling, attendance,
               tasks, locations,
-              reporting and team
-              performance — all in
-              one clean platform.
+              reporting and payroll-ready
+              exports in one system.
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-4">
+            <div className="mt-8 flex gap-4 flex-wrap">
 
               <button
                 onClick={() =>
-                  navigate(
-                    "/signup"
-                  )
+                  navigate("/signup")
                 }
-                className="px-7 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-medium flex items-center gap-2 transition"
+                className="px-7 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-medium flex items-center gap-2"
               >
-                Start Free
-                <ArrowRight
-                  size={16}
-                />
+                Start Free Trial
+                <ArrowRight size={16} />
               </button>
 
               <button
                 onClick={() =>
-                  navigate(
-                    "/login"
-                  )
+                  navigate("/login")
                 }
-                className="px-7 py-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition"
+                className="px-7 py-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10"
               >
                 Login
               </button>
@@ -185,7 +215,6 @@ export default function Landing() {
 
           </motion.div>
 
-          {/* RIGHT */}
           <motion.div
             initial={{
               opacity: 0,
@@ -200,51 +229,20 @@ export default function Landing() {
             }}
             className="rounded-3xl p-[1px] bg-gradient-to-b from-white/15 to-transparent"
           >
+
             <div className="bg-[#020617]/95 border border-white/10 rounded-3xl p-6">
 
               <div className="grid grid-cols-2 gap-4">
 
-                <Panel
-                  title="Live Staff"
-                  value="14"
-                />
-
-                <Panel
-                  title="Tasks Today"
-                  value="32"
-                />
-
-                <Panel
-                  title="Late Arrivals"
-                  value="1"
-                />
-
-                <Panel
-                  title="Locations"
-                  value="6"
-                />
-
-              </div>
-
-              <div className="mt-5 rounded-2xl bg-white/5 border border-white/10 p-4">
-
-                <div className="flex justify-between text-sm mb-3">
-                  <span className="text-gray-400">
-                    Productivity
-                  </span>
-
-                  <span>
-                    87%
-                  </span>
-                </div>
-
-                <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                  <div className="h-full w-[87%] bg-indigo-500 rounded-full" />
-                </div>
+                <Panel title="Live Staff" value="14" />
+                <Panel title="Tasks Today" value="32" />
+                <Panel title="Late Arrivals" value="1" />
+                <Panel title="Locations" value="6" />
 
               </div>
 
             </div>
+
           </motion.div>
 
         </div>
@@ -285,35 +283,33 @@ export default function Landing() {
           <p className="text-gray-400 mt-4">
             Replace spreadsheets,
             WhatsApp groups and
-            messy admin work.
+            admin headaches.
           </p>
 
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
 
-          {features.map(
-            (item) => (
-              <div
-                key={item.title}
-                className="rounded-2xl bg-white/5 border border-white/10 p-6 hover:bg-white/10 transition"
-              >
+          {features.map((item) => (
+            <div
+              key={item.title}
+              className="rounded-2xl bg-white/5 border border-white/10 p-6"
+            >
 
-                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-4">
-                  {item.icon}
-                </div>
-
-                <h3 className="font-medium text-lg">
-                  {item.title}
-                </h3>
-
-                <p className="text-sm text-gray-400 mt-2 leading-relaxed">
-                  {item.text}
-                </p>
-
+              <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-4">
+                {item.icon}
               </div>
-            )
-          )}
+
+              <h3 className="font-medium text-lg">
+                {item.title}
+              </h3>
+
+              <p className="text-sm text-gray-400 mt-2">
+                {item.text}
+              </p>
+
+            </div>
+          ))}
 
         </div>
 
@@ -321,71 +317,69 @@ export default function Landing() {
 
       {/* PRICING */}
       <div className="relative z-10 border-t border-white/10">
-        <div className="max-w-5xl mx-auto px-6 py-24 text-center">
+        <div className="max-w-7xl mx-auto px-6 py-24">
 
-          <h2 className="text-4xl font-semibold">
-            Simple pricing
-          </h2>
+          <div className="text-center mb-14">
+            <h2 className="text-4xl font-semibold">
+              Pricing Plans
+            </h2>
 
-          <p className="text-gray-400 mt-4 mb-12">
-            £6 per employee / month
-          </p>
+            <p className="text-gray-400 mt-4">
+              14 day free trial on every plan
+            </p>
+          </div>
 
-          <div className="max-w-xl mx-auto rounded-3xl p-[1px] bg-gradient-to-b from-indigo-500/30 to-transparent">
+          <div className="grid lg:grid-cols-3 gap-6">
 
-            <div className="bg-[#020617] border border-white/10 rounded-3xl p-8">
-
-              <div className="inline-flex px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-300 text-xs mb-5">
-                Most Popular
-              </div>
-
-              <h3 className="text-2xl font-semibold">
-                Pro Plan
-              </h3>
-
-              <p className="text-5xl font-semibold mt-4">
-                £6
-              </p>
-
-              <p className="text-sm text-gray-400 mt-1">
-                per employee / month
-              </p>
-
-              <div className="mt-8 space-y-3 text-sm text-gray-300 text-left">
-
-                <p>
-                  ✔ Unlimited
-                  employees
-                </p>
-
-                <p>
-                  ✔ Full analytics
-                </p>
-
-                <p>
-                  ✔ Multiple
-                  locations
-                </p>
-
-                <p>
-                  ✔ Real-time
-                  tracking
-                </p>
-
-              </div>
-
-              <button
-                onClick={() =>
-                  navigate(
-                    "/signup"
-                  )
-                }
-                className="mt-8 w-full py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-medium transition"
+            {pricing.map((plan) => (
+              <div
+                key={plan.name}
+                className={`rounded-3xl p-[1px] ${
+                  plan.featured
+                    ? "bg-gradient-to-b from-indigo-500/40 to-transparent"
+                    : "bg-white/10"
+                }`}
               >
-                Start Free Trial
-              </button>
+                <div className="bg-[#020617] border border-white/10 rounded-3xl p-6 h-full">
 
-            </div>
+                  <div className="flex items-center gap-2 text-indigo-400 text-sm">
+                    {plan.icon}
+                    {plan.name}
+                  </div>
+
+                  <p className="text-4xl font-bold mt-4">
+                    {plan.price}
+                    <span className="text-base text-gray-400 font-normal">
+                      /month
+                    </span>
+                  </p>
+
+                  <p className="text-sm text-gray-400 mt-2">
+                    {plan.extra}
+                  </p>
+
+                  <div className="space-y-3 mt-6 text-sm text-gray-300">
+
+                    {plan.items.map((item) => (
+                      <p key={item}>
+                        ✔ {item}
+                      </p>
+                    ))}
+
+                  </div>
+
+                  <button
+                    onClick={() =>
+                      navigate("/signup")
+                    }
+                    className="mt-8 w-full py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-medium"
+                  >
+                    Start Free Trial
+                  </button>
+
+                </div>
+              </div>
+            ))}
 
           </div>
 
@@ -400,15 +394,14 @@ export default function Landing() {
         </h2>
 
         <p className="text-gray-400 mt-4">
-          Launch your workspace in
-          minutes.
+          Launch your workspace in minutes.
         </p>
 
         <button
           onClick={() =>
             navigate("/signup")
           }
-          className="mt-8 px-8 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-medium transition"
+          className="mt-8 px-8 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-medium"
         >
           Create Workspace
         </button>

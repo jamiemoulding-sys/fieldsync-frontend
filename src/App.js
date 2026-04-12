@@ -12,6 +12,7 @@ import Landing from "./pages/Landing";
 import Signup from "./pages/Signup";
 import Login from "./pages/Login";
 import SetPassword from "./pages/SetPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 /* 🧠 CORE APP */
 import Dashboard from "./pages/Dashboard";
@@ -34,7 +35,6 @@ import Locations from "./pages/Locations";
 import Profile from "./pages/Profile";
 
 /* 💸 SYSTEM */
-import Upgrade from "./pages/Upgrade";
 import Success from "./pages/Success";
 import WorkSession from "./pages/WorkSession";
 
@@ -45,7 +45,8 @@ import AppLayout from "./layout/AppLayout";
    🔐 PROTECTED ROUTE
 ======================= */
 function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth();
+  const { user, loading } =
+    useAuth();
 
   if (loading) {
     return (
@@ -56,7 +57,12 @@ function ProtectedRoute({ children }) {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return (
+      <Navigate
+        to="/login"
+        replace
+      />
+    );
   }
 
   return children;
@@ -69,12 +75,18 @@ function RoleRoute({
   roles,
   children,
 }) {
-  const { user, loading } = useAuth();
+  const { user, loading } =
+    useAuth();
 
   if (loading) return null;
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return (
+      <Navigate
+        to="/login"
+        replace
+      />
+    );
   }
 
   if (
@@ -101,10 +113,7 @@ function App() {
     <Router>
       <Routes>
 
-        {/* =====================
-            PUBLIC ROUTES
-        ====================== */}
-
+        {/* PUBLIC */}
         <Route
           path="/"
           element={<Landing />}
@@ -120,16 +129,23 @@ function App() {
           element={<Login />}
         />
 
-        {/* 🔥 INVITED USERS */}
+        {/* INVITES */}
         <Route
           path="/set-password"
-          element={<SetPassword />}
+          element={
+            <SetPassword />
+          }
         />
 
-        {/* =====================
-            PRIVATE APP
-        ====================== */}
+        {/* RESET PASSWORD */}
+        <Route
+          path="/reset-password"
+          element={
+            <ResetPassword />
+          }
+        />
 
+        {/* PRIVATE */}
         <Route
           element={
             <ProtectedRoute>
@@ -141,7 +157,9 @@ function App() {
           {/* CORE */}
           <Route
             path="/dashboard"
-            element={<Dashboard />}
+            element={
+              <Dashboard />
+            }
           />
 
           <Route
@@ -151,7 +169,9 @@ function App() {
 
           <Route
             path="/schedule"
-            element={<Schedule />}
+            element={
+              <Schedule />
+            }
           />
 
           <Route
@@ -296,13 +316,17 @@ function App() {
           {/* USER */}
           <Route
             path="/profile"
-            element={<Profile />}
+            element={
+              <Profile />
+            }
           />
 
           {/* LEGACY */}
           <Route
             path="/success"
-            element={<Success />}
+            element={
+              <Success />
+            }
           />
 
         </Route>
