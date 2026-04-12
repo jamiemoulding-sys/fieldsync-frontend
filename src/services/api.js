@@ -786,6 +786,64 @@ export const managerAPI = {
 };
 
 /* =========================================================
+HOLIDAYS
+========================================================= */
+
+export const holidayAPI = {
+  getAll: async () => {
+    const { data, error } =
+      await supabase
+        .from("holidays")
+        .select("*")
+        .order("created_at", {
+          ascending: false,
+        });
+
+    if (error) {
+      return [];
+    }
+
+    return data || [];
+  },
+
+  create: async (row) => {
+    const { data, error } =
+      await supabase
+        .from("holidays")
+        .insert(row)
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  update: async (id, row) => {
+    const { data, error } =
+      await supabase
+        .from("holidays")
+        .update(row)
+        .eq("id", id)
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  delete: async (id) => {
+    const { error } =
+      await supabase
+        .from("holidays")
+        .delete()
+        .eq("id", id);
+
+    if (error) throw error;
+    return true;
+  },
+};
+
+/* =========================================================
    BILLING
 ========================================================= */
 
