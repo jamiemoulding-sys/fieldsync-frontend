@@ -1,6 +1,6 @@
 /* =========================================================
    src/hooks/useAuth.js
-   FULL FIX — NAMED EXPORT + PURE SUPABASE
+   FULL FIX — maybeSingle typo fixed
 ========================================================= */
 
 import {
@@ -17,18 +17,10 @@ import {
   createClient,
 } from "@supabase/supabase-js";
 
-/* =========================================================
-   🔥 SUPABASE CLIENT
-========================================================= */
-
 const supabase = createClient(
   process.env.REACT_APP_SUPABASE_URL,
   process.env.REACT_APP_SUPABASE_ANON_KEY
 );
-
-/* =========================================================
-   ✅ NAMED EXPORT (IMPORTANT)
-========================================================= */
 
 export function useAuth() {
   const navigate =
@@ -39,10 +31,6 @@ export function useAuth() {
 
   const [loading, setLoading] =
     useState(true);
-
-  /* =====================================================
-     FORMAT USER
-  ===================================================== */
 
   const formatUser = (
     authUser,
@@ -97,10 +85,6 @@ export function useAuth() {
     };
   };
 
-  /* =====================================================
-     LOAD USER
-  ===================================================== */
-
   const loadUser =
     useCallback(
       async () => {
@@ -134,7 +118,7 @@ export function useAuth() {
                 "id",
                 authUser.id
               )
-              .maybesingle();
+              .maybeSingle();
 
           const finalUser =
             formatUser(
@@ -160,10 +144,6 @@ export function useAuth() {
       },
       []
     );
-
-  /* =====================================================
-     ON LOAD
-  ===================================================== */
 
   useEffect(() => {
     loadUser();
@@ -201,10 +181,6 @@ export function useAuth() {
     };
   }, [loadUser]);
 
-  /* =====================================================
-     LOGIN
-  ===================================================== */
-
   const login =
     async (
       email,
@@ -229,10 +205,6 @@ export function useAuth() {
         "/dashboard"
       );
     };
-
-  /* =====================================================
-     SIGNUP
-  ===================================================== */
 
   const signup =
     async ({
@@ -263,10 +235,6 @@ export function useAuth() {
       );
     };
 
-  /* =====================================================
-     LOGOUT
-  ===================================================== */
-
   const logout =
     async () => {
       await supabase.auth.signOut();
@@ -277,10 +245,6 @@ export function useAuth() {
         "/login"
       );
     };
-
-  /* =====================================================
-     UPDATE USER
-  ===================================================== */
 
   const updateUser =
     async (
@@ -307,10 +271,6 @@ export function useAuth() {
 
       await loadUser();
     };
-
-  /* =====================================================
-     RETURN
-  ===================================================== */
 
   return {
     user,
