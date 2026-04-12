@@ -1,10 +1,21 @@
 /* =========================================================
-   src/services/api.js
-   FULL FIX — PURE SUPABASE VERSION
-   Removes old Render backend completely
+   src/hooks/useAuth.js
+   FULL FIX — NAMED EXPORT + PURE SUPABASE
 ========================================================= */
 
-import { createClient } from "@supabase/supabase-js";
+import {
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
+
+import {
+  useNavigate,
+} from "react-router-dom";
+
+import {
+  createClient,
+} from "@supabase/supabase-js";
 
 /* =========================================================
    🔥 SUPABASE CLIENT
@@ -16,550 +27,324 @@ const supabase = createClient(
 );
 
 /* =========================================================
-   🔐 AUTH API
+   ✅ NAMED EXPORT (IMPORTANT)
 ========================================================= */
 
-export const authAPI = {
-  /* LOGIN */
-  login: async ({
-    email,
-    password,
-  }) => {
+export function useAuth() {
+  const navigate =
+    useNavigate();
+
+  const [user, setUser] =
+    useState(null);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  /* =====================================================
+     FORMAT USER
+  ===================================================== */
+
+  const formatUser = (
+    authUser,
+    profile = {}
+  ) => {
+    return {
+      id: authUser.id,
+
+      email:
+        authUser.email || "",
+
+      name:
+        profile.name ||
+        authUser.user_metadata
+          ?.name ||
+        "",
+
+      phone:
+        profile.phone || "",
+
+      role:
+        profile.role ||
+        "employee",
+
+      companyId:
+        profile.company_id ||
+        null,
+
+      companyName:
+        profile.company_name ||
+        "",
+
+      jobTitle:
+        profile.job_title ||
+        "",
+
+      isPro:
+        profile.is_pro ||
+        false,
+
+      is_pro:
+        profile.is_pro ||
+        false,
+
+      current_plan:
+        profile.current_plan ||
+        "free",
+
+      subscription_status:
+        profile.subscription_status ||
+        "free",
+    };
+  };
+
+  /* =====================================================
+     LOAD USER
+  ===================================================== */
+
+  const loadUser =
+    useCallback(
+      async () => {
+        try {
+          setLoading(true);
+
+          const {
+            data: {
+              session,
+            },
+          } =
+            await supabase.auth.getSession();
+
+          if (
+            !session?.user
+          ) {
+            setUser(null);
+            return;
+          }
+
+          const authUser =
+            session.user;
+
+          const {
+            data: profile,
+          } =
+            await supabase
+              .from("users")
+              .select("*")
+              .eq(
+                "id",
+                authUser.id
+              )
+              .single();
+
+          const finalUser =
+            formatUser(
+              authUser,
+              profile || {}
+            );
+
+          setUser(
+            finalUser
+          );
+
+        } catch (err) {
+          console.error(
+            "AUTH LOAD ERROR:",
+            err
+          );
+
+          setUser(null);
+
+        } finally {
+          setLoading(false);
+        }
+      },
+      []
+    );
+
+  /* =====================================================
+     ON LOAD
+  ===================================================== */
+
+  useEffect(() => {
+    loadUser();
+
     const {
-      data,
-      error,
+      data:
+        listener,
     } =
-      await supabase.auth.signInWithPassword(
-        {
-          email,
-          password,
+      supabase.auth.onAuthStateChange(
+        (
+          event
+        ) => {
+          if (
+            event ===
+              "SIGNED_IN" ||
+            event ===
+              "TOKEN_REFRESHED"
+          ) {
+            loadUser();
+          }
+
+          if (
+            event ===
+            "SIGNED_OUT"
+          ) {
+            setUser(null);
+          }
         }
       );
 
-    if (error) throw error;
-
-    return data;
-  },
-
-  /* SIGNUP */
-  register: async ({
-    email,
-    password,
-    name,
-  }) => {
-    const {
-      data,
-      error,
-    } =
-      await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            name,
-          },
-        },
-      });
-
-    if (error) throw error;
-
-    return data;
-  },
-
-  /* CURRENT USER */
-  me: async () => {
-    const {
-      data,
-      error,
-    } =
-      await supabase.auth.getUser();
-
-    if (error) throw error;
-
-    return data.user;
-  },
-
-  /* UPDATE PROFILE */
-  updateMe: async (
-    payload
-  ) => {
-    const {
-      data: auth,
-    } =
-      await supabase.auth.getUser();
-
-    const user =
-      auth?.user;
-
-    if (!user) {
-      throw new Error(
-        "No user found"
-      );
-    }
-
-    const {
-      error,
-    } =
-      await supabase
-        .from(
-          "users"
-        )
-        .update({
-          name:
-            payload.name,
-          phone:
-            payload.phone,
-          job_title:
-            payload.jobTitle,
-        })
-        .eq(
-          "id",
-          user.id
-        );
-
-    if (error) throw error;
-
-    return {
-      success: true,
+    return () => {
+      listener
+        ?.subscription
+        ?.unsubscribe();
     };
-  },
-};
+  }, [loadUser]);
 
-/* =========================================================
-   👥 USERS / EMPLOYEES
-========================================================= */
+  /* =====================================================
+     LOGIN
+  ===================================================== */
 
-export const userAPI = {
-  getAll: async () => {
-    const {
-      data,
-      error,
-    } =
-      await supabase
-        .from(
-          "users"
-        )
-        .select("*")
-        .order(
-          "created_at",
-          {
-            ascending:
-              false,
-          }
-        );
-
-    if (error) throw error;
-
-    return data;
-  },
-
-  updateRole:
+  const login =
     async (
-      id,
-      payload
+      email,
+      password
     ) => {
       const {
         error,
       } =
-        await supabase
-          .from(
-            "users"
-          )
-          .update({
-            role:
-              payload.role,
-          })
-          .eq(
-            "id",
-            id
-          );
+        await supabase.auth.signInWithPassword(
+          {
+            email,
+            password,
+          }
+        );
 
       if (error)
         throw error;
 
-      return true;
-    },
+      await loadUser();
 
-  delete:
-    async (id) => {
-      const {
-        error,
-      } =
-        await supabase
-          .from(
-            "users"
-          )
-          .delete()
-          .eq(
-            "id",
-            id
-          );
-
-      if (error)
-        throw error;
-
-      return true;
-    },
-};
-
-/* =========================================================
-   📧 INVITES
-========================================================= */
-
-export const inviteAPI = {
-  send: async ({
-    email,
-  }) => {
-    const {
-      error,
-    } =
-      await supabase.auth.signInWithOtp(
-        {
-          email,
-          options: {
-            emailRedirectTo:
-              "https://app.zorviatech.co.uk/set-password",
-          },
-        }
+      navigate(
+        "/dashboard"
       );
-
-    if (error) throw error;
-
-    return {
-      success: true,
     };
-  },
-};
 
-/* =========================================================
-   📋 TASKS
-========================================================= */
+  /* =====================================================
+     SIGNUP
+  ===================================================== */
 
-export const taskAPI = {
-  getTasks:
+  const signup =
+    async ({
+      email,
+      password,
+      name,
+    }) => {
+      const {
+        error,
+      } =
+        await supabase.auth.signUp(
+          {
+            email,
+            password,
+            options: {
+              data: {
+                name,
+              },
+            },
+          }
+        );
+
+      if (error)
+        throw error;
+
+      navigate(
+        "/login"
+      );
+    };
+
+  /* =====================================================
+     LOGOUT
+  ===================================================== */
+
+  const logout =
     async () => {
-      const {
-        data,
-        error,
-      } =
-        await supabase
-          .from(
-            "tasks"
-          )
-          .select("*")
-          .order(
-            "created_at",
-            {
-              ascending:
-                false,
-            }
-          );
+      await supabase.auth.signOut();
 
-      if (error)
-        throw error;
+      setUser(null);
 
-      return data;
-    },
+      navigate(
+        "/login"
+      );
+    };
 
-  create:
-    async (task) => {
-      const {
-        data,
-        error,
-      } =
-        await supabase
-          .from(
-            "tasks"
-          )
-          .insert(task)
-          .select();
+  /* =====================================================
+     UPDATE USER
+  ===================================================== */
 
-      if (error)
-        throw error;
+  const updateUser =
+    async (
+      updates
+    ) => {
+      if (!user)
+        return;
 
-      return data;
-    },
-
-  complete:
-    async (id) => {
       const {
         error,
       } =
         await supabase
-          .from(
-            "tasks"
+          .from("users")
+          .update(
+            updates
           )
-          .update({
-            completed: true,
-          })
           .eq(
             "id",
-            id
+            user.id
           );
 
       if (error)
         throw error;
 
-      return true;
-    },
+      await loadUser();
+    };
 
-  delete:
-    async (id) => {
-      const {
-        error,
-      } =
-        await supabase
-          .from(
-            "tasks"
-          )
-          .delete()
-          .eq(
-            "id",
-            id
-          );
+  /* =====================================================
+     RETURN
+  ===================================================== */
 
-      if (error)
-        throw error;
+  return {
+    user,
+    loading,
 
-      return true;
-    },
-};
+    login,
+    signup,
+    logout,
 
-/* =========================================================
-   📅 SCHEDULE
-========================================================= */
+    updateUser,
+    reloadUser:
+      loadUser,
 
-export const scheduleAPI = {
-  getAll:
-    async () => {
-      const {
-        data,
-        error,
-      } =
-        await supabase
-          .from(
-            "schedules"
-          )
-          .select("*");
+    isAdmin:
+      user?.role ===
+      "admin",
 
-      if (error)
-        throw error;
+    isManager:
+      user?.role ===
+        "manager" ||
+      user?.role ===
+        "admin",
 
-      return data;
-    },
+    isEmployee:
+      user?.role ===
+      "employee",
 
-  create:
-    async (row) => {
-      const {
-        data,
-        error,
-      } =
-        await supabase
-          .from(
-            "schedules"
-          )
-          .insert(row)
-          .select();
+    isPaid:
+      user?.isPro,
 
-      if (error)
-        throw error;
+    currentPlan:
+      user?.current_plan,
 
-      return data;
-    },
-};
-
-/* =========================================================
-   🌴 HOLIDAYS
-========================================================= */
-
-export const holidayAPI = {
-  getAll:
-    async () => {
-      const {
-        data,
-        error,
-      } =
-        await supabase
-          .from(
-            "holidays"
-          )
-          .select("*");
-
-      if (error)
-        throw error;
-
-      return data;
-    },
-
-  create:
-    async (row) => {
-      const {
-        data,
-        error,
-      } =
-        await supabase
-          .from(
-            "holidays"
-          )
-          .insert(row)
-          .select();
-
-      if (error)
-        throw error;
-
-      return data;
-    },
-};
-
-/* =========================================================
-   📢 ANNOUNCEMENTS
-========================================================= */
-
-export const announcementAPI = {
-  getAll:
-    async () => {
-      const {
-        data,
-        error,
-      } =
-        await supabase
-          .from(
-            "announcements"
-          )
-          .select("*")
-          .order(
-            "created_at",
-            {
-              ascending:
-                false,
-            }
-          );
-
-      if (error)
-        throw error;
-
-      return data;
-    },
-
-  create:
-    async (row) => {
-      const {
-        data,
-        error,
-      } =
-        await supabase
-          .from(
-            "announcements"
-          )
-          .insert(row)
-          .select();
-
-      if (error)
-        throw error;
-
-      return data;
-    },
-};
-
-/* =========================================================
-   📊 DASHBOARD
-========================================================= */
-
-export const managerAPI = {
-  getDashboard:
-    async () => {
-      const {
-        count:
-          totalUsers,
-      } =
-        await supabase
-          .from(
-            "users"
-          )
-          .select(
-            "*",
-            {
-              count:
-                "exact",
-              head: true,
-            }
-          );
-
-      const {
-        count:
-          totalTasks,
-      } =
-        await supabase
-          .from(
-            "tasks"
-          )
-          .select(
-            "*",
-            {
-              count:
-                "exact",
-              head: true,
-            }
-          );
-
-      return {
-        totalUsers:
-          totalUsers ||
-          0,
-        tasks:
-          totalTasks ||
-          0,
-        late: 0,
-      };
-    },
-};
-
-/* =========================================================
-   ⏱ SHIFTS
-========================================================= */
-
-export const shiftAPI = {
-  getAllActive:
-    async () => {
-      const {
-        data,
-        error,
-      } =
-        await supabase
-          .from(
-            "shifts"
-          )
-          .select("*")
-          .is(
-            "clock_out",
-            null
-          );
-
-      if (error)
-        throw error;
-
-      return data;
-    },
-};
-
-/* =========================================================
-   💳 BILLING PLACEHOLDER
-========================================================= */
-
-export const billingAPI = {
-  checkout:
-    async () => ({
-      success: true,
-    }),
-
-  portal:
-    async () => ({
-      success: true,
-    }),
-};
-
-/* =========================================================
-   DEFAULT EXPORT
-========================================================= */
-
-export default supabase;
+    subscriptionStatus:
+      user?.subscription_status,
+  };
+}
