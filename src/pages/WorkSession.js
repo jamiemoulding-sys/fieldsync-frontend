@@ -12,12 +12,23 @@ import {
 } from "lucide-react";
 
 export default function WorkSession() {
-  const [activeShift, setActiveShift] = useState(null);
-  const [locations, setLocations] = useState([]);
-  const [selectedLocation, setSelectedLocation] = useState("");
-  const [timer, setTimer] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [activeShift, setActiveShift] =
+    useState(null);
+
+  const [locations, setLocations] =
+    useState([]);
+
+  const [selectedLocation, setSelectedLocation] =
+    useState("");
+
+  const [timer, setTimer] =
+    useState(0);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [actionLoading, setActionLoading] =
+    useState(false);
 
   useEffect(() => {
     loadData();
@@ -27,13 +38,21 @@ export default function WorkSession() {
     try {
       setLoading(true);
 
-      const [shiftRes, locRes] = await Promise.all([
-        shiftAPI.getActive(),
-        locationAPI.getLocations(),
-      ]);
+      const [shiftRes, locRes] =
+        await Promise.all([
+          shiftAPI.getActive(),
+          locationAPI.getLocations(),
+        ]);
 
-      setActiveShift(shiftRes || null);
-      setLocations(Array.isArray(locRes) ? locRes : []);
+      setActiveShift(
+        shiftRes || null
+      );
+
+      setLocations(
+        Array.isArray(locRes)
+          ? locRes
+          : []
+      );
     } catch (err) {
       console.error(err);
     } finally {
@@ -41,59 +60,123 @@ export default function WorkSession() {
     }
   };
 
-  /* FIXED TIMER */
+  /* ========================================
+     FIXED TIME PARSER
+  ======================================== */
+
+  const parseShiftTime = (
+    value
+  ) => {
+    if (!value) return null;
+
+    /* if backend sends ISO */
+    if (
+      value.includes("T") ||
+      value.includes("Z")
+    ) {
+      return new Date(value);
+    }
+
+    /* if backend sends sql datetime */
+    return new Date(
+      value.replace(" ", "T")
+    );
+  };
+
+  /* ========================================
+     TIMER
+  ======================================== */
+
   useEffect(() => {
     let interval;
 
-    if (activeShift?.clock_in_time) {
+    if (
+      activeShift?.clock_in_time
+    ) {
       const updateTimer = () => {
-        const raw = activeShift.clock_in_time;
+        const start =
+          parseShiftTime(
+            activeShift.clock_in_time
+          );
 
-        /* remove timezone conversion issue */
-        const clean = raw.replace("T", " ").replace("Z", "");
+        if (!start) {
+          setTimer(0);
+          return;
+        }
 
-        const start = new Date(clean).getTime();
-        const now = new Date().getTime();
+        const diff =
+          Math.floor(
+            (Date.now() -
+              start.getTime()) /
+              1000
+          );
 
-        const diff = Math.floor((now - start) / 1000);
-
-        setTimer(diff > 0 ? diff : 0);
+        setTimer(
+          diff > 0 ? diff : 0
+        );
       };
 
       updateTimer();
-      interval = setInterval(updateTimer, 1000);
+
+      interval =
+        setInterval(
+          updateTimer,
+          1000
+        );
     } else {
       setTimer(0);
     }
 
-    return () => clearInterval(interval);
+    return () =>
+      clearInterval(interval);
   }, [activeShift]);
 
-  /* LIVE GPS */
+  /* ========================================
+     LIVE GPS
+  ======================================== */
+
   useEffect(() => {
     let interval;
 
     if (activeShift?.id) {
-      interval = setInterval(() => {
-        navigator.geolocation.getCurrentPosition(
-          async (pos) => {
-            try {
-              await shiftAPI.updateLocation({
-                latitude: pos.coords.latitude,
-                longitude: pos.coords.longitude,
-              });
-            } catch {}
-          }
-        );
-      }, 15000);
+      interval =
+        setInterval(() => {
+          navigator.geolocation.getCurrentPosition(
+            async (
+              pos
+            ) => {
+              try {
+                await shiftAPI.updateLocation(
+                  {
+                    latitude:
+                      pos.coords
+                        .latitude,
+                    longitude:
+                      pos.coords
+                        .longitude,
+                  }
+                );
+              } catch {}
+            }
+          );
+        }, 15000);
     }
 
-    return () => clearInterval(interval);
+    return () =>
+      clearInterval(interval);
   }, [activeShift]);
 
+  /* ========================================
+     CLOCK IN
+  ======================================== */
+
   const handleClockIn = () => {
-    if (!selectedLocation) {
-      alert("Select a location");
+    if (
+      !selectedLocation
+    ) {
+      alert(
+        "Select a location"
+      );
       return;
     }
 
@@ -102,70 +185,146 @@ export default function WorkSession() {
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         try {
-          const shift = await shiftAPI.clockIn({
-            location_id: selectedLocation,
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-          });
+          const shift =
+            await shiftAPI.clockIn(
+              {
+                location_id:
+                  selectedLocation,
+                latitude:
+                  pos.coords
+                    .latitude,
+                longitude:
+                  pos.coords
+                    .longitude,
+              }
+            );
 
-          setActiveShift(shift);
+          setActiveShift(
+            shift
+          );
         } catch (err) {
-          alert("Clock in failed");
+          alert(
+            "Clock in failed"
+          );
         } finally {
-          setActionLoading(false);
+          setActionLoading(
+            false
+          );
         }
       },
       () => {
-        alert("Location denied");
-        setActionLoading(false);
+        alert(
+          "Location denied"
+        );
+
+        setActionLoading(
+          false
+        );
       }
     );
   };
 
-  const handleClockOut = async () => {
-    try {
-      setActionLoading(true);
-      await shiftAPI.clockOut();
-      setActiveShift(null);
-      setTimer(0);
-    } catch {
-      alert("Clock out failed");
-    } finally {
-      setActionLoading(false);
-    }
-  };
+  /* ========================================
+     CLOCK OUT
+  ======================================== */
 
-  const formatTime = (sec) => {
-    const h = Math.floor(sec / 3600);
-    const m = Math.floor((sec % 3600) / 60);
-    const s = sec % 60;
+  const handleClockOut =
+    async () => {
+      try {
+        setActionLoading(
+          true
+        );
 
-    return `${String(h).padStart(2, "0")}:${String(m).padStart(
+        await shiftAPI.clockOut();
+
+        setActiveShift(
+          null
+        );
+
+        setTimer(0);
+      } catch {
+        alert(
+          "Clock out failed"
+        );
+      } finally {
+        setActionLoading(
+          false
+        );
+      }
+    };
+
+  /* ========================================
+     HELPERS
+  ======================================== */
+
+  const formatTime = (
+    sec
+  ) => {
+    const h = Math.floor(
+      sec / 3600
+    );
+
+    const m = Math.floor(
+      (sec % 3600) / 60
+    );
+
+    const s =
+      sec % 60;
+
+    return `${String(h).padStart(
       2,
       "0"
-    )}:${String(s).padStart(2, "0")}`;
+    )}:${String(m).padStart(
+      2,
+      "0"
+    )}:${String(s).padStart(
+      2,
+      "0"
+    )}`;
   };
 
-  const formatStarted = () => {
-    if (!activeShift?.clock_in_time) return "";
+  const formatStarted =
+    () => {
+      if (
+        !activeShift?.clock_in_time
+      )
+        return "";
 
-    const raw = activeShift.clock_in_time;
-    const clean = raw.replace("T", " ").replace("Z", "");
-    const d = new Date(clean);
+      const d =
+        parseShiftTime(
+          activeShift.clock_in_time
+        );
 
-    return d.toLocaleTimeString("en-GB", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+      if (!d)
+        return "";
+
+      return d.toLocaleTimeString(
+        "en-GB",
+        {
+          hour:
+            "2-digit",
+          minute:
+            "2-digit",
+        }
+      );
+    };
+
+  /* ========================================
+     LOADING
+  ======================================== */
 
   if (loading) {
     return (
       <div className="text-gray-400">
-        Loading work session...
+        Loading work
+        session...
       </div>
     );
   }
+
+  /* ========================================
+     UI
+  ======================================== */
 
   return (
     <div className="space-y-6">
@@ -175,29 +334,48 @@ export default function WorkSession() {
         </h1>
 
         <p className="text-sm text-gray-400">
-          Clock in and track today's shift
+          Clock in and track
+          today's shift
         </p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-4">
         <KPI
-          icon={<Clock3 size={16} />}
+          icon={
+            <Clock3
+              size={16}
+            />
+          }
           title="Status"
-          value={activeShift ? "Active" : "Offline"}
+          value={
+            activeShift
+              ? "Active"
+              : "Offline"
+          }
         />
 
         <KPI
-          icon={<TimerReset size={16} />}
+          icon={
+            <TimerReset
+              size={16}
+            />
+          }
           title="Session"
           value={
             activeShift
-              ? formatTime(timer)
+              ? formatTime(
+                  timer
+                )
               : "00:00:00"
           }
         />
 
         <KPI
-          icon={<Navigation size={16} />}
+          icon={
+            <Navigation
+              size={16}
+            />
+          }
           title="Tracking"
           value={
             activeShift
@@ -209,13 +387,21 @@ export default function WorkSession() {
 
       {activeShift ? (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{
+            opacity: 0,
+            y: 20,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
           className="rounded-3xl p-[1px] bg-gradient-to-r from-green-500/30 to-transparent"
         >
           <div className="bg-[#020617] border border-white/10 rounded-3xl p-8 text-center">
             <div className="w-20 h-20 rounded-full bg-green-500/15 text-green-400 mx-auto flex items-center justify-center">
-              <Clock3 size={34} />
+              <Clock3
+                size={34}
+              />
             </div>
 
             <p className="mt-5 text-sm text-green-400">
@@ -223,16 +409,23 @@ export default function WorkSession() {
             </p>
 
             <h2 className="text-5xl font-bold mt-3">
-              {formatTime(timer)}
+              {formatTime(
+                timer
+              )}
             </h2>
 
             <p className="text-sm text-gray-400 mt-3">
-              Started {formatStarted()}
+              Started{" "}
+              {formatStarted()}
             </p>
 
             <button
-              onClick={handleClockOut}
-              disabled={actionLoading}
+              onClick={
+                handleClockOut
+              }
+              disabled={
+                actionLoading
+              }
               className="mt-8 px-6 py-4 rounded-2xl bg-red-500 hover:bg-red-600 disabled:opacity-60 font-medium flex items-center gap-2 mx-auto"
             >
               {actionLoading ? (
@@ -241,7 +434,9 @@ export default function WorkSession() {
                   className="animate-spin"
                 />
               ) : (
-                <Square size={16} />
+                <Square
+                  size={16}
+                />
               )}
 
               Clock Out
@@ -250,8 +445,14 @@ export default function WorkSession() {
         </motion.div>
       ) : (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{
+            opacity: 0,
+            y: 20,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
           className="rounded-3xl p-[1px] bg-gradient-to-r from-indigo-500/30 to-transparent"
         >
           <div className="bg-[#020617] border border-white/10 rounded-3xl p-8">
@@ -260,7 +461,9 @@ export default function WorkSession() {
             </h3>
 
             <p className="text-sm text-gray-400 mt-2">
-              Select your location before clocking in
+              Select your
+              location before
+              clocking in
             </p>
 
             <div className="relative mt-6">
@@ -270,30 +473,52 @@ export default function WorkSession() {
               />
 
               <select
-                value={selectedLocation}
-                onChange={(e) =>
-                  setSelectedLocation(e.target.value)
+                value={
+                  selectedLocation
+                }
+                onChange={(
+                  e
+                ) =>
+                  setSelectedLocation(
+                    e.target
+                      .value
+                  )
                 }
                 className="w-full bg-white/5 border border-white/10 rounded-2xl pl-11 pr-4 py-4 outline-none"
               >
                 <option value="">
-                  Select Location
+                  Select
+                  Location
                 </option>
 
-                {locations.map((loc) => (
-                  <option
-                    key={loc.id}
-                    value={loc.id}
-                  >
-                    {loc.name}
-                  </option>
-                ))}
+                {locations.map(
+                  (
+                    loc
+                  ) => (
+                    <option
+                      key={
+                        loc.id
+                      }
+                      value={
+                        loc.id
+                      }
+                    >
+                      {
+                        loc.name
+                      }
+                    </option>
+                  )
+                )}
               </select>
             </div>
 
             <button
-              onClick={handleClockIn}
-              disabled={actionLoading}
+              onClick={
+                handleClockIn
+              }
+              disabled={
+                actionLoading
+              }
               className="w-full mt-5 py-4 rounded-2xl bg-green-600 hover:bg-green-500 disabled:opacity-60 font-medium flex items-center justify-center gap-2"
             >
               {actionLoading ? (
@@ -302,7 +527,9 @@ export default function WorkSession() {
                   className="animate-spin"
                 />
               ) : (
-                <Play size={16} />
+                <Play
+                  size={16}
+                />
               )}
 
               Clock In
@@ -314,7 +541,11 @@ export default function WorkSession() {
   );
 }
 
-function KPI({ icon, title, value }) {
+function KPI({
+  icon,
+  title,
+  value,
+}) {
   return (
     <div className="rounded-2xl p-[1px] bg-gradient-to-b from-white/10 to-transparent">
       <div className="bg-[#020617] border border-white/10 rounded-2xl p-5">
