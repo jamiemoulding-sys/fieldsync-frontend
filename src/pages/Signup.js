@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import api from "../services/api";
+import { createClient } from "@supabase/supabase-js";
 import { motion } from "framer-motion";
+
 import {
   Mail,
   Lock,
@@ -10,6 +11,11 @@ import {
   Loader2,
   Sparkles,
 } from "lucide-react";
+
+const supabase = createClient(
+  process.env.REACT_APP_SUPABASE_URL,
+  process.env.REACT_APP_SUPABASE_ANON_KEY
+);
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -36,10 +42,22 @@ export default function Signup() {
     });
   };
 
+  /* =====================================
+     SIGNUP
+  ===================================== */
   const handleSignup =
     async (e) => {
       e.preventDefault();
+
       setError("");
+
+      if (
+        form.password.length < 6
+      ) {
+        return setError(
+          "Password must be at least 6 characters"
+        );
+      }
 
       if (
         form.password !==
@@ -51,7 +69,7 @@ export default function Signup() {
       }
 
       if (
-        !form.companyName
+        !form.companyName.trim()
       ) {
         return setError(
           "Company name required"
@@ -61,70 +79,108 @@ export default function Signup() {
       try {
         setLoading(true);
 
-        /* REGISTER */
-        await api.post(
-          "/auth/register",
-          {
+        /* CREATE AUTH ACCOUNT */
+        const {
+          data,
+          error,
+        } =
+          await supabase.auth.signUp({
             email:
-              form.email,
+              form.email.trim(),
             password:
               form.password,
-            name: "User",
-          }
-        );
+          });
 
-        /* LOGIN */
-        const loginRes =
-          await api.post(
-            "/auth/login",
-            {
-              email:
-                form.email,
-              password:
-                form.password,
-            }
-          );
+        if (error)
+          throw error;
 
-        localStorage.setItem(
-          "token",
-          loginRes.data.token
-        );
+        const authUser =
+          data.user;
 
-        /* CREATE COMPANY */
-        const companyRes =
-          await api.post(
-            "/companies/create-company",
-            {
-              name:
-                form.companyName,
-            }
-          );
-
-        if (
-          companyRes.data
-            ?.token
-        ) {
-          localStorage.setItem(
-            "token",
-            companyRes.data
-              .token
+        if (!authUser) {
+          throw new Error(
+            "Could not create account"
           );
         }
 
+        /* CREATE COMPANY */
+        const {
+          data: company,
+          error:
+            companyError,
+        } =
+          await supabase
+            .from(
+              "companies"
+            )
+            .insert({
+              name:
+                form.companyName.trim(),
+              owner_id:
+                authUser.id,
+              is_pro:
+                false,
+              current_plan:
+                "free",
+              subscription_status:
+                "free",
+            })
+            .select()
+            .single();
+
+        if (
+          companyError
+        )
+          throw companyError;
+
+        /* CREATE USER PROFILE */
+        const {
+          error:
+            profileError,
+        } =
+          await supabase
+            .from(
+              "users"
+            )
+            .insert({
+              id: authUser.id,
+              email:
+                authUser.email,
+              name: "Owner",
+              phone: "",
+              role: "admin",
+              company_id:
+                company.id,
+              company_name:
+                company.name,
+              job_title:
+                "",
+              is_pro:
+                false,
+              current_plan:
+                "free",
+              subscription_status:
+                "free",
+              last_sign_in:
+                new Date(),
+            });
+
+        if (
+          profileError
+        )
+          throw profileError;
+
+        alert(
+          "Workspace created successfully"
+        );
+
         navigate(
-          "/dashboard"
+          "/login"
         );
 
       } catch (err) {
         setError(
-          err?.response
-            ?.data
-            ?.message ||
-            err
-              ?.response
-              ?.data
-              ?.error ||
-            err?.message ||
+          err.message ||
             "Signup failed"
         );
 
@@ -152,7 +208,7 @@ export default function Signup() {
       >
         <div className="bg-[#020617]/95 backdrop-blur-xl border border-white/10 rounded-3xl p-8">
 
-          {/* TOP */}
+          {/* HEADER */}
           <div className="text-center mb-8">
 
             <div className="w-16 h-16 rounded-2xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center mx-auto mb-5">
@@ -164,8 +220,7 @@ export default function Signup() {
             </h1>
 
             <p className="text-sm text-gray-400 mt-2">
-              Launch your team
-              on FieldSync
+              Launch your team on FieldSync
             </p>
 
           </div>
@@ -187,9 +242,7 @@ export default function Signup() {
 
             <Input
               icon={
-                <Mail
-                  size={16}
-                />
+                <Mail size={16} />
               }
               type="email"
               name="email"
@@ -204,9 +257,7 @@ export default function Signup() {
 
             <Input
               icon={
-                <Lock
-                  size={16}
-                />
+                <Lock size={16} />
               }
               type="password"
               name="password"
@@ -221,9 +272,7 @@ export default function Signup() {
 
             <Input
               icon={
-                <Lock
-                  size={16}
-                />
+                <Lock size={16} />
               }
               type="password"
               name="confirmPassword"
@@ -238,9 +287,7 @@ export default function Signup() {
 
             <Input
               icon={
-                <Building2
-                  size={16}
-                />
+                <Building2 size={16} />
               }
               type="text"
               name="companyName"
@@ -266,9 +313,7 @@ export default function Signup() {
                   className="animate-spin"
                 />
               ) : (
-                <ArrowRight
-                  size={16}
-                />
+                <ArrowRight size={16} />
               )}
 
               {loading
@@ -281,8 +326,7 @@ export default function Signup() {
           {/* FOOTER */}
           <div className="mt-6 text-center text-sm text-gray-400">
 
-            Already have an
-            account?{" "}
+            Already have an account?{" "}
 
             <Link
               to="/login"
@@ -306,6 +350,7 @@ function Input({
 }) {
   return (
     <div className="relative">
+
       <div className="absolute left-4 top-4 text-gray-500">
         {icon}
       </div>
@@ -315,6 +360,7 @@ function Input({
         required
         className="w-full pl-11 pr-4 py-4 rounded-2xl bg-white/5 border border-white/10 outline-none focus:ring-2 focus:ring-indigo-500"
       />
+
     </div>
   );
 }

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { authAPI } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -33,14 +32,19 @@ export default function Login() {
   const [resetLoading, setResetLoading] =
     useState(false);
 
+  const [error, setError] =
+    useState("");
+
   /* =====================================
      LOGIN
   ===================================== */
   const handleLogin = async (e) => {
     e.preventDefault();
 
+    setError("");
+
     if (!email || !password) {
-      return alert(
+      return setError(
         "Enter email and password"
       );
     }
@@ -48,26 +52,15 @@ export default function Login() {
     try {
       setLoading(true);
 
-      const data =
-        await authAPI.login({
-          email,
-          password,
-        });
-
-      if (!data?.token) {
-        throw new Error(
-          "No token returned"
-        );
-      }
-
-      login(data);
+      await login(
+        email.trim(),
+        password
+      );
 
     } catch (err) {
-      alert(
-        err?.response?.data
-          ?.error ||
-          err?.message ||
-          "Login failed"
+      setError(
+        err.message ||
+          "Invalid login details"
       );
 
     } finally {
@@ -81,8 +74,10 @@ export default function Login() {
   const handleForgotPassword =
     async () => {
       try {
+        setError("");
+
         if (!email) {
-          return alert(
+          return setError(
             "Enter your email first"
           );
         }
@@ -91,10 +86,10 @@ export default function Login() {
 
         const { error } =
           await supabase.auth.resetPasswordForEmail(
-            email,
+            email.trim(),
             {
               redirectTo:
-                "https://app.zorviatech.co.uk/reset-password",
+                `${window.location.origin}/reset-password`,
             }
           );
 
@@ -105,10 +100,11 @@ export default function Login() {
         );
 
       } catch (err) {
-        alert(
+        setError(
           err.message ||
-            "Failed to send reset email"
+            "Could not send reset email"
         );
+
       } finally {
         setResetLoading(false);
       }
@@ -133,7 +129,7 @@ export default function Login() {
       >
         <div className="bg-[#020617]/95 backdrop-blur-xl border border-white/10 rounded-3xl p-8">
 
-          {/* TOP */}
+          {/* HEADER */}
           <div className="text-center mb-8">
 
             <div className="w-16 h-16 rounded-2xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center mx-auto mb-5">
@@ -145,11 +141,17 @@ export default function Login() {
             </h1>
 
             <p className="text-sm text-gray-400 mt-2">
-              Sign in to access
-              your workspace
+              Sign in to access your workspace
             </p>
 
           </div>
+
+          {/* ERROR */}
+          {error && (
+            <div className="mb-5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300 px-4 py-3 text-sm">
+              {error}
+            </div>
+          )}
 
           {/* FORM */}
           <form
@@ -199,7 +201,7 @@ export default function Login() {
               />
             </div>
 
-            {/* FORGOT PASSWORD */}
+            {/* FORGOT */}
             <div className="text-right">
               <button
                 type="button"
@@ -209,7 +211,7 @@ export default function Login() {
                 disabled={
                   resetLoading
                 }
-                className="text-sm text-indigo-400 hover:text-indigo-300 transition"
+                className="text-sm text-indigo-400 hover:text-indigo-300"
               >
                 {resetLoading
                   ? "Sending..."
@@ -245,8 +247,7 @@ export default function Login() {
           {/* FOOTER */}
           <div className="mt-6 text-center text-sm text-gray-400">
 
-            Don’t have an
-            account?{" "}
+            Don’t have an account?{" "}
 
             <Link
               to="/signup"

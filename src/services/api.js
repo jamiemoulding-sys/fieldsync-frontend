@@ -1,123 +1,229 @@
-import axios from "axios";
+import { createClient } from "@supabase/supabase-js";
 
 /* ==================================
-   🌍 BASE URL
+   🔥 SUPABASE CLIENT
 ================================== */
 
-const BASE_URL =
-  process.env.REACT_APP_API_URL ||
-  "https://fieldsync-backend-clean-t7vn.onrender.com/api";
-
-/* ==================================
-   🚀 AXIOS INSTANCE
-================================== */
-
-const api = axios.create({
-  baseURL: BASE_URL,
-  timeout: 20000,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
-/* ==================================
-   🔐 REQUEST INTERCEPTOR
-================================== */
-
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("token");
-
-    if (
-      token &&
-      token !== "undefined" &&
-      token !== "null"
-    ) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-
-    return config;
-  },
-  (error) => Promise.reject(error)
+const supabase = createClient(
+  process.env.REACT_APP_SUPABASE_URL,
+  process.env.REACT_APP_SUPABASE_ANON_KEY
 );
-
-/* ==================================
-   🚨 RESPONSE INTERCEPTOR
-================================== */
-
-api.interceptors.response.use(
-  (response) => response,
-
-  (error) => {
-    const status =
-      error?.response?.status;
-
-    const message =
-      error?.response?.data?.error ||
-      error?.response?.data?.message ||
-      error.message ||
-      "Request failed";
-
-    console.error(
-      "API ERROR:",
-      message
-    );
-
-    /* AUTO LOGOUT */
-    if (status === 401) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-
-      if (
-        window.location.pathname !==
-        "/login"
-      ) {
-        window.location.href =
-          "/login";
-      }
-    }
-
-    return Promise.reject({
-      ...error,
-      message,
-    });
-  }
-);
-
-/* ==================================
-   📦 RESPONSE UNWRAP
-================================== */
-
-const unwrap = async (promise) => {
-  const res = await promise;
-  return res?.data;
-};
 
 /* ==================================
    🔐 AUTH
 ================================== */
 
 export const authAPI = {
-  login: (data) =>
-    unwrap(
-      api.post("/auth/login", data)
-    ),
+  /* LOGIN */
+  login: async ({
+    email,
+    password,
+  }) => {
+    const {
+      data,
+      error,
+    } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-  register: (data) =>
-    unwrap(
-      api.post(
-        "/auth/register",
-        data
-      )
-    ),
+    if (error) throw error;
 
-  me: () =>
-    unwrap(api.get("/auth/me")),
+    const authUser =
+      data.user;
 
-  updateMe: (data) =>
-    unwrap(
-      api.put("/auth/me", data)
-    ),
+    /* pull profile row */
+    const {
+      data: profile,
+    } =
+      await supabase
+        .from("users")
+        .select("*")
+        .eq(
+          "id",
+          authUser.id
+        )
+        .maybeSingle();
+
+    const token =
+      data.session
+        ?.access_token;
+
+    localStorage.setItem(
+      "token",
+      token
+    );
+
+    return {
+      token,
+      user: {
+        id: authUser.id,
+        email:
+          authUser.email,
+        name:
+          profile?.name ||
+          "",
+        phone:
+          profile?.phone ||
+          "",
+        role:
+          profile?.role ||
+          "employee",
+        companyId:
+          profile?.company_id ||
+          null,
+        companyName:
+          profile?.company_name ||
+          "",
+        jobTitle:
+          profile?.job_title ||
+          "",
+        isPro:
+          profile?.is_pro ||
+          false,
+        is_pro:
+          profile?.is_pro ||
+          false,
+        current_plan:
+          profile?.current_plan ||
+          "free",
+        subscription_status:
+          profile?.subscription_status ||
+          "free",
+      },
+    };
+  },
+
+  /* REGISTER */
+  register: async ({
+    email,
+    password,
+    name,
+    companyName,
+  }) => {
+    const {
+      data,
+      error,
+    } =
+      await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+          },
+        },
+      });
+
+    if (error) throw error;
+
+    const authUser =
+      data.user;
+
+    if (authUser) {
+      await supabase
+        .from("users")
+        .insert({
+          id: authUser.id,
+          email,
+          name:
+            name || "",
+          company_name:
+            companyName ||
+            "",
+          role: "admin",
+          is_pro: false,
+          current_plan:
+            "free",
+          subscription_status:
+            "free",
+        });
+    }
+
+    return data;
+  },
+
+  /* CURRENT USER */
+  me: async () => {
+    const {
+      data,
+      error,
+    } =
+      await supabase.auth.getUser();
+
+    if (error) throw error;
+
+    const authUser =
+      data.user;
+
+    if (!authUser)
+      return null;
+
+    const {
+      data: profile,
+    } =
+      await supabase
+        .from("users")
+        .select("*")
+        .eq(
+          "id",
+          authUser.id
+        )
+        .maybeSingle();
+
+    return {
+      id: authUser.id,
+      email:
+        authUser.email,
+      ...profile,
+    };
+  },
+
+  /* UPDATE PROFILE */
+  updateMe: async (
+    payload
+  ) => {
+    const {
+      data,
+    } =
+      await supabase.auth.getUser();
+
+    const user =
+      data.user;
+
+    if (!user) {
+      throw new Error(
+        "No user found"
+      );
+    }
+
+    const {
+      error,
+    } =
+      await supabase
+        .from("users")
+        .update({
+          name:
+            payload.name,
+          phone:
+            payload.phone,
+          job_title:
+            payload.jobTitle,
+          company_name:
+            payload.companyName,
+          updated_at:
+            new Date(),
+        })
+        .eq(
+          "id",
+          user.id
+        );
+
+    if (error) throw error;
+
+    return payload;
+  },
 };
 
 /* ==================================
@@ -125,29 +231,70 @@ export const authAPI = {
 ================================== */
 
 export const userAPI = {
-  getAll: () =>
-    unwrap(api.get("/users")),
+  getAll: async () => {
+    const {
+      data,
+      error,
+    } =
+      await supabase
+        .from("users")
+        .select("*")
+        .order(
+          "created_at",
+          {
+            ascending:
+              false,
+          }
+        );
 
-  create: (data) =>
-    unwrap(
-      api.post(
-        "/auth/register",
-        data
-      )
-    ),
+    if (error) throw error;
 
-  updateRole: (id, data) =>
-    unwrap(
-      api.put(
-        `/users/${id}/role`,
-        data
-      )
-    ),
+    return data;
+  },
 
-  delete: (id) =>
-    unwrap(
-      api.delete(`/users/${id}`)
-    ),
+  updateRole:
+    async (
+      id,
+      payload
+    ) => {
+      const {
+        error,
+      } =
+        await supabase
+          .from("users")
+          .update({
+            role:
+              payload.role,
+          })
+          .eq(
+            "id",
+            id
+          );
+
+      if (error)
+        throw error;
+
+      return true;
+    },
+
+  delete: async (
+    id
+  ) => {
+    const {
+      error,
+    } =
+      await supabase
+        .from("users")
+        .delete()
+        .eq(
+          "id",
+          id
+        );
+
+    if (error) throw error;
+
+    return true;
+  },
 };
 
 /* ==================================
@@ -155,153 +302,32 @@ export const userAPI = {
 ================================== */
 
 export const inviteAPI = {
-  send: (data) =>
-    unwrap(
-      api.post("/invite", data)
-    ),
-};
+  send: async ({
+    email,
+    role,
+  }) => {
+    const {
+      error,
+    } =
+      await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo:
+            "https://app.zorviatech.co.uk/set-password",
+          data: {
+            role:
+              role ||
+              "employee",
+          },
+        },
+      });
 
-/* ==================================
-   ⏱ SHIFTS
-================================== */
+    if (error) throw error;
 
-export const shiftAPI = {
-  getActive: () =>
-    unwrap(
-      api.get("/shifts/active")
-    ),
-
-  getAllActive: () =>
-    unwrap(
-      api.get(
-        "/shifts/active-all"
-      )
-    ),
-
-  clockIn: (data) =>
-    unwrap(
-      api.post(
-        "/shifts/clock-in",
-        data
-      )
-    ),
-
-  clockOut: () =>
-    unwrap(
-      api.post(
-        "/shifts/clock-out"
-      )
-    ),
-
-  getHistory: () =>
-    unwrap(
-      api.get(
-        "/shifts/history"
-      )
-    ),
-
-  updateLocation: (data) =>
-    unwrap(
-      api.post(
-        "/shifts/update-location",
-        data
-      )
-    ),
-};
-
-/* ==================================
-   📅 SCHEDULE
-================================== */
-
-export const scheduleAPI = {
-  getAll: () =>
-    unwrap(
-      api.get("/schedules")
-    ),
-
-  getMine: () =>
-    unwrap(
-      api.get(
-        "/schedules/my-schedule"
-      )
-    ),
-
-  create: (data) =>
-    unwrap(
-      api.post(
-        "/schedules",
-        data
-      )
-    ),
-
-  update: (id, data) =>
-    unwrap(
-      api.put(
-        `/schedules/${id}`,
-        data
-      )
-    ),
-
-  delete: (id) =>
-    unwrap(
-      api.delete(
-        `/schedules/${id}`
-      )
-    ),
-
-  getLate: () =>
-    unwrap(
-      api.get(
-        "/schedules/late-arrivals"
-      )
-    ),
-};
-
-/* ==================================
-   🌴 HOLIDAYS
-================================== */
-
-export const holidayAPI = {
-  getAll: () =>
-    unwrap(
-      api.get(
-        "/schedules/holiday-requests"
-      )
-    ),
-
-  create: (data) =>
-    unwrap(
-      api.post(
-        "/schedules/holiday-requests",
-        data
-      )
-    ),
-
-  update: (id, data) =>
-    unwrap(
-      api.put(
-        `/schedules/holiday-requests/${id}`,
-        data
-      )
-    ),
-
-  delete: (id) =>
-    unwrap(
-      api.delete(
-        `/schedules/holiday-requests/${id}`
-      )
-    ),
-};
-
-/* ==================================
-   📈 PERFORMANCE
-================================== */
-
-export const performanceAPI = {
-  getAll: () =>
-    unwrap(
-      api.get("/performance")
-    ),
+    return {
+      success: true,
+    };
+  },
 };
 
 /* ==================================
@@ -309,33 +335,23 @@ export const performanceAPI = {
 ================================== */
 
 export const locationAPI = {
-  getLocations: () =>
-    unwrap(
-      api.get("/locations")
-    ),
+  getLocations:
+    async () => {
+      const {
+        data,
+        error,
+      } =
+        await supabase
+          .from(
+            "locations"
+          )
+          .select("*");
 
-  create: (data) =>
-    unwrap(
-      api.post(
-        "/locations",
-        data
-      )
-    ),
+      if (error)
+        throw error;
 
-  update: (id, data) =>
-    unwrap(
-      api.put(
-        `/locations/${id}`,
-        data
-      )
-    ),
-
-  delete: (id) =>
-    unwrap(
-      api.delete(
-        `/locations/${id}`
-      )
-    ),
+      return data;
+    },
 };
 
 /* ==================================
@@ -343,83 +359,112 @@ export const locationAPI = {
 ================================== */
 
 export const taskAPI = {
-  getTasks: () =>
-    unwrap(
-      api.get("/tasks/all")
-    ),
+  getTasks:
+    async () => {
+      const {
+        data,
+        error,
+      } =
+        await supabase
+          .from("tasks")
+          .select("*")
+          .order(
+            "created_at",
+            {
+              ascending:
+                false,
+            }
+          );
 
-  create: (data) =>
-    unwrap(
-      api.post("/tasks", data)
-    ),
+      if (error)
+        throw error;
 
-  complete: (task_id) =>
-    unwrap(
-      api.post(
-        "/tasks/complete",
-        { task_id }
-      )
-    ),
+      return data;
+    },
 
-  delete: (id) =>
-    unwrap(
-      api.delete(`/tasks/${id}`)
-    ),
+  create:
+    async (task) => {
+      const {
+        data,
+        error,
+      } =
+        await supabase
+          .from("tasks")
+          .insert(task)
+          .select();
+
+      if (error)
+        throw error;
+
+      return data;
+    },
+
+  delete:
+    async (id) => {
+      const {
+        error,
+      } =
+        await supabase
+          .from("tasks")
+          .delete()
+          .eq(
+            "id",
+            id
+          );
+
+      if (error)
+        throw error;
+
+      return true;
+    },
 };
 
 /* ==================================
-   📊 REPORTS (FIXED)
+   📅 SCHEDULE
+================================== */
+
+export const scheduleAPI = {
+  getAll:
+    async () => {
+      const {
+        data,
+        error,
+      } =
+        await supabase
+          .from(
+            "schedules"
+          )
+          .select("*");
+
+      if (error)
+        throw error;
+
+      return data;
+    },
+};
+
+/* ==================================
+   📊 REPORTS
 ================================== */
 
 export const reportAPI = {
-  getSummary: () =>
-    unwrap(api.get("/reports")),
+  getSummary:
+    async () => {
+      const {
+        data,
+        error,
+      } =
+        await supabase
+          .from(
+            "reports"
+          )
+          .select("*");
 
-  getTimesheets: () =>
-    unwrap(
-      api.get(
-        "/reports/timesheets"
-      )
-    ),
-};
+      if (error)
+        throw error;
 
-/* ==================================
-   🧠 DASHBOARD
-================================== */
-
-export const managerAPI = {
-  getDashboard: () =>
-    unwrap(
-      api.get("/dashboard")
-    ),
-};
-
-/* ==================================
-   📢 ANNOUNCEMENTS
-================================== */
-
-export const announcementAPI = {
-  getAll: () =>
-    unwrap(
-      api.get(
-        "/announcements"
-      )
-    ),
-
-  create: (data) =>
-    unwrap(
-      api.post(
-        "/announcements",
-        data
-      )
-    ),
-
-  delete: (id) =>
-    unwrap(
-      api.delete(
-        `/announcements/${id}`
-      )
-    ),
+      return data;
+    },
 };
 
 /* ==================================
@@ -427,38 +472,32 @@ export const announcementAPI = {
 ================================== */
 
 export const billingAPI = {
-  checkout: (plan) =>
-    unwrap(
-      api.post(
-        "/billing/create-checkout-session",
-        { plan }
-      )
-    ),
+  checkout:
+    async () => ({
+      success: true,
+    }),
 
-  portal: () =>
-    unwrap(
-      api.post("/billing/portal")
-    ),
+  portal:
+    async () => ({
+      success: true,
+    }),
 };
 
 /* ==================================
-   📤 UPLOADS
+   🚪 LOGOUT
 ================================== */
 
-export const uploadAPI = {
-  upload: (formData) =>
-    unwrap(
-      api.post(
-        "/uploads",
-        formData,
-        {
-          headers: {
-            "Content-Type":
-              "multipart/form-data",
-          },
-        }
-      )
-    ),
-};
+export const logoutAPI =
+  async () => {
+    await supabase.auth.signOut();
 
-export default api;
+    localStorage.removeItem(
+      "token"
+    );
+
+    localStorage.removeItem(
+      "user"
+    );
+  };
+
+export default supabase;

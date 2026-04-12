@@ -1,7 +1,16 @@
-import { useMemo, useState, useEffect } from "react";
+import {
+  useMemo,
+  useState,
+  useEffect,
+} from "react";
+
+import {
+  createClient,
+} from "@supabase/supabase-js";
+
 import { useAuth } from "../hooks/useAuth";
-import { authAPI } from "../services/api";
 import { motion } from "framer-motion";
+
 import {
   User,
   Phone,
@@ -14,86 +23,255 @@ import {
   LogOut,
   CheckCircle2,
   Camera,
+  Clock3,
 } from "lucide-react";
 
+const supabase = createClient(
+  process.env.REACT_APP_SUPABASE_URL,
+  process.env.REACT_APP_SUPABASE_ANON_KEY
+);
+
 export default function Profile() {
-  const { user, updateUser, logout } = useAuth();
+  const {
+    user,
+    updateUser,
+    logout,
+  } = useAuth();
 
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [company, setCompany] = useState("");
-  const [jobTitle, setJobTitle] = useState("");
+  const [name, setName] =
+    useState("");
 
-  const [saving, setSaving] = useState(false);
-  const [success, setSuccess] = useState("");
+  const [phone, setPhone] =
+    useState("");
 
-  /* FIX: sync form when user updates */
+  const [company, setCompany] =
+    useState("");
+
+  const [jobTitle, setJobTitle] =
+    useState("");
+
+  const [lastSignIn, setLastSignIn] =
+    useState("");
+
+  const [saving, setSaving] =
+    useState(false);
+
+  const [success, setSuccess] =
+    useState("");
+
+  /* =====================================
+     LOAD LIVE PROFILE
+  ===================================== */
   useEffect(() => {
-    if (user) {
-      setName(user.name || "");
-      setPhone(user.phone || "");
-      setCompany(user.companyName || user.company_name || "");
-      setJobTitle(user.jobTitle || user.job_title || "");
-    }
-  }, [user]);
+    const loadProfile =
+      async () => {
+        try {
+          const {
+            data: authData,
+          } =
+            await supabase.auth.getUser();
 
-  const saveProfile = async () => {
-    try {
-      setSaving(true);
-      setSuccess("");
+          const authUser =
+            authData?.user;
 
-      const res = await authAPI.updateMe({
-        name,
-        phone,
-        companyName: company,
-        jobTitle,
-      });
+          if (!authUser)
+            return;
 
-      /* FIX: keep auth context updated */
-      updateUser({
-        ...user,
-        ...res,
-        name: res.name,
-        phone: res.phone,
-        role: res.role,
-        companyName:
-          res.companyName ||
-          res.company_name ||
-          company,
-        jobTitle:
-          res.jobTitle ||
-          res.job_title ||
+          if (
+            authUser.last_sign_in_at
+          ) {
+            setLastSignIn(
+              new Date(
+                authUser.last_sign_in_at
+              ).toLocaleString()
+            );
+          }
+
+          const {
+            data,
+            error,
+          } =
+            await supabase
+              .from(
+                "users"
+              )
+              .select(
+                `
+                name,
+                phone,
+                job_title,
+                company_id
+              `
+              )
+              .eq(
+                "id",
+                authUser.id
+              )
+              .single();
+
+          if (error)
+            return;
+
+          setName(
+            data?.name || ""
+          );
+
+          setPhone(
+            data?.phone || ""
+          );
+
+          setJobTitle(
+            data?.job_title ||
+              ""
+          );
+
+          if (
+            data?.company_id
+          ) {
+            const {
+              data:
+                companyData,
+            } =
+              await supabase
+                .from(
+                  "companies"
+                )
+                .select(
+                  "name"
+                )
+                .eq(
+                  "id",
+                  data.company_id
+                )
+                .single();
+
+            setCompany(
+              companyData?.name ||
+                ""
+            );
+          }
+
+          updateUser({
+            ...user,
+            name:
+              data?.name ||
+              "",
+            phone:
+              data?.phone ||
+              "",
+            jobTitle:
+              data?.job_title ||
+              "",
+          });
+
+        } catch {}
+      };
+
+    loadProfile();
+  }, []);
+
+  /* =====================================
+     SAVE PROFILE
+  ===================================== */
+  const saveProfile =
+    async () => {
+      try {
+        setSaving(true);
+        setSuccess("");
+
+        const {
+          data: authData,
+        } =
+          await supabase.auth.getUser();
+
+        const authUser =
+          authData?.user;
+
+        if (!authUser) {
+          throw new Error(
+            "Not logged in"
+          );
+        }
+
+        const {
+          error,
+        } =
+          await supabase
+            .from(
+              "users"
+            )
+            .update({
+              name,
+              phone,
+              job_title:
+                jobTitle,
+            })
+            .eq(
+              "id",
+              authUser.id
+            );
+
+        if (error)
+          throw error;
+
+        if (
+          company &&
+          user?.companyId
+        ) {
+          await supabase
+            .from(
+              "companies"
+            )
+            .update({
+              name: company,
+            })
+            .eq(
+              "id",
+              user.companyId
+            );
+        }
+
+        updateUser({
+          ...user,
+          name,
+          phone,
+          companyName:
+            company,
           jobTitle,
-      });
+        });
 
-      setSuccess(
-        "Profile updated successfully"
-      );
-    } catch (err) {
-      alert(
-        err?.message ||
-          "Failed to save profile"
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
+        setSuccess(
+          "Profile updated successfully"
+        );
 
-  const profileScore = useMemo(() => {
-    return (
-      [
-        name,
-        phone,
-        company,
-        jobTitle,
-      ].filter(Boolean).length * 25
-    );
-  }, [
-    name,
-    phone,
-    company,
-    jobTitle,
-  ]);
+      } catch (err) {
+        alert(
+          err.message ||
+            "Failed to save profile"
+        );
+
+      } finally {
+        setSaving(false);
+      }
+    };
+
+  const profileScore =
+    useMemo(() => {
+      return (
+        [
+          name,
+          phone,
+          company,
+          jobTitle,
+        ].filter(Boolean)
+          .length * 25
+      );
+    }, [
+      name,
+      phone,
+      company,
+      jobTitle,
+    ]);
 
   const initials = (
     name ||
@@ -105,12 +283,17 @@ export default function Profile() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
+
       {/* HERO */}
       <div className="rounded-3xl p-[1px] bg-gradient-to-r from-indigo-500/30 via-purple-500/20 to-transparent">
         <div className="bg-[#020617] border border-white/10 rounded-3xl p-6 md:p-8">
+
           <div className="flex justify-between gap-6 flex-wrap items-center">
+
             <div className="flex items-center gap-5">
+
               <div className="relative">
+
                 <div className="w-20 h-20 rounded-full bg-indigo-600 flex items-center justify-center text-2xl font-semibold">
                   {initials}
                 </div>
@@ -118,11 +301,13 @@ export default function Profile() {
                 <button className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-white/10 border border-white/10 flex items-center justify-center">
                   <Camera size={14} />
                 </button>
+
               </div>
 
               <div>
                 <h1 className="text-2xl md:text-3xl font-semibold">
-                  {name || "Unnamed User"}
+                  {name ||
+                    "Unnamed User"}
                 </h1>
 
                 <p className="text-gray-400 mt-1">
@@ -130,8 +315,11 @@ export default function Profile() {
                 </p>
 
                 <div className="flex gap-2 mt-3 flex-wrap">
+
                   <Badge
-                    icon={<Shield size={13} />}
+                    icon={
+                      <Shield size={13} />
+                    }
                     text={
                       user?.role?.toUpperCase() ||
                       "USER"
@@ -139,18 +327,24 @@ export default function Profile() {
                   />
 
                   <Badge
-                    icon={<Crown size={13} />}
+                    icon={
+                      <Crown size={13} />
+                    }
                     text={
                       user?.isPro
                         ? "PRO"
-                        : "TRIAL"
+                        : "FREE"
                     }
                   />
+
                 </div>
+
               </div>
+
             </div>
 
-            <div className="min-w-[220px]">
+            <div className="min-w-[240px]">
+
               <p className="text-sm text-gray-400">
                 Profile Strength
               </p>
@@ -167,8 +361,18 @@ export default function Profile() {
                   }}
                 />
               </div>
+
+              <p className="text-xs text-gray-500 mt-4 flex items-center gap-2">
+                <Clock3 size={12} />
+                Last Sign In:
+                {lastSignIn ||
+                  " -"}
+              </p>
+
             </div>
+
           </div>
+
         </div>
       </div>
 
@@ -181,6 +385,7 @@ export default function Profile() {
 
       {/* FORM */}
       <div className="grid md:grid-cols-2 gap-4">
+
         <Field
           icon={<User size={16} />}
           label="Full Name"
@@ -198,7 +403,9 @@ export default function Profile() {
         />
 
         <Field
-          icon={<Building2 size={16} />}
+          icon={
+            <Building2 size={16} />
+          }
           label="Company Name"
           value={company}
           onChange={setCompany}
@@ -206,7 +413,9 @@ export default function Profile() {
         />
 
         <Field
-          icon={<Briefcase size={16} />}
+          icon={
+            <Briefcase size={16} />
+          }
           label="Job Title"
           value={jobTitle}
           onChange={setJobTitle}
@@ -225,19 +434,22 @@ export default function Profile() {
           value={
             user?.isPro
               ? "Pro"
-              : "Trial"
+              : "Free"
           }
         />
+
       </div>
 
       {/* ACTIONS */}
       <div className="flex gap-3 flex-wrap">
+
         <button
           onClick={saveProfile}
           disabled={saving}
           className="px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 transition disabled:opacity-60 text-white font-medium flex items-center gap-2"
         >
           <Save size={16} />
+
           {saving
             ? "Saving..."
             : "Save Changes"}
@@ -250,7 +462,9 @@ export default function Profile() {
           <LogOut size={16} />
           Sign Out
         </button>
+
       </div>
+
     </div>
   );
 }
@@ -266,10 +480,13 @@ function Field({
 }) {
   return (
     <motion.div
-      whileHover={{ y: -3 }}
+      whileHover={{
+        y: -3,
+      }}
       className="rounded-2xl p-[1px] bg-gradient-to-b from-white/10 to-transparent"
     >
       <div className="bg-[#020617] border border-white/10 rounded-2xl p-4">
+
         <div className="flex items-center gap-2 text-gray-400 text-xs mb-2">
           {icon}
           {label}
@@ -278,11 +495,16 @@ function Field({
         <input
           value={value}
           onChange={(e) =>
-            onChange(e.target.value)
+            onChange(
+              e.target.value
+            )
           }
-          placeholder={placeholder}
+          placeholder={
+            placeholder
+          }
           className="w-full bg-[#111827] border border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500"
         />
+
       </div>
     </motion.div>
   );
@@ -296,6 +518,7 @@ function ReadOnly({
   return (
     <div className="rounded-2xl p-[1px] bg-gradient-to-b from-white/10 to-transparent">
       <div className="bg-[#020617] border border-white/10 rounded-2xl p-4">
+
         <div className="flex items-center gap-2 text-gray-400 text-xs mb-2">
           {icon}
           {label}
@@ -304,6 +527,7 @@ function ReadOnly({
         <p className="text-white text-sm">
           {value || "-"}
         </p>
+
       </div>
     </div>
   );
