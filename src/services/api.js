@@ -75,7 +75,34 @@ export const userAPI = {
 };
 
 /* =========================================================
-ANNOUNCEMENTS  <-- FIX ADDED
+INVITES
+========================================================= */
+
+export const inviteAPI = {
+  send: async ({
+    email,
+    role,
+  }) => {
+    const { error } =
+      await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          data: {
+            role:
+              role ||
+              "employee",
+          },
+        },
+      });
+
+    if (error) throw error;
+
+    return true;
+  },
+};
+
+/* =========================================================
+ANNOUNCEMENTS
 ========================================================= */
 
 export const announcementAPI = {
