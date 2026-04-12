@@ -678,27 +678,238 @@ export const managerAPI = {
 };
 
 /* =========================================================
-   SHIFTS
+SHIFTS
+FULL REPLACEMENT BLOCK FOR src/services/api.js
+Replaces your fake shiftAPI
 ========================================================= */
 
 export const shiftAPI = {
-  getActive:
-    async () => [],
+  /* CURRENT ACTIVE SHIFT */
+  getActive: async () => {
+    const {
+      data: authData,
+      error: authError,
+    } = await supabase.auth.getUser();
 
-  getAllActive:
-    async () => [],
+    if (authError) throw authError;
 
-  clockIn:
-    async () => true,
+    const userId =
+      authData?.user?.id;
 
-  clockOut:
-    async () => true,
+    if (!userId) return null;
 
-  getHistory:
-    async () => [],
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("shifts")
+      .select("*")
+      .eq("user_id", userId)
+      .is("clock_out_time", null)
+      .order("clock_in_time", {
+        ascending: false,
+      })
+      .maybeSingle();
 
+    if (error) throw error;
+
+    return data || null;
+  },
+
+  /* ALL ACTIVE SHIFTS (dashboard live users) */
+  getAllActive: async () => {
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("shifts")
+      .select(`
+        *,
+        users (
+          id,
+          name,
+          email
+        ),
+        locations (
+          id,
+          name
+        )
+      `)
+      .is("clock_out_time", null)
+      .order("clock_in_time", {
+        ascending: false,
+      });
+
+    if (error) throw error;
+
+    return data || [];
+  },
+
+  /* CLOCK IN */
+  clockIn: async ({
+    location_id,
+    latitude,
+    longitude,
+  }) => {
+    const {
+      data: authData,
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError) throw authError;
+
+    const userId =
+      authData?.user?.id;
+
+    if (!userId) {
+      throw new Error(
+        "No logged in user"
+      );
+    }
+
+    /* stop duplicate active shift */
+    const existing =
+      await supabase
+        .from("shifts")
+        .select("id")
+        .eq("user_id", userId)
+        .is(
+          "clock_out_time",
+          null
+        )
+        .maybeSingle();
+
+    if (existing.data) {
+      return await shiftAPI.getActive();
+    }
+
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("shifts")
+      .insert({
+        user_id: userId,
+        location_id,
+        latitude,
+        longitude,
+        clock_in_time:
+          new Date()
+            .toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return data;
+  },
+
+  /* CLOCK OUT */
+  clockOut: async () => {
+    const active =
+      await shiftAPI.getActive();
+
+    if (!active) return true;
+
+    const now =
+      new Date();
+
+    const start =
+      new Date(
+        active.clock_in_time
+      );
+
+    const totalSeconds =
+      Math.floor(
+        (now - start) / 1000
+      );
+
+    const {
+      error,
+    } = await supabase
+      .from("shifts")
+      .update({
+        clock_out_time:
+          now.toISOString(),
+        total_seconds:
+          totalSeconds,
+      })
+      .eq("id", active.id);
+
+    if (error) throw error;
+
+    return true;
+  },
+
+  /* LIVE GPS UPDATE */
   updateLocation:
-    async () => true,
+    async ({
+      latitude,
+      longitude,
+    }) => {
+      const active =
+        await shiftAPI.getActive();
+
+      if (!active) return true;
+
+      const {
+        error,
+      } = await supabase
+        .from("shifts")
+        .update({
+          latitude,
+          longitude,
+        })
+        .eq(
+          "id",
+          active.id
+        );
+
+      if (error)
+        throw error;
+
+      return true;
+    },
+
+  /* HISTORY */
+  getHistory:
+    async () => {
+      const {
+        data: authData,
+      } =
+        await supabase.auth.getUser();
+
+      const userId =
+        authData?.user?.id;
+
+      if (!userId)
+        return [];
+
+      const {
+        data,
+        error,
+      } =
+        await supabase
+          .from("shifts")
+          .select("*")
+          .eq(
+            "user_id",
+            userId
+          )
+          .order(
+            "clock_in_time",
+            {
+              ascending:
+                false,
+            }
+          );
+
+      if (error)
+        throw error;
+
+      return data || [];
+    },
 };
 
 /* =========================================================
