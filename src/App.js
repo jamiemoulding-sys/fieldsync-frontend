@@ -39,11 +39,8 @@ import Profile from "./pages/Profile";
 import Success from "./pages/Success";
 import AppLayout from "./layout/AppLayout";
 
-function ProtectedRoute({
-  children,
-}) {
-  const { user, loading } =
-    useAuth();
+function ProtectedRoute({ children }) {
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -54,50 +51,23 @@ function ProtectedRoute({
   }
 
   if (!user) {
-    return (
-      <Navigate
-        to="/login"
-        replace
-      />
-    );
+    return <Navigate to="/login" replace />;
   }
 
   return children;
 }
 
-function RoleRoute({
-  roles,
-  children,
-}) {
-  const {
-    user,
-    loading,
-  } = useAuth();
+function RoleRoute({ roles, children }) {
+  const { user, loading } = useAuth();
 
-  if (loading) {
-    return null;
-  }
+  if (loading) return null;
 
   if (!user) {
-    return (
-      <Navigate
-        to="/login"
-        replace
-      />
-    );
+    return <Navigate to="/login" replace />;
   }
 
-  if (
-    !roles.includes(
-      user.role
-    )
-  ) {
-    return (
-      <Navigate
-        to="/dashboard"
-        replace
-      />
-    );
+  if (!roles.includes(user.role)) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;
@@ -107,36 +77,12 @@ export default function App() {
   return (
     <Router>
       <Routes>
-
         {/* PUBLIC */}
-        <Route
-          path="/"
-          element={<Landing />}
-        />
-
-        <Route
-          path="/signup"
-          element={<Signup />}
-        />
-
-        <Route
-          path="/login"
-          element={<Login />}
-        />
-
-        <Route
-          path="/set-password"
-          element={
-            <SetPassword />
-          }
-        />
-
-        <Route
-          path="/reset-password"
-          element={
-            <ResetPassword />
-          }
-        />
+        <Route path="/" element={<Landing />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/set-password" element={<SetPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* PRIVATE */}
         <Route
@@ -146,68 +92,22 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-
           {/* CORE */}
-          <Route
-            path="/dashboard"
-            element={
-              <Dashboard />
-            }
-          />
-
-          <Route
-            path="/tasks"
-            element={
-              <Tasks />
-            }
-          />
-
-          <Route
-            path="/work-session"
-            element={
-              <WorkSession />
-            }
-          />
-
-          <Route
-            path="/timesheet"
-            element={
-              <TimeSheet />
-            }
-          />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/tasks" element={<Tasks />} />
+          <Route path="/work-session" element={<WorkSession />} />
+          <Route path="/timesheet" element={<TimeSheet />} />
 
           {/* EMPLOYEE */}
-          <Route
-            path="/my-schedule"
-            element={
-              <MySchedule />
-            }
-          />
-
-          <Route
-            path="/my-holiday"
-            element={
-              <MyHoliday />
-            }
-          />
-
-          <Route
-            path="/my-locations"
-            element={
-              <MyLocations />
-            }
-          />
+          <Route path="/my-schedule" element={<MySchedule />} />
+          <Route path="/my-holidays" element={<MyHoliday />} />
+          <Route path="/my-locations" element={<MyLocations />} />
 
           {/* MANAGEMENT */}
           <Route
             path="/schedule"
             element={
-              <RoleRoute
-                roles={[
-                  "manager",
-                  "admin",
-                ]}
-              >
+              <RoleRoute roles={["manager", "admin"]}>
                 <Schedule />
               </RoleRoute>
             }
@@ -216,12 +116,7 @@ export default function App() {
           <Route
             path="/calendar"
             element={
-              <RoleRoute
-                roles={[
-                  "manager",
-                  "admin",
-                ]}
-              >
+              <RoleRoute roles={["manager", "admin"]}>
                 <ScheduleCalendar />
               </RoleRoute>
             }
@@ -230,12 +125,7 @@ export default function App() {
           <Route
             path="/holiday-requests"
             element={
-              <RoleRoute
-                roles={[
-                  "manager",
-                  "admin",
-                ]}
-              >
+              <RoleRoute roles={["manager", "admin"]}>
                 <HolidayRequests />
               </RoleRoute>
             }
@@ -244,12 +134,7 @@ export default function App() {
           <Route
             path="/announcements"
             element={
-              <RoleRoute
-                roles={[
-                  "manager",
-                  "admin",
-                ]}
-              >
+              <RoleRoute roles={["manager", "admin"]}>
                 <Announcements />
               </RoleRoute>
             }
@@ -258,12 +143,7 @@ export default function App() {
           <Route
             path="/employees"
             element={
-              <RoleRoute
-                roles={[
-                  "manager",
-                  "admin",
-                ]}
-              >
+              <RoleRoute roles={["manager", "admin"]}>
                 <Employees />
               </RoleRoute>
             }
@@ -272,12 +152,7 @@ export default function App() {
           <Route
             path="/locations"
             element={
-              <RoleRoute
-                roles={[
-                  "manager",
-                  "admin",
-                ]}
-              >
+              <RoleRoute roles={["manager", "admin"]}>
                 <Locations />
               </RoleRoute>
             }
@@ -286,11 +161,7 @@ export default function App() {
           <Route
             path="/reports"
             element={
-              <RoleRoute
-                roles={[
-                  "admin",
-                ]}
-              >
+              <RoleRoute roles={["admin"]}>
                 <Reports />
               </RoleRoute>
             }
@@ -299,12 +170,7 @@ export default function App() {
           <Route
             path="/performance"
             element={
-              <RoleRoute
-                roles={[
-                  "manager",
-                  "admin",
-                ]}
-              >
+              <RoleRoute roles={["manager", "admin"]}>
                 <Performance />
               </RoleRoute>
             }
@@ -313,11 +179,7 @@ export default function App() {
           <Route
             path="/billing"
             element={
-              <RoleRoute
-                roles={[
-                  "admin",
-                ]}
-              >
+              <RoleRoute roles={["admin"]}>
                 <Billing />
               </RoleRoute>
             }
@@ -326,30 +188,17 @@ export default function App() {
           <Route
             path="/billing-success"
             element={
-              <Success />
+              <RoleRoute roles={["admin"]}>
+                <Success />
+              </RoleRoute>
             }
           />
 
-          <Route
-            path="/profile"
-            element={
-              <Profile />
-            }
-          />
-
+          <Route path="/profile" element={<Profile />} />
         </Route>
 
         {/* FALLBACK */}
-        <Route
-          path="*"
-          element={
-            <Navigate
-              to="/"
-              replace
-            />
-          }
-        />
-
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );
