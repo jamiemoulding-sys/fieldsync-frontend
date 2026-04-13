@@ -1,7 +1,10 @@
 /* =========================================================
    src/hooks/useAuth.js
-   FULL PERMANENT FIX
-   Uses shared Supabase client only
+   FULL FIXED FRONTEND VERSION
+   - Uses shared Supabase client
+   - Removed company_name column dependency
+   - Stable auth listener
+   - Clean session handling
 ========================================================= */
 
 import {
@@ -61,9 +64,8 @@ export function useAuth() {
         profile.company_id ||
         null,
 
-      companyName:
-        profile.company_name ||
-        "",
+      /* REMOVED old company_name column */
+      companyName: "",
 
       jobTitle:
         profile.job_title ||
@@ -129,7 +131,7 @@ export function useAuth() {
 
           if (error) {
             console.error(
-              "PROFILE ERROR:",
+              "PROFILE LOAD ERROR:",
               error
             );
           }
@@ -143,6 +145,7 @@ export function useAuth() {
           setUser(
             finalUser
           );
+
         } catch (err) {
           console.error(
             "AUTH LOAD ERROR:",
@@ -150,6 +153,7 @@ export function useAuth() {
           );
 
           setUser(null);
+
         } finally {
           setLoading(false);
         }
@@ -176,7 +180,9 @@ export function useAuth() {
             event ===
               "SIGNED_IN" ||
             event ===
-              "TOKEN_REFRESHED"
+              "TOKEN_REFRESHED" ||
+            event ===
+              "USER_UPDATED"
           ) {
             loadUser();
           }
@@ -211,7 +217,8 @@ export function useAuth() {
       } =
         await supabase.auth.signInWithPassword(
           {
-            email,
+            email:
+              email.trim(),
             password,
           }
         );
@@ -241,11 +248,13 @@ export function useAuth() {
       } =
         await supabase.auth.signUp(
           {
-            email,
+            email:
+              email.trim(),
             password,
             options: {
               data: {
-                name,
+                name:
+                  name || "",
               },
             },
           }
@@ -303,6 +312,10 @@ export function useAuth() {
 
       await loadUser();
     };
+
+  /* =====================================
+     EXPORTS
+  ===================================== */
 
   return {
     user,
