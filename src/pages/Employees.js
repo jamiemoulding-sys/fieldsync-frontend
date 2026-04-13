@@ -22,6 +22,7 @@ import {
   Trash2,
   UserPlus,
   Crown,
+  User,
 } from "lucide-react";
 
 export default function Employees() {
@@ -52,9 +53,6 @@ export default function Employees() {
   const [inviteRole, setInviteRole] =
     useState("employee");
 
-  /* =====================================
-     LOAD USERS
-  ===================================== */
   useEffect(() => {
     loadEmployees();
   }, []);
@@ -62,33 +60,25 @@ export default function Employees() {
   useEffect(() => {
     let data = [...employees];
 
-    if (
-      roleFilter !== "all"
-    ) {
-      data =
-        data.filter(
-          (u) =>
-            u.role ===
-            roleFilter
-        );
+    if (roleFilter !== "all") {
+      data = data.filter(
+        (u) => u.role === roleFilter
+      );
     }
 
-    if (
-      search.trim()
-    ) {
+    if (search.trim()) {
       const q =
         search.toLowerCase();
 
-      data =
-        data.filter(
-          (u) =>
-            u.email
-              ?.toLowerCase()
-              .includes(q) ||
-            u.name
-              ?.toLowerCase()
-              .includes(q)
-        );
+      data = data.filter(
+        (u) =>
+          u.email
+            ?.toLowerCase()
+            .includes(q) ||
+          u.name
+            ?.toLowerCase()
+            .includes(q)
+      );
     }
 
     setFiltered(data);
@@ -107,26 +97,19 @@ export default function Employees() {
           await userAPI.getAll();
 
         setEmployees(
-          Array.isArray(
-            data
-          )
+          Array.isArray(data)
             ? data
             : []
         );
-
       } catch {
         alert(
           "Failed to load staff"
         );
-
       } finally {
         setLoading(false);
       }
     };
 
-  /* =====================================
-     UPDATE ROLE
-  ===================================== */
   const updateRole =
     async (
       id,
@@ -139,7 +122,6 @@ export default function Employees() {
         );
 
         loadEmployees();
-
       } catch {
         alert(
           "Failed to update role"
@@ -147,25 +129,18 @@ export default function Employees() {
       }
     };
 
-  /* =====================================
-     DELETE USER
-  ===================================== */
   const removeUser =
     async (id) => {
-      const ok =
-        window.confirm(
+      if (
+        !window.confirm(
           "Delete this employee?"
-        );
-
-      if (!ok) return;
+        )
+      )
+        return;
 
       try {
-        await userAPI.delete(
-          id
-        );
-
+        await userAPI.delete(id);
         loadEmployees();
-
       } catch {
         alert(
           "Delete failed"
@@ -173,28 +148,21 @@ export default function Employees() {
       }
     };
 
-  /* =====================================
-     SEND INVITE
-  ===================================== */
   const sendInvite =
     async () => {
       try {
-        if (
-          !inviteEmail
-        ) {
+        if (!inviteEmail) {
           return alert(
             "Enter email"
           );
         }
 
-        await inviteAPI.send(
-          {
-            email:
-              inviteEmail,
-            role:
-              inviteRole,
-          }
-        );
+        await inviteAPI.send({
+          email:
+            inviteEmail,
+          role:
+            inviteRole,
+        });
 
         alert(
           "Invite sent"
@@ -211,7 +179,6 @@ export default function Employees() {
         setInviteRole(
           "employee"
         );
-
       } catch {
         alert(
           "Invite failed"
@@ -232,10 +199,8 @@ export default function Employees() {
 
   return (
     <div className="space-y-6">
-
       {/* HEADER */}
       <div className="flex justify-between items-center flex-wrap gap-4">
-
         <div>
           <h1 className="text-2xl font-semibold flex items-center gap-2">
             <Users size={22} />
@@ -260,12 +225,10 @@ export default function Employees() {
           />
           Invite
         </button>
-
       </div>
 
       {/* FILTERS */}
       <div className="grid md:grid-cols-2 gap-3">
-
         <div className="relative">
           <Search
             size={16}
@@ -276,12 +239,11 @@ export default function Employees() {
             value={search}
             onChange={(e) =>
               setSearch(
-                e.target
-                  .value
+                e.target.value
               )
             }
             placeholder="Search employee..."
-            className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/5 border border-white/10"
+            className="w-full pl-11 pr-4 py-3 rounded-xl bg-[#020617] border border-white/10 text-white"
           />
         </div>
 
@@ -291,11 +253,10 @@ export default function Employees() {
           }
           onChange={(e) =>
             setRoleFilter(
-              e.target
-                .value
+              e.target.value
             )
           }
-          className="rounded-xl bg-white/5 border border-white/10 px-4 py-3"
+          className="rounded-xl bg-[#020617] border border-white/10 px-4 py-3 text-white"
         >
           <option value="all">
             All Roles
@@ -313,14 +274,11 @@ export default function Employees() {
             Admin
           </option>
         </select>
-
       </div>
 
       {/* TABLE */}
       <div className="rounded-2xl overflow-hidden border border-white/10 bg-[#020617]">
-
         <table className="w-full text-sm">
-
           <thead className="bg-white/5 text-gray-400">
             <tr>
               <th className="text-left p-4">
@@ -338,7 +296,6 @@ export default function Employees() {
           </thead>
 
           <tbody>
-
             {!loading &&
               filtered.map(
                 (
@@ -365,9 +322,7 @@ export default function Employees() {
                     className="border-t border-white/5 hover:bg-white/5"
                   >
                     <td className="p-4">
-
                       <div className="flex items-center gap-3">
-
                         <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-semibold">
                           {(
                             emp.name ||
@@ -380,7 +335,7 @@ export default function Employees() {
                         </div>
 
                         <div>
-                          <p>
+                          <p className="text-white">
                             {emp.name ||
                               "Unnamed"}
                           </p>
@@ -391,13 +346,10 @@ export default function Employees() {
                             }
                           </p>
                         </div>
-
                       </div>
-
                     </td>
 
                     <td className="p-4">
-
                       {emp.id ===
                       user?.id ? (
                         <RoleBadge
@@ -420,7 +372,7 @@ export default function Employees() {
                                 .value
                             )
                           }
-                          className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs"
+                          className="bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-white text-xs min-w-[130px]"
                         >
                           <option value="employee">
                             Employee
@@ -435,11 +387,9 @@ export default function Employees() {
                           </option>
                         </select>
                       )}
-
                     </td>
 
                     <td className="p-4">
-
                       {emp.id !==
                         user?.id && (
                         <button
@@ -457,15 +407,11 @@ export default function Employees() {
                           />
                         </button>
                       )}
-
                     </td>
-
                   </motion.tr>
                 )
               )}
-
           </tbody>
-
         </table>
 
         {!loading &&
@@ -481,15 +427,12 @@ export default function Employees() {
             Loading...
           </div>
         )}
-
       </div>
 
-      {/* INVITE MODAL */}
+      {/* MODAL */}
       {inviteOpen && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-6">
-
           <div className="w-full max-w-md rounded-2xl bg-[#020617] border border-white/10 p-6 space-y-4">
-
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Mail size={18} />
               Invite Employee
@@ -506,7 +449,7 @@ export default function Employees() {
                 )
               }
               placeholder="Email"
-              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10"
+              className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-white/10 text-white"
             />
 
             <select
@@ -519,7 +462,7 @@ export default function Employees() {
                     .value
                 )
               }
-              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10"
+              className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-white/10 text-white"
             >
               <option value="employee">
                 Employee
@@ -553,12 +496,9 @@ export default function Employees() {
             >
               Cancel
             </button>
-
           </div>
-
         </div>
       )}
-
     </div>
   );
 }
@@ -572,7 +512,7 @@ function RoleBadge({
     manager:
       "bg-indigo-500/20 text-indigo-400",
     employee:
-      "bg-gray-500/20 text-gray-400",
+      "bg-emerald-500/20 text-emerald-400",
   };
 
   const icons = {
@@ -581,12 +521,12 @@ function RoleBadge({
     manager:
       <Shield size={12} />,
     employee:
-      <Users size={12} />,
+      <User size={12} />,
   };
 
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${map[role]}`}
+      className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs capitalize ${map[role]}`}
     >
       {icons[role]}
       {role}

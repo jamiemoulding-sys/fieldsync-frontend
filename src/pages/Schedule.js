@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { userAPI, scheduleAPI } from "../services/api";
 import { motion } from "framer-motion";
 import {
@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  CheckCircle2,
 } from "lucide-react";
 
 export default function Schedule() {
@@ -20,15 +21,34 @@ export default function Schedule() {
   const [view, setView] = useState("calendar");
   const [search, setSearch] = useState("");
 
-  const [selectedUsers, setSelectedUsers] = useState([]);
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [start, setStart] = useState("");
-  const [end, setEnd] = useState("");
+  const [selectedUsers, setSelectedUsers] =
+    useState([]);
 
-  const [currentMonth, setCurrentMonth] = useState(
-    new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-  );
+  const [startDate, setStartDate] =
+    useState("");
+
+  const [endDate, setEndDate] =
+    useState("");
+
+  const [start, setStart] =
+    useState("");
+
+  const [end, setEnd] =
+    useState("");
+
+  const [creating, setCreating] =
+    useState(false);
+
+  const today = new Date();
+
+  const [currentMonth, setCurrentMonth] =
+    useState(
+      new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        1
+      )
+    );
 
   useEffect(() => {
     loadData();
@@ -38,19 +58,35 @@ export default function Schedule() {
     try {
       setLoading(true);
 
-      const [usersData, scheduleData] = await Promise.all([
-        userAPI.getAll(),
-        scheduleAPI.getAll(),
-      ]);
+      const [usersData, rotaData] =
+        await Promise.all([
+          userAPI.getAll(),
+          scheduleAPI.getAll(),
+        ]);
 
-      setUsers(Array.isArray(usersData) ? usersData : []);
-      setSchedules(Array.isArray(scheduleData) ? scheduleData : []);
+      setUsers(
+        Array.isArray(usersData)
+          ? usersData
+          : []
+      );
+
+      setSchedules(
+        Array.isArray(rotaData)
+          ? rotaData
+          : []
+      );
     } catch (err) {
       console.error(err);
+      setUsers([]);
+      setSchedules([]);
     } finally {
       setLoading(false);
     }
   };
+
+  /* ===================================
+     BULK FIX
+  =================================== */
 
   const createSchedule = async () => {
     if (
@@ -63,27 +99,56 @@ export default function Schedule() {
       return alert("Fill all fields");
     }
 
+    if (
+      new Date(startDate) >
+      new Date(endDate)
+    ) {
+      return alert(
+        "End date must be after start date"
+      );
+    }
+
     try {
-      let current = new Date(startDate);
-      const finish = new Date(endDate);
+      setCreating(true);
+
+      let current = new Date(
+        startDate + "T00:00:00"
+      );
+
+      const finish = new Date(
+        endDate + "T00:00:00"
+      );
 
       const requests = [];
 
       while (current <= finish) {
-        const dateStr = current.toISOString().split("T")[0];
+        const y =
+          current.getFullYear();
 
-        selectedUsers.forEach((userId) => {
+        const m = String(
+          current.getMonth() + 1
+        ).padStart(2, "0");
+
+        const d = String(
+          current.getDate()
+        ).padStart(2, "0");
+
+        const dateStr = `${y}-${m}-${d}`;
+
+        for (const userId of selectedUsers) {
           requests.push(
             scheduleAPI.create({
               user_id: userId,
               date: dateStr,
-              start_time: `${dateStr}T${start}`,
-              end_time: `${dateStr}T${end}`,
+              start_time: `${dateStr}T${start}:00`,
+              end_time: `${dateStr}T${end}:00`,
             })
           );
-        });
+        }
 
-        current.setDate(current.getDate() + 1);
+        current.setDate(
+          current.getDate() + 1
+        );
       }
 
       await Promise.all(requests);
@@ -94,10 +159,18 @@ export default function Schedule() {
       setStart("");
       setEnd("");
 
-      loadData();
+      await loadData();
+
+      alert(
+        "Bulk shifts created successfully"
+      );
     } catch (err) {
       console.error(err);
-      alert("Failed to create shifts");
+      alert(
+        "Failed to create shifts"
+      );
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -111,8 +184,14 @@ export default function Schedule() {
   };
 
   const changeMonth = (dir) => {
-    const next = new Date(currentMonth);
-    next.setMonth(next.getMonth() + dir);
+    const next = new Date(
+      currentMonth
+    );
+
+    next.setMonth(
+      next.getMonth() + dir
+    );
+
     setCurrentMonth(next);
   };
 
@@ -124,7 +203,11 @@ export default function Schedule() {
 
   const days = [];
 
-  for (let i = 1; i <= endOfMonth.getDate(); i++) {
+  for (
+    let i = 1;
+    i <= endOfMonth.getDate();
+    i++
+  ) {
     days.push(
       new Date(
         currentMonth.getFullYear(),
@@ -135,27 +218,46 @@ export default function Schedule() {
   }
 
   const getShiftsForDay = (day) => {
-    return schedules.filter(
-      (s) =>
-        new Date(s.date).toDateString() ===
+    return schedules.filter((s) => {
+      const shiftDate = new Date(
+        s.date + "T00:00:00"
+      );
+
+      return (
+        shiftDate.toDateString() ===
         day.toDateString()
-    );
+      );
+    });
   };
 
-  const filteredSchedules = schedules.filter((s) =>
-    `${s.name || ""}`
-      .toLowerCase()
-      .includes(search.toLowerCase())
+  const filteredSchedules = useMemo(
+    () =>
+      schedules.filter((s) =>
+        `${s.name || ""}`
+          .toLowerCase()
+          .includes(
+            search.toLowerCase()
+          )
+      ),
+    [schedules, search]
   );
 
-  const totalShifts = schedules.length;
+  const totalShifts =
+    schedules.length;
+
   const totalStaff = users.length;
 
-  const todayShifts = schedules.filter(
-    (s) =>
-      new Date(s.date).toDateString() ===
-      new Date().toDateString()
-  ).length;
+  const todayShifts =
+    schedules.filter((s) => {
+      const shiftDate = new Date(
+        s.date + "T00:00:00"
+      );
+
+      return (
+        shiftDate.toDateString() ===
+        new Date().toDateString()
+      );
+    }).length;
 
   if (loading) {
     return (
@@ -181,9 +283,14 @@ export default function Schedule() {
 
         <div className="flex gap-2">
           <button
-            onClick={() => setView("calendar")}
+            onClick={() =>
+              setView(
+                "calendar"
+              )
+            }
             className={`px-4 py-2 rounded-xl text-sm ${
-              view === "calendar"
+              view ===
+              "calendar"
                 ? "bg-indigo-600"
                 : "bg-white/5"
             }`}
@@ -192,7 +299,9 @@ export default function Schedule() {
           </button>
 
           <button
-            onClick={() => setView("grid")}
+            onClick={() =>
+              setView("grid")
+            }
             className={`px-4 py-2 rounded-xl text-sm ${
               view === "grid"
                 ? "bg-indigo-600"
@@ -205,7 +314,7 @@ export default function Schedule() {
       </div>
 
       {/* KPI */}
-      <div className="grid md:grid-cols-3 gap-4">
+      <div className="grid md:grid-cols-4 gap-4">
         <StatCard
           title="Total Staff"
           value={totalStaff}
@@ -221,88 +330,116 @@ export default function Schedule() {
         <StatCard
           title="Total Shifts"
           value={totalShifts}
-          icon={<CalendarDays size={16} />}
+          icon={
+            <CalendarDays
+              size={16}
+            />
+          }
+        />
+
+        <StatCard
+          title="Ready"
+          value="Live"
+          icon={
+            <CheckCircle2
+              size={16}
+            />
+          }
         />
       </div>
 
-      {/* CREATE */}
-      <div className="rounded-2xl p-[1px] bg-gradient-to-b from-white/10 to-transparent">
-        <div className="bg-[#020617] border border-white/10 rounded-2xl p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Plus size={16} />
-            <h3 className="font-medium">
-              Bulk Assign Shifts
-            </h3>
-          </div>
+      {/* BULK CREATE */}
+      <div className="rounded-2xl border border-white/10 bg-[#020617] p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Plus size={16} />
 
-          <div className="grid md:grid-cols-5 gap-3">
-            <select
-              multiple
-              value={selectedUsers}
-              onChange={(e) =>
-                setSelectedUsers(
-                  Array.from(
-                    e.target.selectedOptions,
-                    (o) => o.value
-                  )
-                )
-              }
-              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 h-36"
-            >
-              {users.map((u) => (
-                <option
-                  key={u.id}
-                  value={u.id}
-                >
-                  {u.name}
-                </option>
-              ))}
-            </select>
-
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) =>
-                setStartDate(e.target.value)
-              }
-              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2"
-            />
-
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) =>
-                setEndDate(e.target.value)
-              }
-              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2"
-            />
-
-            <input
-              type="time"
-              value={start}
-              onChange={(e) =>
-                setStart(e.target.value)
-              }
-              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2"
-            />
-
-            <input
-              type="time"
-              value={end}
-              onChange={(e) =>
-                setEnd(e.target.value)
-              }
-              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2"
-            />
-          </div>
-
-          <button
-            onClick={createSchedule}
-            className="w-full mt-4 bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-medium"
-          >
-            Create Bulk Shifts
-          </button>
+          <h3 className="font-medium">
+            Bulk Assign Shifts
+          </h3>
         </div>
+
+        <div className="grid md:grid-cols-5 gap-3">
+          <select
+            multiple
+            value={selectedUsers}
+            onChange={(e) =>
+              setSelectedUsers(
+                Array.from(
+                  e.target
+                    .selectedOptions,
+                  (o) =>
+                    o.value
+                )
+              )
+            }
+            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 h-36"
+          >
+            {users.map((u) => (
+              <option
+                key={u.id}
+                value={u.id}
+              >
+                {u.name}
+              </option>
+            ))}
+          </select>
+
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) =>
+              setStartDate(
+                e.target.value
+              )
+            }
+            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2"
+          />
+
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) =>
+              setEndDate(
+                e.target.value
+              )
+            }
+            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2"
+          />
+
+          <input
+            type="time"
+            value={start}
+            onChange={(e) =>
+              setStart(
+                e.target.value
+              )
+            }
+            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2"
+          />
+
+          <input
+            type="time"
+            value={end}
+            onChange={(e) =>
+              setEnd(
+                e.target.value
+              )
+            }
+            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2"
+          />
+        </div>
+
+        <button
+          onClick={
+            createSchedule
+          }
+          disabled={creating}
+          className="w-full mt-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 py-3 rounded-xl font-medium"
+        >
+          {creating
+            ? "Creating..."
+            : "Create Bulk Shifts"}
+        </button>
       </div>
 
       {/* SEARCH */}
@@ -316,7 +453,9 @@ export default function Schedule() {
           placeholder="Search employee..."
           value={search}
           onChange={(e) =>
-            setSearch(e.target.value)
+            setSearch(
+              e.target.value
+            )
           }
           className="w-full bg-[#020617] border border-white/10 rounded-2xl pl-11 pr-4 py-3"
         />
@@ -325,23 +464,25 @@ export default function Schedule() {
       {/* GRID */}
       {view === "grid" && (
         <div className="grid md:grid-cols-3 gap-4">
-          {filteredSchedules.map((s, i) => (
-            <motion.div
-              key={s.id}
-              initial={{
-                opacity: 0,
-                y: 20,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
-              transition={{
-                delay: i * 0.03,
-              }}
-              className="rounded-2xl p-[1px] bg-gradient-to-b from-white/10 to-transparent"
-            >
-              <div className="bg-[#020617] border border-white/10 rounded-2xl p-4">
+          {filteredSchedules.map(
+            (s, i) => (
+              <motion.div
+                key={s.id}
+                initial={{
+                  opacity: 0,
+                  y: 10,
+                }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                }}
+                transition={{
+                  delay:
+                    i *
+                    0.02,
+                }}
+                className="rounded-2xl border border-white/10 bg-[#020617] p-4"
+              >
                 <div className="flex justify-between">
                   <div>
                     <p className="font-medium">
@@ -350,98 +491,145 @@ export default function Schedule() {
 
                     <p className="text-xs text-gray-400 mt-1">
                       {new Date(
-                        s.date
-                      ).toLocaleDateString()}
+                        s.date +
+                          "T00:00:00"
+                      ).toLocaleDateString(
+                        "en-GB"
+                      )}
                     </p>
 
                     <p className="text-sm mt-2">
                       {new Date(
                         s.start_time
-                      ).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}{" "}
-                      -{" "}
+                      ).toLocaleTimeString(
+                        [],
+                        {
+                          hour:
+                            "2-digit",
+                          minute:
+                            "2-digit",
+                        }
+                      )}{" "}
+                      -
+                      {" "}
                       {new Date(
                         s.end_time
-                      ).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      ).toLocaleTimeString(
+                        [],
+                        {
+                          hour:
+                            "2-digit",
+                          minute:
+                            "2-digit",
+                        }
+                      )}
                     </p>
                   </div>
 
                   <button
                     onClick={() =>
-                      deleteShift(s.id)
+                      deleteShift(
+                        s.id
+                      )
                     }
                     className="text-red-400"
                   >
-                    <Trash2 size={16} />
+                    <Trash2
+                      size={16}
+                    />
                   </button>
                 </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            )
+          )}
         </div>
       )}
 
       {/* CALENDAR */}
-      {view === "calendar" && (
+      {view ===
+        "calendar" && (
         <div>
           <div className="flex justify-between items-center mb-4">
             <button
               onClick={() =>
-                changeMonth(-1)
+                changeMonth(
+                  -1
+                )
               }
               className="p-2 rounded-xl bg-white/5"
             >
-              <ChevronLeft size={18} />
+              <ChevronLeft
+                size={18}
+              />
             </button>
 
             <h3 className="font-medium">
               {currentMonth.toLocaleString(
                 "default",
-                { month: "long" }
+                {
+                  month:
+                    "long",
+                }
               )}{" "}
-              {currentMonth.getFullYear()}
+              {
+                currentMonth.getFullYear()
+              }
             </h3>
 
             <button
               onClick={() =>
-                changeMonth(1)
+                changeMonth(
+                  1
+                )
               }
               className="p-2 rounded-xl bg-white/5"
             >
-              <ChevronRight size={18} />
+              <ChevronRight
+                size={18}
+              />
             </button>
           </div>
 
           <div className="grid grid-cols-7 gap-2">
-            {days.map((day, i) => {
-              const shifts =
-                getShiftsForDay(day);
+            {days.map(
+              (
+                day,
+                i
+              ) => {
+                const shifts =
+                  getShiftsForDay(
+                    day
+                  );
 
-              return (
-                <div
-                  key={i}
-                  className="bg-[#020617] border border-white/10 rounded-xl p-2 min-h-[110px]"
-                >
-                  <div className="text-xs text-gray-500 mb-2">
-                    {day.getDate()}
-                  </div>
-
-                  {shifts.map((s) => (
-                    <div
-                      key={s.id}
-                      className="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded mb-1"
-                    >
-                      {s.name}
+                return (
+                  <div
+                    key={i}
+                    className="bg-[#020617] border border-white/10 rounded-xl p-2 min-h-[110px]"
+                  >
+                    <div className="text-xs text-gray-500 mb-2">
+                      {day.getDate()}
                     </div>
-                  ))}
-                </div>
-              );
-            })}
+
+                    {shifts.map(
+                      (
+                        s
+                      ) => (
+                        <div
+                          key={
+                            s.id
+                          }
+                          className="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded mb-1 truncate"
+                        >
+                          {
+                            s.name
+                          }
+                        </div>
+                      )
+                    )}
+                  </div>
+                );
+              }
+            )}
           </div>
         </div>
       )}
@@ -455,22 +643,20 @@ function StatCard({
   icon,
 }) {
   return (
-    <div className="rounded-2xl p-[1px] bg-gradient-to-b from-white/10 to-transparent">
-      <div className="bg-[#020617] border border-white/10 rounded-2xl p-4">
-        <div className="flex justify-between items-center">
-          <p className="text-xs text-gray-400">
-            {title}
-          </p>
+    <div className="rounded-2xl border border-white/10 bg-[#020617] p-4">
+      <div className="flex justify-between items-center">
+        <p className="text-xs text-gray-400">
+          {title}
+        </p>
 
-          <div className="text-indigo-400">
-            {icon}
-          </div>
+        <div className="text-indigo-400">
+          {icon}
         </div>
-
-        <h2 className="text-2xl font-semibold mt-2">
-          {value}
-        </h2>
       </div>
+
+      <h2 className="text-2xl font-semibold mt-2">
+        {value}
+      </h2>
     </div>
   );
 }

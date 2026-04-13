@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
-import api from "../services/api";
+import { billingAPI } from "../services/api";
 import { motion } from "framer-motion";
 import {
   Crown,
-  Check,
   Shield,
   Zap,
   BarChart3,
@@ -13,6 +12,7 @@ import {
   CreditCard,
   Sparkles,
   Clock3,
+  Check,
 } from "lucide-react";
 
 export default function Billing() {
@@ -25,11 +25,39 @@ export default function Billing() {
   const [timeLeft, setTimeLeft] =
     useState("");
 
-  /* =========================
-     COUNTDOWN TIMER
-  ========================= */
+  const [subscription, setSubscription] =
+    useState(null);
+
+  /* ====================================
+     LOAD SUBSCRIPTION
+  ==================================== */
 
   useEffect(() => {
+    loadBilling();
+  }, []);
+
+  const loadBilling = async () => {
+    try {
+      const data =
+        await billingAPI.getStatus();
+
+      setSubscription(data || null);
+    } catch {}
+  };
+
+  /* ====================================
+     TRIAL TIMER
+  ==================================== */
+
+  useEffect(() => {
+    if (
+      subscription?.plan &&
+      subscription?.status ===
+        "active"
+    ) {
+      return;
+    }
+
     const trialEnd =
       localStorage.getItem(
         "trial_ends_at"
@@ -95,12 +123,12 @@ export default function Billing() {
       }, 1000);
 
     return () =>
-      clearInterval(
-        timer
-      );
-  }, []);
+      clearInterval(timer);
+  }, [subscription]);
 
-  /* ========================= */
+  /* ====================================
+     ACTIONS
+  ==================================== */
 
   const handleUpgrade = async (
     plan
@@ -108,21 +136,16 @@ export default function Billing() {
     try {
       setLoadingPlan(plan);
 
-      const res = await api.post(
-        "/billing/create-checkout-session",
-        { plan }
-      );
-
-      if (!res.data?.url) {
-        alert(
-          "Something went wrong"
+      const res =
+        await billingAPI.checkout(
+          { plan }
         );
-        return;
-      }
 
-      window.location.href =
-        res.data.url;
-    } catch (err) {
+      if (res?.url) {
+        window.location.href =
+          res.url;
+      }
+    } catch {
       alert(
         "Checkout failed"
       );
@@ -139,19 +162,15 @@ export default function Billing() {
         );
 
         const res =
-          await api.post(
-            "/billing/portal"
-          );
+          await billingAPI.portal();
 
-        if (
-          res.data?.url
-        ) {
+        if (res?.url) {
           window.location.href =
-            res.data.url;
+            res.url;
         }
       } catch {
         alert(
-          "No active subscription yet"
+          "No active subscription"
         );
       } finally {
         setPortalLoading(
@@ -159,6 +178,10 @@ export default function Billing() {
         );
       }
     };
+
+  /* ====================================
+     PLANS
+  ==================================== */
 
   const plans = [
     {
@@ -173,6 +196,12 @@ export default function Billing() {
         <Users size={18} />
       ),
       featured: false,
+      features: [
+        "Staff scheduling",
+        "Clock in/out",
+        "Holiday requests",
+        "Basic reports",
+      ],
     },
 
     {
@@ -187,6 +216,13 @@ export default function Billing() {
         <Crown size={18} />
       ),
       featured: true,
+      features: [
+        "Everything in Starter",
+        "Advanced reports",
+        "Timesheets",
+        "Performance tools",
+        "Priority support",
+      ],
     },
 
     {
@@ -203,36 +239,61 @@ export default function Billing() {
         />
       ),
       featured: false,
+      features: [
+        "Everything in Pro",
+        "Multi-site management",
+        "Custom branding",
+        "Dedicated support",
+        "Enterprise controls",
+      ],
     },
   ];
 
   return (
     <div className="max-w-7xl mx-auto space-y-10">
-
       {/* HERO */}
       <div className="rounded-3xl p-[1px] bg-gradient-to-r from-indigo-500/30 via-purple-500/20 to-transparent">
-
         <div className="bg-[#020617] border border-white/10 rounded-3xl p-8 text-center">
-
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 text-sm mb-4">
             <Sparkles size={15} />
-            14 Day Full Access Trial
+
+            {subscription?.plan
+              ? "Active Subscription"
+              : "14 Day Full Access Trial"}
           </div>
 
           <h1 className="text-4xl font-semibold text-white">
-            Upgrade Your Business
+            Billing &
+            Subscription
           </h1>
 
           <p className="text-gray-400 mt-4 max-w-2xl mx-auto">
-            Try every premium feature free for 14 days.
+            Manage plans,
+            payments and
+            features.
           </p>
 
-          {/* TIMER */}
-          {timeLeft && (
+          {/* ACTIVE PLAN */}
+          {subscription?.plan ? (
             <div className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-green-500/10 text-green-400 font-medium">
-              <Clock3 size={16} />
-              {timeLeft}
+              <CreditCard
+                size={16}
+              />
+              {subscription.plan.toUpperCase()} •
+              Next payment{" "}
+              {
+                subscription.next_payment
+              }
             </div>
+          ) : (
+            timeLeft && (
+              <div className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-green-500/10 text-green-400 font-medium">
+                <Clock3
+                  size={16}
+                />
+                {timeLeft}
+              </div>
+            )
           )}
 
           <button
@@ -247,6 +308,7 @@ export default function Billing() {
             <CreditCard
               size={16}
             />
+
             {portalLoading
               ? "Loading..."
               : "Manage Billing"}
@@ -256,7 +318,6 @@ export default function Billing() {
 
       {/* FEATURES */}
       <div className="grid md:grid-cols-3 gap-4">
-
         <FeatureCard
           icon={
             <BarChart3
@@ -282,13 +343,12 @@ export default function Billing() {
             />
           }
           title="Secure"
-          text="Stripe protected billing."
+          text="Protected payments."
         />
       </div>
 
-      {/* PRICING */}
+      {/* PLANS */}
       <div className="grid lg:grid-cols-3 gap-6">
-
         {plans.map(
           (plan) => (
             <motion.div
@@ -305,7 +365,6 @@ export default function Billing() {
               }`}
             >
               <div className="bg-[#020617] border border-white/10 rounded-3xl p-6">
-
                 <div className="flex items-center gap-2 text-indigo-400 text-sm">
                   {
                     plan.icon
@@ -336,6 +395,29 @@ export default function Billing() {
                     plan.extra
                   }
                 </p>
+
+                {/* FEATURES */}
+                <div className="mt-5 space-y-2">
+                  {plan.features.map(
+                    (
+                      item,
+                      i
+                    ) => (
+                      <div
+                        key={i}
+                        className="flex items-center gap-2 text-sm text-gray-300"
+                      >
+                        <Check
+                          size={
+                            14
+                          }
+                          className="text-green-400"
+                        />
+                        {item}
+                      </div>
+                    )
+                  )}
+                </div>
 
                 <button
                   onClick={() =>
@@ -371,7 +453,7 @@ export default function Billing() {
                           16
                         }
                       />
-                      Start Trial
+                      Choose Plan
                     </>
                   )}
                 </button>
@@ -380,10 +462,6 @@ export default function Billing() {
           )
         )}
       </div>
-
-      <p className="text-center text-sm text-gray-500">
-        Trial ends automatically after 14 days.
-      </p>
     </div>
   );
 }

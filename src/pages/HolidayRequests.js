@@ -8,12 +8,25 @@ import {
   Clock3,
   ChevronLeft,
   ChevronRight,
+  Plus,
+  HeartPulse,
+  AlertTriangle,
 } from "lucide-react";
 
 export default function HolidayRequests() {
   const [requests, setRequests] = useState([]);
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
+
+  const [openModal, setOpenModal] = useState(false);
+
+  const [form, setForm] = useState({
+    name: "",
+    type: "holiday",
+    start_date: "",
+    end_date: "",
+    status: "approved",
+  });
 
   const today = new Date();
 
@@ -28,31 +41,64 @@ export default function HolidayRequests() {
   const load = async () => {
     try {
       setLoading(true);
+
       const data = await holidayAPI.getAll();
+
       setRequests(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
   const updateStatus = async (id, status) => {
-    try {
-      await holidayAPI.update(id, { status });
-      load();
-    } catch {
-      alert("Update failed");
-    }
+    await holidayAPI.update(id, { status });
+    load();
   };
 
-  const filtered = requests.filter((r) =>
-    filter === "all" ? true : r.status === filter
-  );
+  const createLeave = async () => {
+    if (
+      !form.name ||
+      !form.start_date ||
+      !form.end_date
+    ) {
+      return alert("Fill all fields");
+    }
 
-  const pending = requests.filter((r) => r.status === "pending").length;
-  const approved = requests.filter((r) => r.status === "approved").length;
-  const rejected = requests.filter((r) => r.status === "rejected").length;
+    await holidayAPI.create(form);
+
+    setOpenModal(false);
+
+    setForm({
+      name: "",
+      type: "holiday",
+      start_date: "",
+      end_date: "",
+      status: "approved",
+    });
+
+    load();
+  };
+
+  const filtered = requests.filter((r) => {
+    const statusMatch =
+      filter === "all"
+        ? true
+        : r.status === filter;
+
+    return statusMatch;
+  });
+
+  const pending = requests.filter(
+    (r) => r.status === "pending"
+  ).length;
+
+  const approved = requests.filter(
+    (r) => r.status === "approved"
+  ).length;
+
+  const rejected = requests.filter(
+    (r) => r.status === "rejected"
+  ).length;
 
   const endOfMonth = new Date(
     currentMonth.getFullYear(),
@@ -62,7 +108,11 @@ export default function HolidayRequests() {
 
   const days = [];
 
-  for (let i = 1; i <= endOfMonth.getDate(); i++) {
+  for (
+    let i = 1;
+    i <= endOfMonth.getDate();
+    i++
+  ) {
     days.push(
       new Date(
         currentMonth.getFullYear(),
@@ -74,50 +124,123 @@ export default function HolidayRequests() {
 
   const getRequestsForDay = (day) => {
     return filtered.filter((r) => {
-      const start = new Date(r.start_date);
-      const end = new Date(r.end_date);
-      return day >= start && day <= end;
+      const start = new Date(
+        r.start_date
+      );
+
+      const end = new Date(
+        r.end_date
+      );
+
+      return (
+        day >= start &&
+        day <= end
+      );
     });
   };
 
   const changeMonth = (dir) => {
-    const next = new Date(currentMonth);
-    next.setMonth(next.getMonth() + dir);
+    const next = new Date(
+      currentMonth
+    );
+
+    next.setMonth(
+      next.getMonth() + dir
+    );
+
     setCurrentMonth(next);
+  };
+
+  const getTypeStyle = (type) => {
+    if (type === "sickness")
+      return "bg-red-500/20 text-red-300";
+
+    if (
+      type === "unauthorised"
+    )
+      return "bg-orange-500/20 text-orange-300";
+
+    return "bg-blue-500/20 text-blue-300";
+  };
+
+  const getTypeIcon = (type) => {
+    if (type === "sickness")
+      return (
+        <HeartPulse size={12} />
+      );
+
+    if (
+      type === "unauthorised"
+    )
+      return (
+        <AlertTriangle
+          size={12}
+        />
+      );
+
+    return <CalendarDays size={12} />;
   };
 
   if (loading) {
     return (
       <div className="text-gray-400">
-        Loading holiday requests...
+        Loading leave requests...
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-
       {/* HEADER */}
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-semibold">
-            Holiday Requests
+            Leave Manager
           </h1>
+
           <p className="text-sm text-gray-400">
-            Approve leave & manage absences
+            Holidays, sickness &
+            absences
           </p>
         </div>
 
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="bg-white/5 border border-white/10 rounded-xl px-4 py-2"
-        >
-          <option value="all">All</option>
-          <option value="pending">Pending</option>
-          <option value="approved">Approved</option>
-          <option value="rejected">Rejected</option>
-        </select>
+        <div className="flex gap-2">
+          <select
+            value={filter}
+            onChange={(e) =>
+              setFilter(
+                e.target.value
+              )
+            }
+            className="bg-[#020617] border border-white/10 rounded-xl px-4 py-2"
+          >
+            <option value="all">
+              All
+            </option>
+
+            <option value="pending">
+              Pending
+            </option>
+
+            <option value="approved">
+              Approved
+            </option>
+
+            <option value="rejected">
+              Rejected
+            </option>
+          </select>
+
+          <button
+            onClick={() =>
+              setOpenModal(true)
+            }
+            className="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-xl flex items-center gap-2"
+          >
+            <Plus size={16} />
+            Add Leave
+          </button>
+        </div>
       </div>
 
       {/* KPI */}
@@ -125,18 +248,29 @@ export default function HolidayRequests() {
         <StatCard
           title="Total"
           value={requests.length}
-          icon={<CalendarDays size={16} />}
+          icon={
+            <CalendarDays
+              size={16}
+            />
+          }
         />
+
         <StatCard
           title="Pending"
           value={pending}
           icon={<Clock3 size={16} />}
         />
+
         <StatCard
           title="Approved"
           value={approved}
-          icon={<CheckCircle2 size={16} />}
+          icon={
+            <CheckCircle2
+              size={16}
+            />
+          }
         />
+
         <StatCard
           title="Rejected"
           value={rejected}
@@ -145,64 +279,82 @@ export default function HolidayRequests() {
       </div>
 
       {/* CALENDAR */}
-      <div className="rounded-2xl p-[1px] bg-gradient-to-b from-white/10 to-transparent">
-        <div className="bg-[#020617] border border-white/10 rounded-2xl p-5">
+      <div className="rounded-2xl border border-white/10 bg-[#020617] p-5">
+        <div className="flex justify-between items-center mb-5">
+          <button
+            onClick={() =>
+              changeMonth(-1)
+            }
+            className="p-2 rounded-xl bg-white/5"
+          >
+            <ChevronLeft
+              size={18}
+            />
+          </button>
 
-          <div className="flex justify-between items-center mb-5">
-            <button
-              onClick={() => changeMonth(-1)}
-              className="p-2 rounded-xl bg-white/5"
-            >
-              <ChevronLeft size={18} />
-            </button>
+          <h3 className="font-medium">
+            {currentMonth.toLocaleString(
+              "default",
+              {
+                month:
+                  "long",
+              }
+            )}{" "}
+            {
+              currentMonth.getFullYear()
+            }
+          </h3>
 
-            <h3 className="font-medium">
-              {currentMonth.toLocaleString("default", {
-                month: "long",
-              })}{" "}
-              {currentMonth.getFullYear()}
-            </h3>
+          <button
+            onClick={() =>
+              changeMonth(1)
+            }
+            className="p-2 rounded-xl bg-white/5"
+          >
+            <ChevronRight
+              size={18}
+            />
+          </button>
+        </div>
 
-            <button
-              onClick={() => changeMonth(1)}
-              className="p-2 rounded-xl bg-white/5"
-            >
-              <ChevronRight size={18} />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-7 gap-2">
-            {days.map((day, i) => {
-              const entries = getRequestsForDay(day);
-
-              return (
-                <div
-                  key={i}
-                  className="bg-white/5 rounded-xl p-2 min-h-[110px]"
-                >
-                  <div className="text-xs text-gray-500 mb-2">
-                    {day.getDate()}
-                  </div>
-
-                  {entries.map((r) => (
-                    <div
-                      key={r.id}
-                      className={`text-xs px-2 py-1 rounded mb-1 ${
-                        r.status === "approved"
-                          ? "bg-green-500/20 text-green-300"
-                          : r.status === "rejected"
-                          ? "bg-red-500/20 text-red-300"
-                          : "bg-yellow-500/20 text-yellow-300"
-                      }`}
-                    >
-                      {r.name}
-                    </div>
-                  ))}
-                </div>
+        <div className="grid grid-cols-7 gap-2">
+          {days.map((day, i) => {
+            const entries =
+              getRequestsForDay(
+                day
               );
-            })}
-          </div>
 
+            return (
+              <div
+                key={i}
+                className="bg-white/5 rounded-xl p-2 min-h-[110px]"
+              >
+                <div className="text-xs text-gray-500 mb-2">
+                  {day.getDate()}
+                </div>
+
+                {entries.map(
+                  (r) => (
+                    <div
+                      key={
+                        r.id
+                      }
+                      className={`text-xs px-2 py-1 rounded mb-1 flex items-center gap-1 ${getTypeStyle(
+                        r.type
+                      )}`}
+                    >
+                      {getTypeIcon(
+                        r.type
+                      )}
+                      {
+                        r.name
+                      }
+                    </div>
+                  )
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -211,112 +363,267 @@ export default function HolidayRequests() {
         <table className="w-full text-sm">
           <thead className="bg-white/5 text-gray-400">
             <tr>
-              <th className="text-left p-4">Employee</th>
-              <th className="text-left p-4">Dates</th>
-              <th className="text-left p-4">Status</th>
-              <th className="text-left p-4">Action</th>
+              <th className="text-left p-4">
+                Employee
+              </th>
+
+              <th className="text-left p-4">
+                Type
+              </th>
+
+              <th className="text-left p-4">
+                Dates
+              </th>
+
+              <th className="text-left p-4">
+                Status
+              </th>
+
+              <th className="text-left p-4">
+                Action
+              </th>
             </tr>
           </thead>
 
           <tbody>
-            {filtered.map((r, i) => (
-              <motion.tr
-                key={r.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.03 }}
-                className="border-t border-white/5 hover:bg-white/5"
-              >
-                <td className="p-4">{r.name}</td>
+            {filtered.map(
+              (
+                r,
+                i
+              ) => (
+                <motion.tr
+                  key={r.id}
+                  initial={{
+                    opacity: 0,
+                    y: 8,
+                  }}
+                  animate={{
+                    opacity: 1,
+                    y: 0,
+                  }}
+                  transition={{
+                    delay:
+                      i *
+                      0.03,
+                  }}
+                  className="border-t border-white/5"
+                >
+                  <td className="p-4">
+                    {r.name}
+                  </td>
 
-                <td className="p-4 text-gray-400">
-                  {format(r.start_date)} → {format(r.end_date)}
-                </td>
+                  <td className="p-4 capitalize">
+                    {r.type ||
+                      "holiday"}
+                  </td>
 
-                <td className="p-4">
-                  <Badge status={r.status} />
-                </td>
+                  <td className="p-4 text-gray-400">
+                    {format(
+                      r.start_date
+                    )}{" "}
+                    →{" "}
+                    {format(
+                      r.end_date
+                    )}
+                  </td>
 
-                <td className="p-4">
-                  {r.status === "pending" ? (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() =>
-                          updateStatus(r.id, "approved")
-                        }
-                        className="px-3 py-1 rounded-lg bg-green-600 hover:bg-green-500 text-xs"
-                      >
-                        Approve
-                      </button>
+                  <td className="p-4">
+                    <Badge
+                      status={
+                        r.status
+                      }
+                    />
+                  </td>
 
-                      <button
-                        onClick={() =>
-                          updateStatus(r.id, "rejected")
-                        }
-                        className="px-3 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-xs"
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  ) : (
-                    <span className="text-gray-500 text-xs">
-                      Complete
-                    </span>
-                  )}
-                </td>
-              </motion.tr>
-            ))}
+                  <td className="p-4">
+                    {r.status ===
+                    "pending" ? (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() =>
+                            updateStatus(
+                              r.id,
+                              "approved"
+                            )
+                          }
+                          className="px-3 py-1 rounded-lg bg-green-600 text-xs"
+                        >
+                          Approve
+                        </button>
+
+                        <button
+                          onClick={() =>
+                            updateStatus(
+                              r.id,
+                              "rejected"
+                            )
+                          }
+                          className="px-3 py-1 rounded-lg bg-red-600 text-xs"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-gray-500 text-xs">
+                        Complete
+                      </span>
+                    )}
+                  </td>
+                </motion.tr>
+              )
+            )}
           </tbody>
         </table>
-
-        {filtered.length === 0 && (
-          <div className="p-6 text-center text-gray-500">
-            No requests found
-          </div>
-        )}
       </div>
 
+      {/* MODAL */}
+      {openModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center px-6 z-50">
+          <div className="w-full max-w-md rounded-2xl bg-[#020617] border border-white/10 p-6 space-y-4">
+            <h2 className="text-lg font-semibold">
+              Add Leave
+            </h2>
+
+            <input
+              placeholder="Employee name"
+              value={form.name}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  name: e.target.value,
+                })
+              }
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10"
+            />
+
+            <select
+              value={form.type}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  type: e.target.value,
+                })
+              }
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10"
+            >
+              <option value="holiday">
+                Holiday
+              </option>
+
+              <option value="sickness">
+                Sickness
+              </option>
+
+              <option value="unauthorised">
+                Unauthorised
+              </option>
+            </select>
+
+            <input
+              type="date"
+              value={
+                form.start_date
+              }
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  start_date:
+                    e.target
+                      .value,
+                })
+              }
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10"
+            />
+
+            <input
+              type="date"
+              value={
+                form.end_date
+              }
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  end_date:
+                    e.target
+                      .value,
+                })
+              }
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10"
+            />
+
+            <button
+              onClick={
+                createLeave
+              }
+              className="w-full py-3 rounded-xl bg-indigo-600"
+            >
+              Save
+            </button>
+
+            <button
+              onClick={() =>
+                setOpenModal(
+                  false
+                )
+              }
+              className="w-full text-sm text-gray-400"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function format(date) {
-  return new Date(date).toLocaleDateString();
+  return new Date(
+    date
+  ).toLocaleDateString();
 }
 
-function Badge({ status }) {
+function Badge({
+  status,
+}) {
   const styles = {
-    pending: "bg-yellow-500/20 text-yellow-400",
-    approved: "bg-green-500/20 text-green-400",
-    rejected: "bg-red-500/20 text-red-400",
+    pending:
+      "bg-yellow-500/20 text-yellow-400",
+    approved:
+      "bg-green-500/20 text-green-400",
+    rejected:
+      "bg-red-500/20 text-red-400",
   };
 
   return (
     <span
-      className={`px-2 py-1 rounded-full text-xs ${styles[status]}`}
+      className={`px-2 py-1 rounded-full text-xs capitalize ${styles[status]}`}
     >
       {status}
     </span>
   );
 }
 
-function StatCard({ title, value, icon }) {
+function StatCard({
+  title,
+  value,
+  icon,
+}) {
   return (
-    <div className="rounded-2xl p-[1px] bg-gradient-to-b from-white/10 to-transparent">
-      <div className="bg-[#020617] border border-white/10 rounded-2xl p-4">
-        <div className="flex justify-between items-center">
-          <p className="text-xs text-gray-400">
-            {title}
-          </p>
-          <div className="text-indigo-400">
-            {icon}
-          </div>
-        </div>
+    <div className="rounded-2xl border border-white/10 bg-[#020617] p-4">
+      <div className="flex justify-between items-center">
+        <p className="text-xs text-gray-400">
+          {title}
+        </p>
 
-        <h2 className="text-2xl font-semibold mt-2">
-          {value}
-        </h2>
+        <div className="text-indigo-400">
+          {icon}
+        </div>
       </div>
+
+      <h2 className="text-2xl font-semibold mt-2">
+        {value}
+      </h2>
     </div>
   );
 }
