@@ -4,13 +4,22 @@ import axios from "axios";
 import { createClient } from "@supabase/supabase-js";
 
 /* =========================================
-AXIOS API CLIENT
+AXIOS API CLIENT (FIXED FOR BILLING AUTH)
 ========================================= */
 
 const api = axios.create({
-  baseURL:
-    process.env.REACT_APP_API_URL || "",
+  baseURL: process.env.REACT_APP_API_URL || "",
   withCredentials: true,
+});
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  return config;
 });
 
 /* =========================================
@@ -28,45 +37,37 @@ ANNOUNCEMENTS
 
 export const announcementAPI = {
   getAll: async () => {
-    const { data, error } =
-      await supabase
-        .from("announcements")
-        .select("*")
-        .order("created_at", {
-          ascending: false,
-        });
+    const { data, error } = await supabase
+      .from("announcements")
+      .select("*")
+      .order("created_at", { ascending: false });
 
     if (error) throw error;
-
     return data || [];
   },
 
   create: async (payload) => {
-    const { error } =
-      await supabase
-        .from("announcements")
-        .insert(payload);
+    const { error } = await supabase
+      .from("announcements")
+      .insert(payload);
 
     if (error) throw error;
-
     return true;
   },
 
   delete: async (id) => {
-    const { error } =
-      await supabase
-        .from("announcements")
-        .delete()
-        .eq("id", id);
+    const { error } = await supabase
+      .from("announcements")
+      .delete()
+      .eq("id", id);
 
     if (error) throw error;
-
     return true;
   },
 };
 
 /* =========================================
-SHIFTS
+SHIFT API
 ========================================= */
 
 export const shiftAPI = {
@@ -77,15 +78,12 @@ export const shiftAPI = {
 
     if (!user) return null;
 
-    const { data, error } =
-      await supabase
-        .from("shifts")
-        .select("*")
-        .eq("user_id", user.id)
-        .is("clock_out_time", null)
-        .maybeSingle();
-
-    if (error) throw error;
+    const { data } = await supabase
+      .from("shifts")
+      .select("*")
+      .eq("user_id", user.id)
+      .is("clock_out_time", null)
+      .maybeSingle();
 
     return data;
   },
@@ -97,126 +95,49 @@ export const shiftAPI = {
 
     if (!user) return [];
 
-    const { data, error } =
-      await supabase
-        .from("shifts")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("clock_in_time", {
-          ascending: false,
-        });
-
-    if (error) throw error;
+    const { data } = await supabase
+      .from("shifts")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("clock_in_time", { ascending: false });
 
     return data || [];
   },
 
-  clockIn: async ({
-    location_id,
-    latitude,
-    longitude,
-  }) => {
+  clockIn: async (payload) => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) throw new Error("No user");
 
-    const { error } =
-      await supabase
-        .from("shifts")
-        .insert({
-          user_id: user.id,
-          location_id,
-          latitude,
-          longitude,
-          clock_in_time:
-            new Date().toISOString(),
-          total_break_seconds: 0,
-        });
+    const { error } = await supabase
+      .from("shifts")
+      .insert({
+        user_id: user.id,
+        ...payload,
+        clock_in_time: new Date().toISOString(),
+        total_break_seconds: 0,
+      });
 
     if (error) throw error;
-
     return true;
   },
 
   clockOut: async () => {
-    const active =
-      await shiftAPI.getActive();
+    const active = await shiftAPI.getActive();
 
     if (!active) return true;
 
-    const { error } =
-      await supabase
-        .from("shifts")
-        .update({
-          clock_out_time:
-            new Date().toISOString(),
-          break_started_at: null,
-        })
-        .eq("id", active.id);
+    const { error } = await supabase
+      .from("shifts")
+      .update({
+        clock_out_time: new Date().toISOString(),
+        break_started_at: null,
+      })
+      .eq("id", active.id);
 
     if (error) throw error;
-
-    return true;
-  },
-
-  startBreak: async () => {
-    const active =
-      await shiftAPI.getActive();
-
-    if (!active) return true;
-
-    const { error } =
-      await supabase
-        .from("shifts")
-        .update({
-          break_started_at:
-            new Date().toISOString(),
-        })
-        .eq("id", active.id);
-
-    if (error) throw error;
-
-    return true;
-  },
-
-  endBreak: async () => {
-    const active =
-      await shiftAPI.getActive();
-
-    if (
-      !active ||
-      !active.break_started_at
-    ) {
-      return true;
-    }
-
-    const started =
-      new Date(
-        active.break_started_at
-      ).getTime();
-
-    const seconds = Math.floor(
-      (Date.now() - started) / 1000
-    );
-
-    const total =
-      (active.total_break_seconds || 0) +
-      seconds;
-
-    const { error } =
-      await supabase
-        .from("shifts")
-        .update({
-          break_started_at: null,
-          total_break_seconds:
-            total,
-        })
-        .eq("id", active.id);
-
-    if (error) throw error;
-
     return true;
   },
 };
@@ -227,19 +148,16 @@ INVITES
 
 export const inviteAPI = {
   send: async ({ email, role }) => {
-    const { error } =
-      await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          data: {
-            role:
-              role || "employee",
-          },
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        data: {
+          role: role || "employee",
         },
-      });
+      },
+    });
 
     if (error) throw error;
-
     return true;
   },
 };
@@ -250,15 +168,10 @@ TASKS
 
 export const taskAPI = {
   getAll: async () => {
-    const { data, error } =
-      await supabase
-        .from("tasks")
-        .select("*")
-        .order("created_at", {
-          ascending: false,
-        });
-
-    if (error) throw error;
+    const { data } = await supabase
+      .from("tasks")
+      .select("*")
+      .order("created_at", { ascending: false });
 
     return data || [];
   },
@@ -266,213 +179,31 @@ export const taskAPI = {
   getMine: async () => {
     const {
       data: { user },
-    } =
-      await supabase.auth.getUser();
+    } = await supabase.auth.getUser();
 
     if (!user) return [];
 
-    const { data, error } =
-      await supabase
-        .from("tasks")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", {
-          ascending: false,
-        });
-
-    if (error) throw error;
+    const { data } = await supabase
+      .from("tasks")
+      .select("*")
+      .eq("user_id", user.id);
 
     return data || [];
   },
 
   create: async (payload) => {
-    const { error } =
-      await supabase
-        .from("tasks")
-        .insert(payload);
-
-    if (error) throw error;
-
+    await supabase.from("tasks").insert(payload);
     return true;
   },
 
-  update: async (
-    id,
-    payload
-  ) => {
-    const { error } =
-      await supabase
-        .from("tasks")
-        .update(payload)
-        .eq("id", id);
-
-    if (error) throw error;
-
+  update: async (id, payload) => {
+    await supabase.from("tasks").update(payload).eq("id", id);
     return true;
   },
 
   delete: async (id) => {
-    const { error } =
-      await supabase
-        .from("tasks")
-        .delete()
-        .eq("id", id);
-
-    if (error) throw error;
-
+    await supabase.from("tasks").delete().eq("id", id);
     return true;
-  },
-};
-
-/* =========================================
-LOCATIONS
-========================================= */
-
-export const locationAPI = {
-  getLocations:
-    async () => {
-      const {
-        data,
-        error,
-      } =
-        await supabase
-          .from(
-            "locations"
-          )
-          .select("*")
-          .order("name");
-
-      if (error)
-        throw error;
-
-      return data || [];
-    },
-
-  create: async (
-    payload
-  ) => {
-    const { error } =
-      await supabase
-        .from(
-          "locations"
-        )
-        .insert(payload);
-
-    if (error)
-      throw error;
-
-    return true;
-  },
-
-  update: async (
-    id,
-    payload
-  ) => {
-    const { error } =
-      await supabase
-        .from(
-          "locations"
-        )
-        .update(payload)
-        .eq("id", id);
-
-    if (error)
-      throw error;
-
-    return true;
-  },
-
-  delete: async (id) => {
-    const { error } =
-      await supabase
-        .from(
-          "locations"
-        )
-        .delete()
-        .eq("id", id);
-
-    if (error)
-      throw error;
-
-    return true;
-  },
-};
-
-
-
-/* =========================================
-PERFORMANCE
-========================================= */
-
-export const performanceAPI = {
-  getAll: async () => [],
-};
-
-/* =========================================
-AUTH
-========================================= */
-
-export const authAPI = {
-  login: async ({
-    email,
-    password,
-  }) => {
-    const {
-      data,
-      error,
-    } =
-      await supabase.auth.signInWithPassword(
-        {
-          email,
-          password,
-        }
-      );
-
-    if (error) throw error;
-
-    const {
-      data: profile,
-    } = await supabase
-      .from("users")
-      .select("*")
-      .eq(
-        "id",
-        data.user.id
-      )
-      .single();
-
-    return {
-      token:
-        data.session
-          .access_token,
-      user: {
-        ...profile,
-        email:
-          data.user.email,
-      },
-    };
-  },
-
-  me: async () => {
-    const {
-      data: { user },
-    } =
-      await supabase.auth.getUser();
-
-    if (!user) return null;
-
-    const {
-      data,
-    } = await supabase
-      .from("users")
-      .select("*")
-      .eq("id", user.id)
-      .single();
-
-    return {
-      ...data,
-      email: user.email,
-    };
   },
 };
 
@@ -482,98 +213,63 @@ USERS
 
 export const userAPI = {
   getAll: async () => {
-    const {
-      data,
-      error,
-    } = await supabase
+    const { data } = await supabase
       .from("users")
       .select("*")
       .order("name");
 
-    if (error) throw error;
-
     return data || [];
   },
 
-  updateRole: async (
-    id,
-    payload
-  ) => {
-    const { error } =
-      await supabase
-        .from("users")
-        .update(payload)
-        .eq("id", id);
-
-    if (error) throw error;
+  updateRole: async (id, payload) => {
+    await supabase
+      .from("users")
+      .update(payload)
+      .eq("id", id);
 
     return true;
   },
 
   delete: async (id) => {
-    const { error } =
-      await supabase
-        .from("users")
-        .delete()
-        .eq("id", id);
-
-    if (error) throw error;
+    await supabase
+      .from("users")
+      .delete()
+      .eq("id", id);
 
     return true;
   },
 };
 
 /* =========================================
-HOLIDAY
+HOLIDAYS
 ========================================= */
 
 export const holidayAPI = {
   getAll: async () => {
-    const { data } =
-      await supabase
-        .from(
-          "holiday_requests"
-        )
-        .select(
-          "*, users(name)"
-        )
-        .order(
-          "created_at",
-          {
-            ascending:
-              false,
-          }
-        );
+    const { data } = await supabase
+      .from("holiday_requests")
+      .select("*, users(name)")
+      .order("created_at", { ascending: false });
 
     return (
       data?.map((x) => ({
         ...x,
-        name:
-          x.users?.name,
+        name: x.users?.name,
       })) || []
     );
   },
 
-  create: async (
-    payload
-  ) => {
+  create: async (payload) => {
     await supabase
-      .from(
-        "holiday_requests"
-      )
+      .from("holiday_requests")
       .insert(payload);
 
     return true;
   },
 
-  update: async (
-    id,
-    payload
-  ) => {
+  update: async (id, payload) => {
     await supabase
-      .from(
-        "holiday_requests"
-      )
+      .from("holiday_requests")
       .update(payload)
       .eq("id", id);
 
@@ -587,39 +283,42 @@ SCHEDULE
 
 export const scheduleAPI = {
   getAll: async () => {
-    const { data } =
-      await supabase
-        .from("schedules")
-        .select(
-          "*, users(name)"
-        )
-        .order("date");
+    const { data } = await supabase
+      .from("schedules")
+      .select("*, users(name)")
+      .order("date");
 
     return (
       data?.map((x) => ({
         ...x,
-        name:
-          x.users?.name,
+        name: x.users?.name,
       })) || []
     );
   },
 
-  create: async (
-    payload
-  ) => {
-    await supabase
-      .from("schedules")
-      .insert(payload);
+  getMine: async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
+    if (!user) return [];
+
+    const { data } = await supabase
+      .from("schedules")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("date");
+
+    return data || [];
+  },
+
+  create: async (payload) => {
+    await supabase.from("schedules").insert(payload);
     return true;
   },
 
   delete: async (id) => {
-    await supabase
-      .from("schedules")
-      .delete()
-      .eq("id", id);
-
+    await supabase.from("schedules").delete().eq("id", id);
     return true;
   },
 };
@@ -630,76 +329,99 @@ REPORTS
 
 export const reportAPI = {
   getSummary: async () => {
-    const users =
-      await userAPI.getAll();
+    const users = await userAPI.getAll();
 
-    const shifts =
-      await supabase
-        .from("shifts")
-        .select("*");
+    const { data: shifts } = await supabase
+      .from("shifts")
+      .select("*");
 
-    const tasks =
-      await supabase
-        .from("tasks")
-        .select("*");
-
-    const active =
-      shifts.data?.filter(
-        (x) =>
-          !x.clock_out_time
-      ) || [];
+    const { data: tasks } = await supabase
+      .from("tasks")
+      .select("*");
 
     return {
-      totalUsers:
-        users.length,
-      totalShifts:
-        shifts.data
-          ?.length || 0,
-      totalTasks:
-        tasks.data
-          ?.length || 0,
+      totalUsers: users.length,
+      totalShifts: shifts?.length || 0,
+      totalTasks: tasks?.length || 0,
       completedTasks:
-        tasks.data?.filter(
-          (x) =>
-            x.completed
-        ).length || 0,
+        tasks?.filter((x) => x.completed)
+          .length || 0,
       activeUsers:
-        active.length,
+        shifts?.filter((x) => !x.clock_out_time)
+          .length || 0,
       hoursWorked: 0,
     };
   },
 
-  getTimesheets:
-    async () => {
-      const { data } =
-        await supabase
-          .from("shifts")
-          .select(
-            "*, users(name,email)"
-          )
-          .order(
-            "clock_in_time",
-            {
-              ascending:
-                false,
-            }
-          );
+  getTimesheets: async () => {
+    const { data } = await supabase
+      .from("shifts")
+      .select("*, users(name,email)")
+      .order("clock_in_time", {
+        ascending: false,
+      });
 
-      return data || [];
-    },
+    return data || [];
+  },
 };
 
 /* =========================================
-MANAGER
+AUTH
 ========================================= */
 
-export const managerAPI = {
-  getDashboard:
-    reportAPI.getSummary,
+export const authAPI = {
+  login: async ({ email, password }) => {
+    const { data, error } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+    if (error) throw error;
+
+    localStorage.setItem(
+      "token",
+      data.session.access_token
+    );
+
+    const { data: profile } =
+      await supabase
+        .from("users")
+        .select("*")
+        .eq("id", data.user.id)
+        .single();
+
+    return {
+      token: data.session.access_token,
+      user: {
+        ...profile,
+        email: data.user.email,
+      },
+    };
+  },
+
+  me: async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return null;
+
+    const { data } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+    return {
+      ...data,
+      email: user.email,
+    };
+  },
 };
 
 /* =========================================
-BILLING (REAL STRIPE)
+BILLING (FIXED)
 ========================================= */
 
 export const billingAPI = {
@@ -724,17 +446,11 @@ export const billingAPI = {
     const user = await authAPI.me();
 
     return {
-      plan:
-        user?.current_plan ||
-        null,
-
+      plan: user?.current_plan || null,
       status:
-        user?.subscription_status ||
-        null,
-
+        user?.subscription_status || null,
       next_payment:
-        user?.trial_ends_at ||
-        null,
+        user?.trial_ends_at || null,
     };
   },
 };
