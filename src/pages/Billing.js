@@ -28,8 +28,11 @@ export default function Billing() {
   const [subscription, setSubscription] =
     useState(null);
 
+  const [loading, setLoading] =
+    useState(true);
+
   /* ====================================
-     LOAD SUBSCRIPTION
+     LOAD BILLING
   ==================================== */
 
   useEffect(() => {
@@ -38,11 +41,17 @@ export default function Billing() {
 
   const loadBilling = async () => {
     try {
+      setLoading(true);
+
       const data =
         await billingAPI.getStatus();
 
       setSubscription(data || null);
-    } catch {}
+    } catch {
+      setSubscription(null);
+    } finally {
+      setLoading(false);
+    }
   };
 
   /* ====================================
@@ -52,9 +61,9 @@ export default function Billing() {
   useEffect(() => {
     if (
       subscription?.plan &&
-      subscription?.status ===
-        "active"
+      subscription?.status === "active"
     ) {
+      setTimeLeft("");
       return;
     }
 
@@ -63,7 +72,17 @@ export default function Billing() {
         "trial_ends_at"
       );
 
-    if (!trialEnd) return;
+    if (!trialEnd) {
+      const date = new Date();
+      date.setDate(
+        date.getDate() + 14
+      );
+
+      localStorage.setItem(
+        "trial_ends_at",
+        date.toISOString()
+      );
+    }
 
     const timer =
       setInterval(() => {
@@ -72,7 +91,9 @@ export default function Billing() {
 
         const end =
           new Date(
-            trialEnd
+            localStorage.getItem(
+              "trial_ends_at"
+            )
           ).getTime();
 
         const diff =
@@ -170,7 +191,7 @@ export default function Billing() {
         }
       } catch {
         alert(
-          "No active subscription"
+          "Billing portal unavailable"
         );
       } finally {
         setPortalLoading(
@@ -188,8 +209,10 @@ export default function Billing() {
       key: "starter",
       title: "Starter",
       price: "£49",
+      included:
+        "Includes 5 employees",
       extra:
-        "+ £7 per employee",
+        "+ £7 per extra employee",
       badge:
         "Small Teams",
       icon: (
@@ -198,7 +221,7 @@ export default function Billing() {
       featured: false,
       features: [
         "Staff scheduling",
-        "Clock in/out",
+        "Clock in / out",
         "Holiday requests",
         "Basic reports",
       ],
@@ -208,8 +231,10 @@ export default function Billing() {
       key: "pro",
       title: "Pro",
       price: "£89",
+      included:
+        "Includes 15 employees",
       extra:
-        "+ £8 per employee",
+        "+ £8 per extra employee",
       badge:
         "Most Popular",
       icon: (
@@ -229,8 +254,10 @@ export default function Billing() {
       key: "business",
       title: "Business",
       price: "£149",
+      included:
+        "Includes 30 employees",
       extra:
-        "+ £10 per employee",
+        "+ £10 per extra employee",
       badge:
         "Scale Fast",
       icon: (
@@ -249,6 +276,17 @@ export default function Billing() {
     },
   ];
 
+  const currentPlan =
+    subscription?.plan;
+
+  if (loading) {
+    return (
+      <div className="text-gray-400">
+        Loading billing...
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto space-y-10">
       {/* HERO */}
@@ -257,9 +295,9 @@ export default function Billing() {
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 text-sm mb-4">
             <Sparkles size={15} />
 
-            {subscription?.plan
+            {currentPlan
               ? "Active Subscription"
-              : "14 Day Full Access Trial"}
+              : "14 Day Free Trial"}
           </div>
 
           <h1 className="text-4xl font-semibold text-white">
@@ -270,20 +308,18 @@ export default function Billing() {
           <p className="text-gray-400 mt-4 max-w-2xl mx-auto">
             Manage plans,
             payments and
-            features.
+            premium features.
           </p>
 
-          {/* ACTIVE PLAN */}
-          {subscription?.plan ? (
+          {currentPlan ? (
             <div className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-green-500/10 text-green-400 font-medium">
               <CreditCard
                 size={16}
               />
-              {subscription.plan.toUpperCase()} •
-              Next payment{" "}
-              {
-                subscription.next_payment
-              }
+
+              {currentPlan.toUpperCase()}
+              {subscription?.next_payment &&
+                ` • Next payment ${subscription.next_payment}`}
             </div>
           ) : (
             timeLeft && (
@@ -350,116 +386,145 @@ export default function Billing() {
       {/* PLANS */}
       <div className="grid lg:grid-cols-3 gap-6">
         {plans.map(
-          (plan) => (
-            <motion.div
-              key={
-                plan.key
-              }
-              whileHover={{
-                y: -4,
-              }}
-              className={`rounded-3xl p-[1px] ${
-                plan.featured
-                  ? "bg-gradient-to-b from-indigo-500/40 to-transparent"
-                  : "bg-white/10"
-              }`}
-            >
-              <div className="bg-[#020617] border border-white/10 rounded-3xl p-6">
-                <div className="flex items-center gap-2 text-indigo-400 text-sm">
-                  {
-                    plan.icon
-                  }
-                  {
-                    plan.badge
-                  }
-                </div>
+          (plan) => {
+            const isCurrent =
+              currentPlan ===
+              plan.key;
 
-                <h2 className="text-2xl font-semibold text-white mt-3">
-                  {
-                    plan.title
-                  }
-                </h2>
+            return (
+              <motion.div
+                key={
+                  plan.key
+                }
+                whileHover={{
+                  y: -4,
+                }}
+                className={`rounded-3xl p-[1px] ${
+                  plan.featured
+                    ? "bg-gradient-to-b from-indigo-500/40 to-transparent"
+                    : "bg-white/10"
+                }`}
+              >
+                <div className="bg-[#020617] border border-white/10 rounded-3xl p-6">
+                  <div className="flex items-center gap-2 text-indigo-400 text-sm">
+                    {
+                      plan.icon
+                    }
+                    {
+                      plan.badge
+                    }
+                  </div>
 
-                <p className="text-4xl font-bold text-white mt-4">
-                  {
-                    plan.price
-                  }
+                  <h2 className="text-2xl font-semibold text-white mt-3">
+                    {
+                      plan.title
+                    }
+                  </h2>
 
-                  <span className="text-base text-gray-400 font-normal">
-                    /month
-                  </span>
-                </p>
+                  <p className="text-4xl font-bold text-white mt-4">
+                    {
+                      plan.price
+                    }
 
-                <p className="text-sm text-gray-400 mt-2">
-                  {
-                    plan.extra
-                  }
-                </p>
+                    <span className="text-base text-gray-400 font-normal">
+                      /month
+                    </span>
+                  </p>
 
-                {/* FEATURES */}
-                <div className="mt-5 space-y-2">
-                  {plan.features.map(
-                    (
-                      item,
-                      i
-                    ) => (
-                      <div
-                        key={i}
-                        className="flex items-center gap-2 text-sm text-gray-300"
-                      >
+                  <p className="text-sm text-green-400 mt-2">
+                    {
+                      plan.included
+                    }
+                  </p>
+
+                  <p className="text-sm text-gray-400 mt-1">
+                    {
+                      plan.extra
+                    }
+                  </p>
+
+                  <div className="mt-5 space-y-2">
+                    {plan.features.map(
+                      (
+                        item,
+                        i
+                      ) => (
+                        <div
+                          key={
+                            i
+                          }
+                          className="flex items-center gap-2 text-sm text-gray-300"
+                        >
+                          <Check
+                            size={
+                              14
+                            }
+                            className="text-green-400"
+                          />
+
+                          {
+                            item
+                          }
+                        </div>
+                      )
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() =>
+                      !isCurrent &&
+                      handleUpgrade(
+                        plan.key
+                      )
+                    }
+                    disabled={
+                      isCurrent ||
+                      loadingPlan !==
+                        null
+                    }
+                    className={`w-full mt-6 py-3 rounded-2xl text-white font-medium flex items-center justify-center gap-2 ${
+                      isCurrent
+                        ? "bg-green-600 cursor-default"
+                        : plan.featured
+                        ? "bg-indigo-600 hover:bg-indigo-500"
+                        : "bg-white/10 hover:bg-white/20"
+                    }`}
+                  >
+                    {loadingPlan ===
+                    plan.key ? (
+                      <>
+                        <RefreshCw
+                          size={
+                            16
+                          }
+                          className="animate-spin"
+                        />
+                        Redirecting...
+                      </>
+                    ) : isCurrent ? (
+                      <>
                         <Check
                           size={
-                            14
+                            16
                           }
-                          className="text-green-400"
                         />
-                        {item}
-                      </div>
-                    )
-                  )}
+                        Current Plan
+                      </>
+                    ) : (
+                      <>
+                        <Crown
+                          size={
+                            16
+                          }
+                        />
+                        Choose Plan
+                      </>
+                    )}
+                  </button>
                 </div>
-
-                <button
-                  onClick={() =>
-                    handleUpgrade(
-                      plan.key
-                    )
-                  }
-                  disabled={
-                    loadingPlan !==
-                    null
-                  }
-                  className={`w-full mt-6 py-3 rounded-2xl text-white font-medium flex items-center justify-center gap-2 ${
-                    plan.featured
-                      ? "bg-indigo-600 hover:bg-indigo-500"
-                      : "bg-white/10 hover:bg-white/20"
-                  }`}
-                >
-                  {loadingPlan ===
-                  plan.key ? (
-                    <>
-                      <RefreshCw
-                        size={
-                          16
-                        }
-                        className="animate-spin"
-                      />
-                      Redirecting...
-                    </>
-                  ) : (
-                    <>
-                      <Crown
-                        size={
-                          16
-                        }
-                      />
-                      Choose Plan
-                    </>
-                  )}
-                </button>
-              </div>
-            </motion.div>
-          )
+              </motion.div>
+            );
+          }
         )}
       </div>
     </div>

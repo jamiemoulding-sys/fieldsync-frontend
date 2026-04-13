@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { holidayAPI } from "../services/api";
+import { holidayAPI, scheduleAPI } from "../services/api";
 import { motion } from "framer-motion";
 import {
   CalendarDays,
@@ -30,9 +30,14 @@ export default function HolidayRequests() {
 
   const today = new Date();
 
-  const [currentMonth, setCurrentMonth] = useState(
-    new Date(today.getFullYear(), today.getMonth(), 1)
-  );
+  const [currentMonth, setCurrentMonth] =
+    useState(
+      new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        1
+      )
+    );
 
   useEffect(() => {
     load();
@@ -42,18 +47,36 @@ export default function HolidayRequests() {
     try {
       setLoading(true);
 
-      const data = await holidayAPI.getAll();
+      const data =
+        await holidayAPI.getAll();
 
-      setRequests(Array.isArray(data) ? data : []);
+      setRequests(
+        Array.isArray(data)
+          ? data
+          : []
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const updateStatus = async (id, status) => {
-    await holidayAPI.update(id, { status });
-    load();
+  /* ====================================
+     APPROVE / REJECT
+  ==================================== */
+
+  const updateStatus = async (
+    id,
+    status
+  ) => {
+    await holidayAPI.update(id, {
+      status,
+    });
+    await load();
   };
+
+  /* ====================================
+     CREATE + REMOVE CONFLICT SHIFTS
+  ==================================== */
 
   const createLeave = async () => {
     if (
@@ -65,6 +88,33 @@ export default function HolidayRequests() {
     }
 
     await holidayAPI.create(form);
+
+    /* remove rota clashes */
+    try {
+      const rota =
+        await scheduleAPI.getAll();
+
+      const clashes =
+        rota.filter((s) => {
+          if (
+            s.name !== form.name
+          )
+            return false;
+
+          return (
+            s.date >=
+              form.start_date &&
+            s.date <=
+              form.end_date
+          );
+        });
+
+      for (const row of clashes) {
+        await scheduleAPI.delete(
+          row.id
+        );
+      }
+    } catch {}
 
     setOpenModal(false);
 
@@ -79,26 +129,46 @@ export default function HolidayRequests() {
     load();
   };
 
-  const filtered = requests.filter((r) => {
-    const statusMatch =
-      filter === "all"
-        ? true
-        : r.status === filter;
+  /* ====================================
+     FILTERS
+  ==================================== */
 
-    return statusMatch;
-  });
+  const filtered =
+    requests.filter((r) => {
+      if (
+        filter === "all"
+      )
+        return true;
 
-  const pending = requests.filter(
-    (r) => r.status === "pending"
-  ).length;
+      return (
+        r.status === filter
+      );
+    });
 
-  const approved = requests.filter(
-    (r) => r.status === "approved"
-  ).length;
+  const pending =
+    requests.filter(
+      (r) =>
+        r.status ===
+        "pending"
+    ).length;
 
-  const rejected = requests.filter(
-    (r) => r.status === "rejected"
-  ).length;
+  const approved =
+    requests.filter(
+      (r) =>
+        r.status ===
+        "approved"
+    ).length;
+
+  const rejected =
+    requests.filter(
+      (r) =>
+        r.status ===
+        "rejected"
+    ).length;
+
+  /* ====================================
+     CALENDAR
+  ==================================== */
 
   const endOfMonth = new Date(
     currentMonth.getFullYear(),
@@ -122,55 +192,79 @@ export default function HolidayRequests() {
     );
   }
 
-  const getRequestsForDay = (day) => {
-    return filtered.filter((r) => {
-      const start = new Date(
-        r.start_date
-      );
+  const getRequestsForDay = (
+    day
+  ) => {
+    return filtered.filter(
+      (r) => {
+        const start =
+          new Date(
+            r.start_date +
+              "T00:00:00"
+          );
 
-      const end = new Date(
-        r.end_date
-      );
+        const end =
+          new Date(
+            r.end_date +
+              "T23:59:59"
+          );
 
-      return (
-        day >= start &&
-        day <= end
-      );
-    });
+        return (
+          day >= start &&
+          day <= end
+        );
+      }
+    );
   };
 
   const changeMonth = (dir) => {
-    const next = new Date(
-      currentMonth
-    );
+    const next =
+      new Date(
+        currentMonth
+      );
 
     next.setMonth(
-      next.getMonth() + dir
+      next.getMonth() +
+        dir
     );
 
     setCurrentMonth(next);
   };
 
-  const getTypeStyle = (type) => {
-    if (type === "sickness")
+  const getTypeStyle = (
+    type
+  ) => {
+    if (
+      type ===
+      "sickness"
+    )
       return "bg-red-500/20 text-red-300";
 
     if (
-      type === "unauthorised"
+      type ===
+      "unauthorised"
     )
       return "bg-orange-500/20 text-orange-300";
 
     return "bg-blue-500/20 text-blue-300";
   };
 
-  const getTypeIcon = (type) => {
-    if (type === "sickness")
+  const getTypeIcon = (
+    type
+  ) => {
+    if (
+      type ===
+      "sickness"
+    )
       return (
-        <HeartPulse size={12} />
+        <HeartPulse
+          size={12}
+        />
       );
 
     if (
-      type === "unauthorised"
+      type ===
+      "unauthorised"
     )
       return (
         <AlertTriangle
@@ -178,13 +272,18 @@ export default function HolidayRequests() {
         />
       );
 
-    return <CalendarDays size={12} />;
+    return (
+      <CalendarDays
+        size={12}
+      />
+    );
   };
 
   if (loading) {
     return (
       <div className="text-gray-400">
-        Loading leave requests...
+        Loading leave
+        requests...
       </div>
     );
   }
@@ -199,7 +298,8 @@ export default function HolidayRequests() {
           </h1>
 
           <p className="text-sm text-gray-400">
-            Holidays, sickness &
+            Holidays,
+            sickness &
             absences
           </p>
         </div>
@@ -209,23 +309,21 @@ export default function HolidayRequests() {
             value={filter}
             onChange={(e) =>
               setFilter(
-                e.target.value
+                e.target
+                  .value
               )
             }
-            className="bg-[#020617] border border-white/10 rounded-xl px-4 py-2"
+            className="bg-[#0f172a] text-white border border-white/10 rounded-xl px-4 py-2"
           >
             <option value="all">
               All
             </option>
-
             <option value="pending">
               Pending
             </option>
-
             <option value="approved">
               Approved
             </option>
-
             <option value="rejected">
               Rejected
             </option>
@@ -233,7 +331,9 @@ export default function HolidayRequests() {
 
           <button
             onClick={() =>
-              setOpenModal(true)
+              setOpenModal(
+                true
+              )
             }
             className="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-xl flex items-center gap-2"
           >
@@ -247,7 +347,9 @@ export default function HolidayRequests() {
       <div className="grid md:grid-cols-4 gap-4">
         <StatCard
           title="Total"
-          value={requests.length}
+          value={
+            requests.length
+          }
           icon={
             <CalendarDays
               size={16}
@@ -258,7 +360,11 @@ export default function HolidayRequests() {
         <StatCard
           title="Pending"
           value={pending}
-          icon={<Clock3 size={16} />}
+          icon={
+            <Clock3
+              size={16}
+            />
+          }
         />
 
         <StatCard
@@ -274,7 +380,11 @@ export default function HolidayRequests() {
         <StatCard
           title="Rejected"
           value={rejected}
-          icon={<XCircle size={16} />}
+          icon={
+            <XCircle
+              size={16}
+            />
+          }
         />
       </div>
 
@@ -283,9 +393,11 @@ export default function HolidayRequests() {
         <div className="flex justify-between items-center mb-5">
           <button
             onClick={() =>
-              changeMonth(-1)
+              changeMonth(
+                -1
+              )
             }
-            className="p-2 rounded-xl bg-white/5"
+            className="p-2 rounded-xl bg-[#0f172a]"
           >
             <ChevronLeft
               size={18}
@@ -307,9 +419,11 @@ export default function HolidayRequests() {
 
           <button
             onClick={() =>
-              changeMonth(1)
+              changeMonth(
+                1
+              )
             }
-            className="p-2 rounded-xl bg-white/5"
+            className="p-2 rounded-xl bg-[#0f172a]"
           >
             <ChevronRight
               size={18}
@@ -318,43 +432,48 @@ export default function HolidayRequests() {
         </div>
 
         <div className="grid grid-cols-7 gap-2">
-          {days.map((day, i) => {
-            const entries =
-              getRequestsForDay(
-                day
-              );
+          {days.map(
+            (
+              day,
+              i
+            ) => {
+              const entries =
+                getRequestsForDay(
+                  day
+                );
 
-            return (
-              <div
-                key={i}
-                className="bg-white/5 rounded-xl p-2 min-h-[110px]"
-              >
-                <div className="text-xs text-gray-500 mb-2">
-                  {day.getDate()}
+              return (
+                <div
+                  key={i}
+                  className="bg-white/5 rounded-xl p-2 min-h-[120px]"
+                >
+                  <div className="text-xs text-gray-500 mb-2">
+                    {day.getDate()}
+                  </div>
+
+                  {entries.map(
+                    (
+                      r
+                    ) => (
+                      <div
+                        key={
+                          r.id
+                        }
+                        className={`text-xs px-2 py-1 rounded mb-1 flex items-center gap-1 ${getTypeStyle(
+                          r.type
+                        )}`}
+                      >
+                        {getTypeIcon(
+                          r.type
+                        )}
+                        {r.name}
+                      </div>
+                    )
+                  )}
                 </div>
-
-                {entries.map(
-                  (r) => (
-                    <div
-                      key={
-                        r.id
-                      }
-                      className={`text-xs px-2 py-1 rounded mb-1 flex items-center gap-1 ${getTypeStyle(
-                        r.type
-                      )}`}
-                    >
-                      {getTypeIcon(
-                        r.type
-                      )}
-                      {
-                        r.name
-                      }
-                    </div>
-                  )
-                )}
-              </div>
-            );
-          })}
+              );
+            }
+          )}
         </div>
       </div>
 
@@ -366,19 +485,15 @@ export default function HolidayRequests() {
               <th className="text-left p-4">
                 Employee
               </th>
-
               <th className="text-left p-4">
                 Type
               </th>
-
               <th className="text-left p-4">
                 Dates
               </th>
-
               <th className="text-left p-4">
                 Status
               </th>
-
               <th className="text-left p-4">
                 Action
               </th>
@@ -413,8 +528,7 @@ export default function HolidayRequests() {
                   </td>
 
                   <td className="p-4 capitalize">
-                    {r.type ||
-                      "holiday"}
+                    {r.type}
                   </td>
 
                   <td className="p-4 text-gray-400">
@@ -490,7 +604,8 @@ export default function HolidayRequests() {
               onChange={(e) =>
                 setForm({
                   ...form,
-                  name: e.target.value,
+                  name: e.target
+                    .value,
                 })
               }
               className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10"
@@ -501,7 +616,8 @@ export default function HolidayRequests() {
               onChange={(e) =>
                 setForm({
                   ...form,
-                  type: e.target.value,
+                  type: e.target
+                    .value,
                 })
               }
               className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10"
@@ -509,11 +625,9 @@ export default function HolidayRequests() {
               <option value="holiday">
                 Holiday
               </option>
-
               <option value="sickness">
                 Sickness
               </option>
-
               <option value="unauthorised">
                 Unauthorised
               </option>
@@ -580,7 +694,9 @@ export default function HolidayRequests() {
 function format(date) {
   return new Date(
     date
-  ).toLocaleDateString();
+  ).toLocaleDateString(
+    "en-GB"
+  );
 }
 
 function Badge({

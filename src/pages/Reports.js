@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { reportAPI } from "../services/api";
+import { reportAPI, billingAPI } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -14,21 +14,14 @@ import {
   Download,
   Search,
   ShieldCheck,
+  Clock3,
 } from "lucide-react";
 
 export default function Reports() {
-  const { user, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
+  const { user, loading: authLoading } =
+    useAuth();
 
-  const [data, setData] = useState({
-    totalShifts: 0,
-    totalUsers: 0,
-    totalTasks: 0,
-    completedTasks: 0,
-    activeUsers: 0,
-    hoursWorked: 0,
-    employees: [],
-  });
+  const navigate = useNavigate();
 
   const [loading, setLoading] =
     useState(true);
@@ -39,41 +32,53 @@ export default function Reports() {
   const [search, setSearch] =
     useState("");
 
-  /* ==========================
-     PAID ACCESS CHECK
-  ========================== */
+  const [plan, setPlan] =
+    useState("free");
 
-  const isPaid =
-    user?.is_pro === true ||
-    user?.isPro === true ||
-    user?.subscription_status ===
-      "active" ||
-    !!user?.current_plan;
+  const [data, setData] =
+    useState({
+      totalShifts: 0,
+      totalUsers: 0,
+      totalTasks: 0,
+      completedTasks: 0,
+      activeUsers: 0,
+      hoursWorked: 0,
+      employees: [],
+    });
 
   /* ==========================
-     LOAD DATA
+     LOAD
   ========================== */
 
   useEffect(() => {
     if (authLoading) return;
 
-    if (user?.role === "admin") {
-      loadReports();
-    } else {
+    if (user?.role !== "admin") {
       setLoading(false);
+      return;
     }
-  }, [user, authLoading]);
+
+    loadReports();
+  }, [authLoading, user]);
 
   const loadReports = async () => {
     try {
       setLoading(true);
       setError("");
 
-      const summary =
-        await reportAPI.getSummary();
+      const [
+        summary,
+        timesheets,
+        billing,
+      ] = await Promise.all([
+        reportAPI.getSummary(),
+        reportAPI.getTimesheets(),
+        billingAPI.getStatus(),
+      ]);
 
-      const timesheets =
-        await reportAPI.getTimesheets();
+      setPlan(
+        billing?.plan || "free"
+      );
 
       setData({
         totalShifts:
@@ -111,6 +116,55 @@ export default function Reports() {
   };
 
   /* ==========================
+     ACCESS
+  ========================== */
+
+  if (authLoading) return null;
+
+  if (!user || user.role !== "admin") {
+    return (
+      <CenterText text="Admins only." />
+    );
+  }
+
+  if (plan === "free") {
+    return (
+      <div className="flex items-center justify-center h-[70vh]">
+        <div className="bg-[#020617] border border-white/10 rounded-3xl p-8 text-center max-w-md w-full">
+
+          <div className="w-16 h-16 rounded-2xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center mx-auto mb-5">
+            <Crown size={26} />
+          </div>
+
+          <h1 className="text-2xl font-semibold">
+            Upgrade Required
+          </h1>
+
+          <p className="text-gray-400 mt-3 text-sm">
+            Reports are available on paid plans.
+          </p>
+
+          <button
+            onClick={() =>
+              navigate("/billing")
+            }
+            className="mt-6 w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500"
+          >
+            View Plans
+          </button>
+
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <CenterText text="Loading reports..." />
+    );
+  }
+
+  /* ==========================
      STATS
   ========================== */
 
@@ -133,7 +187,7 @@ export default function Reports() {
       : 0;
 
   /* ==========================
-     FILTERED STAFF
+     SEARCH
   ========================== */
 
   const employees = useMemo(() => {
@@ -158,7 +212,7 @@ export default function Reports() {
   }, [data.employees, search]);
 
   /* ==========================
-     EXPORT CSV
+     EXPORT
   ========================== */
 
   const exportCSV = () => {
@@ -166,16 +220,19 @@ export default function Reports() {
       [
         "Employee",
         "Email",
+        "Date",
         "Clock In",
         "Clock Out",
         "Hours",
       ],
+
       ...employees.map((u) => [
-        u.name,
-        u.email,
-        u.clock_in_time,
-        u.clock_out_time,
-        u.hours,
+        u.name || "",
+        u.email || "",
+        u.date || "",
+        u.clock_in_time || "",
+        u.clock_out_time || "",
+        u.hours || 0,
       ]),
     ];
 
@@ -185,7 +242,9 @@ export default function Reports() {
 
     const blob = new Blob(
       [csv],
-      { type: "text/csv" }
+      {
+        type: "text/csv",
+      }
     );
 
     const url =
@@ -196,61 +255,12 @@ export default function Reports() {
 
     a.href = url;
     a.download =
-      "fieldsync-reports.csv";
+      "reports.csv";
+
     a.click();
 
     URL.revokeObjectURL(url);
   };
-
-  /* ==========================
-     ACCESS RULES
-  ========================== */
-
-  if (authLoading) return null;
-
-  if (!user || user.role !== "admin") {
-    return (
-      <CenterText text="Admins only." />
-    );
-  }
-
-  if (!isPaid) {
-    return (
-      <div className="flex items-center justify-center h-[70vh]">
-        <div className="bg-[#020617] border border-white/10 rounded-3xl p-8 text-center max-w-md w-full">
-
-          <div className="w-16 h-16 rounded-2xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center mx-auto mb-5">
-            <Crown size={26} />
-          </div>
-
-          <h1 className="text-2xl font-semibold">
-            Upgrade Required
-          </h1>
-
-          <p className="text-gray-400 mt-3 text-sm">
-            Reports are included in
-            paid plans.
-          </p>
-
-          <button
-            onClick={() =>
-              navigate("/billing")
-            }
-            className="mt-6 w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500"
-          >
-            View Plans
-          </button>
-
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <CenterText text="Loading reports..." />
-    );
-  }
 
   /* ==========================
      UI
@@ -268,8 +278,7 @@ export default function Reports() {
           </h1>
 
           <p className="text-sm text-gray-400">
-            Business analytics &
-            exports
+            Analytics, staffing & exports
           </p>
         </div>
 
@@ -309,21 +318,25 @@ export default function Reports() {
           title="Shifts"
           value={data.totalShifts}
           icon={
-            <CalendarDays size={16} />
+            <CalendarDays
+              size={16}
+            />
           }
         />
 
         <KPI
           title="Employees"
           value={data.totalUsers}
-          icon={<Users size={16} />}
+          icon={
+            <Users size={16} />
+          }
         />
 
         <KPI
           title="Hours"
           value={data.hoursWorked}
           icon={
-            <BarChart3 size={16} />
+            <Clock3 size={16} />
           }
         />
 
@@ -331,13 +344,15 @@ export default function Reports() {
           title="Completion"
           value={`${completionRate}%`}
           icon={
-            <TrendingUp size={16} />
+            <TrendingUp
+              size={16}
+            />
           }
         />
 
       </div>
 
-      {/* PLAN STATUS */}
+      {/* PLAN */}
       <div className="rounded-2xl bg-[#020617] border border-white/10 p-5 flex justify-between items-center">
 
         <div>
@@ -346,8 +361,7 @@ export default function Reports() {
           </p>
 
           <h3 className="text-xl font-semibold capitalize">
-            {user.current_plan ||
-              "Paid"}
+            {plan}
           </h3>
         </div>
 
@@ -383,7 +397,7 @@ export default function Reports() {
         <Card title="Quick View">
 
           <InfoRow
-            label="Total Tasks"
+            label="Tasks"
             value={data.totalTasks}
           />
 
@@ -406,7 +420,7 @@ export default function Reports() {
 
       </div>
 
-      {/* STAFF */}
+      {/* TIMESHEETS */}
       <Card title="Timesheets">
 
         <div className="relative mb-4">
@@ -451,15 +465,17 @@ export default function Reports() {
                   className="grid md:grid-cols-5 gap-3 bg-white/5 rounded-xl p-3 text-sm"
                 >
                   <span>
-                    {u.name}
+                    {u.name ||
+                      "Unknown"}
                   </span>
 
                   <span>
-                    {u.email}
+                    {u.email ||
+                      "-"}
                   </span>
 
                   <span>
-                    {u.hours} hrs
+                    {u.hours || 0} hrs
                   </span>
 
                   <span>
@@ -485,9 +501,7 @@ export default function Reports() {
   );
 }
 
-/* ==========================
-   COMPONENTS
-========================== */
+/* COMPONENTS */
 
 function KPI({
   title,

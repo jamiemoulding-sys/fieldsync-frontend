@@ -20,23 +20,40 @@ function TimeSheet() {
   const [loading, setLoading] =
     useState(true);
 
-  const [selectedDate, setSelectedDate] =
+  const [fromDate, setFromDate] =
+    useState(
+      new Date(
+        new Date().setDate(
+          new Date().getDate() - 7
+        )
+      )
+        .toISOString()
+        .split("T")[0]
+    );
+
+  const [toDate, setToDate] =
     useState(
       new Date()
         .toISOString()
         .split("T")[0]
     );
 
-  const [selectedEmployee, setSelectedEmployee] =
-    useState("");
+  const [
+    selectedEmployee,
+    setSelectedEmployee,
+  ] = useState("");
 
   const [error, setError] =
     useState("");
 
+  const [view, setView] =
+    useState("table");
+
   useEffect(() => {
     loadData();
   }, [
-    selectedDate,
+    fromDate,
+    toDate,
     selectedEmployee,
   ]);
 
@@ -60,9 +77,7 @@ function TimeSheet() {
 
       rows = rows.filter(
         (row) => {
-          if (
-            !row.clock_in_time
-          )
+          if (!row.clock_in_time)
             return false;
 
           const rowDate =
@@ -73,8 +88,8 @@ function TimeSheet() {
               .split("T")[0];
 
           const dateMatch =
-            rowDate ===
-            selectedDate;
+            rowDate >= fromDate &&
+            rowDate <= toDate;
 
           const employeeMatch =
             selectedEmployee
@@ -98,6 +113,7 @@ function TimeSheet() {
       );
     } catch (err) {
       console.error(err);
+
       setError(
         "Failed to load timesheet"
       );
@@ -107,7 +123,7 @@ function TimeSheet() {
   };
 
   const formatTime = (t) => {
-    if (!t) return "N/A";
+    if (!t) return "-";
 
     return new Date(
       t
@@ -121,7 +137,7 @@ function TimeSheet() {
   };
 
   const formatDate = (t) => {
-    if (!t) return "N/A";
+    if (!t) return "-";
 
     return new Date(
       t
@@ -142,8 +158,7 @@ function TimeSheet() {
       (new Date(end) -
         new Date(start)) /
         3600000 -
-      breakSeconds /
-        3600;
+      breakSeconds / 3600;
 
     return Math.max(
       total,
@@ -218,9 +233,27 @@ function TimeSheet() {
       );
 
     a.href = url;
-    a.download = `timesheet-${selectedDate}.csv`;
+    a.download = `timesheet-${fromDate}-to-${toDate}.csv`;
     a.click();
   };
+
+  const grouped =
+    timeSheetData.reduce(
+      (acc, item) => {
+        const date =
+          new Date(
+            item.clock_in_time
+          ).getDate();
+
+        if (!acc[date])
+          acc[date] = [];
+
+        acc[date].push(item);
+
+        return acc;
+      },
+      {}
+    );
 
   if (loading) {
     return (
@@ -239,7 +272,8 @@ function TimeSheet() {
           </h1>
 
           <p className="subtle-text">
-            Track work hours
+            Staff hours &
+            exports
           </p>
         </div>
 
@@ -248,7 +282,7 @@ function TimeSheet() {
             onClick={
               exportCSV
             }
-            className="btn-primary"
+            className="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-xl"
           >
             Export CSV
           </button>
@@ -263,34 +297,40 @@ function TimeSheet() {
         </div>
       )}
 
-      <div className="card flex gap-4 flex-wrap">
+      {/* FILTERS */}
+      <div className="card grid md:grid-cols-5 gap-4">
         <input
           type="date"
-          value={
-            selectedDate
-          }
-          onChange={(
-            e
-          ) =>
-            setSelectedDate(
+          value={fromDate}
+          onChange={(e) =>
+            setFromDate(
               e.target.value
             )
           }
-          className="input-field"
+          className="bg-[#0f172a] text-white border border-white/10 px-4 py-3 rounded-xl"
+        />
+
+        <input
+          type="date"
+          value={toDate}
+          onChange={(e) =>
+            setToDate(
+              e.target.value
+            )
+          }
+          className="bg-[#0f172a] text-white border border-white/10 px-4 py-3 rounded-xl"
         />
 
         <select
           value={
             selectedEmployee
           }
-          onChange={(
-            e
-          ) =>
+          onChange={(e) =>
             setSelectedEmployee(
               e.target.value
             )
           }
-          className="input-field"
+          className="bg-[#0f172a] text-white border border-white/10 px-4 py-3 rounded-xl"
         >
           <option value="">
             All Employees
@@ -307,98 +347,176 @@ function TimeSheet() {
             )
           )}
         </select>
+
+        <button
+          onClick={() =>
+            setView("table")
+          }
+          className={`px-4 py-3 rounded-xl ${
+            view === "table"
+              ? "bg-indigo-600 text-white"
+              : "bg-[#0f172a] text-gray-300"
+          }`}
+        >
+          Table View
+        </button>
+
+        <button
+          onClick={() =>
+            setView(
+              "calendar"
+            )
+          }
+          className={`px-4 py-3 rounded-xl ${
+            view ===
+            "calendar"
+              ? "bg-indigo-600 text-white"
+              : "bg-[#0f172a] text-gray-300"
+          }`}
+        >
+          Calendar
+        </button>
       </div>
 
-      <div className="card overflow-x-auto">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="text-gray-400 text-sm">
-              <th>
-                Employee
-              </th>
-              <th>Date</th>
-              <th>
-                Clock In
-              </th>
-              <th>
-                Clock Out
-              </th>
-              <th>
-                Break
-              </th>
-              <th>
-                Hours
-              </th>
-            </tr>
-          </thead>
+      {/* TABLE */}
+      {view === "table" && (
+        <div className="card overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="text-gray-400 text-sm">
+                <th>
+                  Employee
+                </th>
+                <th>
+                  Date
+                </th>
+                <th>
+                  In
+                </th>
+                <th>
+                  Out
+                </th>
+                <th>
+                  Break
+                </th>
+                <th>
+                  Hours
+                </th>
+              </tr>
+            </thead>
 
-          <tbody>
-            {timeSheetData.map(
-              (
-                r,
-                i
-              ) => (
-                <tr
-                  key={
-                    i
-                  }
-                  className="border-t border-white/10"
-                >
-                  <td>
+            <tbody>
+              {timeSheetData.map(
+                (
+                  r,
+                  i
+                ) => (
+                  <tr
+                    key={i}
+                    className="border-t border-white/10"
+                  >
+                    <td>
+                      {r.users
+                        ?.name ||
+                        "Unknown"}
+                    </td>
+
+                    <td>
+                      {formatDate(
+                        r.clock_in_time
+                      )}
+                    </td>
+
+                    <td>
+                      {formatTime(
+                        r.clock_in_time
+                      )}
+                    </td>
+
+                    <td>
+                      {formatTime(
+                        r.clock_out_time
+                      )}
+                    </td>
+
+                    <td>
+                      {Math.floor(
+                        (r.total_break_seconds ||
+                          0) /
+                          60
+                      )}{" "}
+                      mins
+                    </td>
+
+                    <td>
+                      {calculateHours(
+                        r.clock_in_time,
+                        r.clock_out_time,
+                        r.total_break_seconds
+                      )}
+                      h
+                    </td>
+                  </tr>
+                )
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* CALENDAR */}
+      {view ===
+        "calendar" && (
+        <div className="grid grid-cols-7 gap-3">
+          {Array.from(
+            {
+              length: 31,
+            },
+            (_, i) => i + 1
+          ).map((day) => (
+            <div
+              key={day}
+              className="bg-[#0f172a] border border-white/10 rounded-xl p-3 min-h-[120px]"
+            >
+              <div className="text-sm font-semibold mb-2">
+                {day}
+              </div>
+
+              {grouped[
+                day
+              ]?.map(
+                (
+                  r,
+                  idx
+                ) => (
+                  <div
+                    key={idx}
+                    className="text-xs bg-indigo-500/20 text-indigo-300 rounded px-2 py-1 mb-1"
+                  >
                     {r.users
                       ?.name ||
-                      "Unknown"}
-                  </td>
-
-                  <td>
-                    {formatDate(
-                      r.clock_in_time
-                    )}
-                  </td>
-
-                  <td>
-                    {formatTime(
-                      r.clock_in_time
-                    )}
-                  </td>
-
-                  <td>
-                    {formatTime(
-                      r.clock_out_time
-                    )}
-                  </td>
-
-                  <td>
-                    {Math.floor(
-                      (r.total_break_seconds ||
-                        0) /
-                        60
-                    )}{" "}
-                    mins
-                  </td>
-
-                  <td>
+                      "Unknown"}{" "}
+                    (
                     {calculateHours(
                       r.clock_in_time,
                       r.clock_out_time,
                       r.total_break_seconds
                     )}
-                    h
-                  </td>
-                </tr>
-              )
-            )}
-          </tbody>
-        </table>
+                    h)
+                  </div>
+                )
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
-        {timeSheetData.length ===
-          0 && (
-          <div className="text-center text-gray-400 mt-4">
-            No data for
-            selected date
-          </div>
-        )}
-      </div>
+      {timeSheetData.length ===
+        0 && (
+        <div className="text-center text-gray-400">
+          No records found
+        </div>
+      )}
     </div>
   );
 }

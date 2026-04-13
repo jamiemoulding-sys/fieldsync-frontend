@@ -23,6 +23,7 @@ import {
   UserPlus,
   Crown,
   User,
+  RefreshCw,
 } from "lucide-react";
 
 export default function Employees() {
@@ -37,6 +38,9 @@ export default function Employees() {
 
   const [loading, setLoading] =
     useState(true);
+
+  const [saving, setSaving] =
+    useState(false);
 
   const [search, setSearch] =
     useState("");
@@ -62,7 +66,9 @@ export default function Employees() {
 
     if (roleFilter !== "all") {
       data = data.filter(
-        (u) => u.role === roleFilter
+        (u) =>
+          u.role ===
+          roleFilter
       );
     }
 
@@ -116,16 +122,20 @@ export default function Employees() {
       role
     ) => {
       try {
+        setSaving(true);
+
         await userAPI.updateRole(
           id,
           { role }
         );
 
-        loadEmployees();
+        await loadEmployees();
       } catch {
         alert(
           "Failed to update role"
         );
+      } finally {
+        setSaving(false);
       }
     };
 
@@ -139,12 +149,17 @@ export default function Employees() {
         return;
 
       try {
+        setSaving(true);
+
         await userAPI.delete(id);
-        loadEmployees();
+
+        await loadEmployees();
       } catch {
         alert(
           "Delete failed"
         );
+      } finally {
+        setSaving(false);
       }
     };
 
@@ -156,6 +171,8 @@ export default function Employees() {
             "Enter email"
           );
         }
+
+        setSaving(true);
 
         await inviteAPI.send({
           email:
@@ -183,6 +200,8 @@ export default function Employees() {
         alert(
           "Invite failed"
         );
+      } finally {
+        setSaving(false);
       }
     };
 
@@ -212,19 +231,33 @@ export default function Employees() {
           </p>
         </div>
 
-        <button
-          onClick={() =>
-            setInviteOpen(
-              true
-            )
-          }
-          className="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-xl text-sm flex items-center gap-2"
-        >
-          <UserPlus
-            size={16}
-          />
-          Invite
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={
+              loadEmployees
+            }
+            className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 flex items-center gap-2 text-sm"
+          >
+            <RefreshCw
+              size={15}
+            />
+            Refresh
+          </button>
+
+          <button
+            onClick={() =>
+              setInviteOpen(
+                true
+              )
+            }
+            className="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-xl text-sm flex items-center gap-2"
+          >
+            <UserPlus
+              size={16}
+            />
+            Invite
+          </button>
+        </div>
       </div>
 
       {/* FILTERS */}
@@ -239,7 +272,8 @@ export default function Employees() {
             value={search}
             onChange={(e) =>
               setSearch(
-                e.target.value
+                e.target
+                  .value
               )
             }
             placeholder="Search employee..."
@@ -253,7 +287,8 @@ export default function Employees() {
           }
           onChange={(e) =>
             setRoleFilter(
-              e.target.value
+              e.target
+                .value
             )
           }
           className="rounded-xl bg-[#020617] border border-white/10 px-4 py-3 text-white"
@@ -274,6 +309,38 @@ export default function Employees() {
             Admin
           </option>
         </select>
+      </div>
+
+      {/* KPI */}
+      <div className="grid md:grid-cols-3 gap-4">
+        <StatCard
+          title="Total Staff"
+          value={
+            employees.length
+          }
+        />
+
+        <StatCard
+          title="Managers"
+          value={
+            employees.filter(
+              (x) =>
+                x.role ===
+                "manager"
+            ).length
+          }
+        />
+
+        <StatCard
+          title="Admins"
+          value={
+            employees.filter(
+              (x) =>
+                x.role ===
+                "admin"
+            ).length
+          }
+        />
       </div>
 
       {/* TABLE */}
@@ -359,6 +426,9 @@ export default function Employees() {
                         />
                       ) : (
                         <select
+                          disabled={
+                            saving
+                          }
                           value={
                             emp.role
                           }
@@ -483,7 +553,9 @@ export default function Employees() {
               }
               className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500"
             >
-              Send Invite
+              {saving
+                ? "Sending..."
+                : "Send Invite"}
             </button>
 
             <button
@@ -531,5 +603,22 @@ function RoleBadge({
       {icons[role]}
       {role}
     </span>
+  );
+}
+
+function StatCard({
+  title,
+  value,
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-[#020617] p-4">
+      <p className="text-xs text-gray-400">
+        {title}
+      </p>
+
+      <h2 className="text-2xl font-semibold mt-2">
+        {value}
+      </h2>
+    </div>
   );
 }

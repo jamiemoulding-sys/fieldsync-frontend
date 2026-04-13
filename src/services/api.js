@@ -6,6 +6,16 @@ const supabase = createClient(
 );
 
 /* ======================================================
+HELPERS
+====================================================== */
+
+const todayDate = () =>
+  new Date().toISOString().split("T")[0];
+
+const safeArray = (data) =>
+  Array.isArray(data) ? data : [];
+
+/* ======================================================
 AUTH
 ====================================================== */
 
@@ -54,6 +64,11 @@ export const authAPI = {
       email: user.email,
     };
   },
+
+  logout: async () => {
+    await supabase.auth.signOut();
+    return true;
+  },
 };
 
 /* ======================================================
@@ -70,7 +85,7 @@ export const userAPI = {
 
     if (error) throw error;
 
-    return data || [];
+    return safeArray(data);
   },
 
   updateRole: async (id, payload) => {
@@ -134,22 +149,28 @@ export const announcementAPI = {
           ascending: false,
         });
 
-    return data || [];
+    return safeArray(data);
   },
 
   create: async (payload) => {
-    await supabase
-      .from("announcements")
-      .insert(payload);
+    const { error } =
+      await supabase
+        .from("announcements")
+        .insert(payload);
+
+    if (error) throw error;
 
     return true;
   },
 
   delete: async (id) => {
-    await supabase
-      .from("announcements")
-      .delete()
-      .eq("id", id);
+    const { error } =
+      await supabase
+        .from("announcements")
+        .delete()
+        .eq("id", id);
+
+    if (error) throw error;
 
     return true;
   },
@@ -169,7 +190,7 @@ export const taskAPI = {
           ascending: false,
         });
 
-    return data || [];
+    return safeArray(data);
   },
 
   getMine: async () => {
@@ -186,31 +207,40 @@ export const taskAPI = {
           ascending: false,
         });
 
-    return data || [];
+    return safeArray(data);
   },
 
   create: async (payload) => {
-    await supabase
-      .from("tasks")
-      .insert(payload);
+    const { error } =
+      await supabase
+        .from("tasks")
+        .insert(payload);
+
+    if (error) throw error;
 
     return true;
   },
 
   update: async (id, payload) => {
-    await supabase
-      .from("tasks")
-      .update(payload)
-      .eq("id", id);
+    const { error } =
+      await supabase
+        .from("tasks")
+        .update(payload)
+        .eq("id", id);
+
+    if (error) throw error;
 
     return true;
   },
 
   delete: async (id) => {
-    await supabase
-      .from("tasks")
-      .delete()
-      .eq("id", id);
+    const { error } =
+      await supabase
+        .from("tasks")
+        .delete()
+        .eq("id", id);
+
+    if (error) throw error;
 
     return true;
   },
@@ -228,31 +258,40 @@ export const locationAPI = {
         .select("*")
         .order("name");
 
-    return data || [];
+    return safeArray(data);
   },
 
   create: async (payload) => {
-    await supabase
-      .from("locations")
-      .insert(payload);
+    const { error } =
+      await supabase
+        .from("locations")
+        .insert(payload);
+
+    if (error) throw error;
 
     return true;
   },
 
   update: async (id, payload) => {
-    await supabase
-      .from("locations")
-      .update(payload)
-      .eq("id", id);
+    const { error } =
+      await supabase
+        .from("locations")
+        .update(payload)
+        .eq("id", id);
+
+    if (error) throw error;
 
     return true;
   },
 
   delete: async (id) => {
-    await supabase
-      .from("locations")
-      .delete()
-      .eq("id", id);
+    const { error } =
+      await supabase
+        .from("locations")
+        .delete()
+        .eq("id", id);
+
+    if (error) throw error;
 
     return true;
   },
@@ -271,7 +310,7 @@ export const shiftAPI = {
     const { data } =
       await supabase
         .from("shifts")
-        .select("*")
+        .select("*, users(name)")
         .eq("user_id", user.id)
         .is("clock_out_time", null)
         .maybeSingle();
@@ -287,13 +326,13 @@ export const shiftAPI = {
     const { data } =
       await supabase
         .from("shifts")
-        .select("*")
+        .select("*, users(name)")
         .eq("user_id", user.id)
         .order("clock_in_time", {
           ascending: false,
         });
 
-    return data || [];
+    return safeArray(data);
   },
 
   clockIn: async ({
@@ -305,17 +344,25 @@ export const shiftAPI = {
       data: { user },
     } = await supabase.auth.getUser();
 
-    await supabase
-      .from("shifts")
-      .insert({
-        user_id: user.id,
-        location_id,
-        latitude,
-        longitude,
-        clock_in_time:
-          new Date().toISOString(),
-        total_break_seconds: 0,
-      });
+    const active =
+      await shiftAPI.getActive();
+
+    if (active) return true;
+
+    const { error } =
+      await supabase
+        .from("shifts")
+        .insert({
+          user_id: user.id,
+          location_id,
+          latitude,
+          longitude,
+          clock_in_time:
+            new Date().toISOString(),
+          total_break_seconds: 0,
+        });
+
+    if (error) throw error;
 
     return true;
   },
@@ -326,14 +373,17 @@ export const shiftAPI = {
 
     if (!active) return true;
 
-    await supabase
-      .from("shifts")
-      .update({
-        clock_out_time:
-          new Date().toISOString(),
-        break_started_at: null,
-      })
-      .eq("id", active.id);
+    const { error } =
+      await supabase
+        .from("shifts")
+        .update({
+          clock_out_time:
+            new Date().toISOString(),
+          break_started_at: null,
+        })
+        .eq("id", active.id);
+
+    if (error) throw error;
 
     return true;
   },
@@ -344,13 +394,16 @@ export const shiftAPI = {
 
     if (!active) return true;
 
-    await supabase
-      .from("shifts")
-      .update({
-        break_started_at:
-          new Date().toISOString(),
-      })
-      .eq("id", active.id);
+    const { error } =
+      await supabase
+        .from("shifts")
+        .update({
+          break_started_at:
+            new Date().toISOString(),
+        })
+        .eq("id", active.id);
+
+    if (error) throw error;
 
     return true;
   },
@@ -374,13 +427,16 @@ export const shiftAPI = {
       (active.total_break_seconds || 0) +
       seconds;
 
-    await supabase
-      .from("shifts")
-      .update({
-        break_started_at: null,
-        total_break_seconds: total,
-      })
-      .eq("id", active.id);
+    const { error } =
+      await supabase
+        .from("shifts")
+        .update({
+          break_started_at: null,
+          total_break_seconds: total,
+        })
+        .eq("id", active.id);
+
+    if (error) throw error;
 
     return true;
   },
@@ -403,7 +459,7 @@ export const scheduleAPI = {
         .eq("user_id", user.id)
         .order("date");
 
-    return data || [];
+    return safeArray(data);
   },
 
   getAll: async () => {
@@ -422,18 +478,36 @@ export const scheduleAPI = {
   },
 
   create: async (payload) => {
-    await supabase
-      .from("schedules")
-      .insert(payload);
+    const { error } =
+      await supabase
+        .from("schedules")
+        .insert(payload);
+
+    if (error) throw error;
+
+    return true;
+  },
+
+  update: async (id, payload) => {
+    const { error } =
+      await supabase
+        .from("schedules")
+        .update(payload)
+        .eq("id", id);
+
+    if (error) throw error;
 
     return true;
   },
 
   delete: async (id) => {
-    await supabase
-      .from("schedules")
-      .delete()
-      .eq("id", id);
+    const { error } =
+      await supabase
+        .from("schedules")
+        .delete()
+        .eq("id", id);
+
+    if (error) throw error;
 
     return true;
   },
@@ -458,7 +532,7 @@ export const holidayAPI = {
           ascending: false,
         });
 
-    return data || [];
+    return safeArray(data);
   },
 
   create: async (payload) => {
@@ -466,13 +540,16 @@ export const holidayAPI = {
       data: { user },
     } = await supabase.auth.getUser();
 
-    await supabase
-      .from("holiday_requests")
-      .insert({
-        ...payload,
-        user_id: user.id,
-        status: "pending",
-      });
+    const { error } =
+      await supabase
+        .from("holiday_requests")
+        .insert({
+          ...payload,
+          user_id: user.id,
+          status: "pending",
+        });
+
+    if (error) throw error;
 
     return true;
   },
@@ -495,10 +572,13 @@ export const holidayAPI = {
   },
 
   update: async (id, payload) => {
-    await supabase
-      .from("holiday_requests")
-      .update(payload)
-      .eq("id", id);
+    const { error } =
+      await supabase
+        .from("holiday_requests")
+        .update(payload)
+        .eq("id", id);
+
+    if (error) throw error;
 
     return true;
   },
@@ -516,33 +596,65 @@ export const reportAPI = {
     const tasks =
       await taskAPI.getAll();
 
-    const shifts =
+    const { data: shifts } =
       await supabase
         .from("shifts")
         .select("*");
 
     const active =
-      shifts.data?.filter(
+      safeArray(shifts).filter(
         (x) => !x.clock_out_time
-      ) || [];
+      );
 
     return {
       users: users.length,
       tasks: tasks.length,
       activeUsers: active.length,
+      completedShifts:
+        safeArray(shifts).filter(
+          (x) => x.clock_out_time
+        ).length,
     };
   },
 
-  getTimesheets: async () => {
-    const { data } =
-      await supabase
-        .from("shifts")
-        .select("*, users(name)")
-        .order("clock_in_time", {
-          ascending: false,
-        });
+  getTimesheets: async ({
+    from,
+    to,
+    user_id,
+  } = {}) => {
+    let query = supabase
+      .from("shifts")
+      .select(
+        "*, users(name,email)"
+      )
+      .order("clock_in_time", {
+        ascending: false,
+      });
 
-    return data || [];
+    if (from) {
+      query = query.gte(
+        "clock_in_time",
+        `${from}T00:00:00`
+      );
+    }
+
+    if (to) {
+      query = query.lte(
+        "clock_in_time",
+        `${to}T23:59:59`
+      );
+    }
+
+    if (user_id) {
+      query = query.eq(
+        "user_id",
+        user_id
+      );
+    }
+
+    const { data } = await query;
+
+    return safeArray(data);
   },
 };
 
@@ -560,8 +672,50 @@ BILLING
 ====================================================== */
 
 export const billingAPI = {
-  checkout: async () => true,
-  portal: async () => true,
+  getStatus: async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return null;
+
+    const { data } =
+      await supabase
+        .from("subscriptions")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+    return data;
+  },
+
+  checkout: async ({
+    plan,
+  }) => {
+    const plans = {
+      starter: {
+        url: "/billing/starter",
+      },
+      pro: {
+        url: "/billing/pro",
+      },
+      business: {
+        url: "/billing/business",
+      },
+    };
+
+    return (
+      plans[plan] || {
+        url: "/billing",
+      }
+    );
+  },
+
+  portal: async () => {
+    return {
+      url: "/billing/manage",
+    };
+  },
 };
 
 export default supabase;

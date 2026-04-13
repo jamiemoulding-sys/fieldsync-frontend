@@ -85,7 +85,7 @@ export default function Schedule() {
   };
 
   /* ===================================
-     BULK FIX
+     BULK CREATE
   =================================== */
 
   const createSchedule = async () => {
@@ -175,6 +175,13 @@ export default function Schedule() {
   };
 
   const deleteShift = async (id) => {
+    if (
+      !window.confirm(
+        "Delete this shift?"
+      )
+    )
+      return;
+
     try {
       await scheduleAPI.delete(id);
       loadData();
@@ -291,8 +298,8 @@ export default function Schedule() {
             className={`px-4 py-2 rounded-xl text-sm ${
               view ===
               "calendar"
-                ? "bg-indigo-600"
-                : "bg-white/5"
+                ? "bg-indigo-600 text-white"
+                : "bg-[#0f172a] text-gray-300"
             }`}
           >
             Calendar
@@ -304,8 +311,8 @@ export default function Schedule() {
             }
             className={`px-4 py-2 rounded-xl text-sm ${
               view === "grid"
-                ? "bg-indigo-600"
-                : "bg-white/5"
+                ? "bg-indigo-600 text-white"
+                : "bg-[#0f172a] text-gray-300"
             }`}
           >
             Grid
@@ -372,7 +379,7 @@ export default function Schedule() {
                 )
               )
             }
-            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 h-36"
+            className="bg-[#0f172a] text-white border border-white/10 rounded-xl px-3 py-2 h-36"
           >
             {users.map((u) => (
               <option
@@ -392,7 +399,7 @@ export default function Schedule() {
                 e.target.value
               )
             }
-            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2"
+            className="bg-[#0f172a] text-white border border-white/10 rounded-xl px-3 py-2"
           />
 
           <input
@@ -403,7 +410,7 @@ export default function Schedule() {
                 e.target.value
               )
             }
-            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2"
+            className="bg-[#0f172a] text-white border border-white/10 rounded-xl px-3 py-2"
           />
 
           <input
@@ -414,7 +421,7 @@ export default function Schedule() {
                 e.target.value
               )
             }
-            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2"
+            className="bg-[#0f172a] text-white border border-white/10 rounded-xl px-3 py-2"
           />
 
           <input
@@ -425,7 +432,7 @@ export default function Schedule() {
                 e.target.value
               )
             }
-            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2"
+            className="bg-[#0f172a] text-white border border-white/10 rounded-xl px-3 py-2"
           />
         </div>
 
@@ -510,8 +517,7 @@ export default function Schedule() {
                             "2-digit",
                         }
                       )}{" "}
-                      -
-                      {" "}
+                      -{" "}
                       {new Date(
                         s.end_time
                       ).toLocaleTimeString(
@@ -556,7 +562,7 @@ export default function Schedule() {
                   -1
                 )
               }
-              className="p-2 rounded-xl bg-white/5"
+              className="p-2 rounded-xl bg-[#0f172a]"
             >
               <ChevronLeft
                 size={18}
@@ -582,7 +588,7 @@ export default function Schedule() {
                   1
                 )
               }
-              className="p-2 rounded-xl bg-white/5"
+              className="p-2 rounded-xl bg-[#0f172a]"
             >
               <ChevronRight
                 size={18}
@@ -604,7 +610,7 @@ export default function Schedule() {
                 return (
                   <div
                     key={i}
-                    className="bg-[#020617] border border-white/10 rounded-xl p-2 min-h-[110px]"
+                    className="bg-[#020617] border border-white/10 rounded-xl p-2 min-h-[130px]"
                   >
                     <div className="text-xs text-gray-500 mb-2">
                       {day.getDate()}
@@ -618,11 +624,40 @@ export default function Schedule() {
                           key={
                             s.id
                           }
-                          className="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded mb-1 truncate"
+                          className="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded mb-1"
                         >
-                          {
-                            s.name
-                          }
+                          <div className="truncate font-medium">
+                            {
+                              s.name
+                            }
+                          </div>
+
+                          <div className="text-[10px] text-indigo-200">
+                            {new Date(
+                              s.start_time
+                            ).toLocaleTimeString(
+                              [],
+                              {
+                                hour:
+                                  "2-digit",
+                                minute:
+                                  "2-digit",
+                              }
+                            )}{" "}
+                            -
+                            {" "}
+                            {new Date(
+                              s.end_time
+                            ).toLocaleTimeString(
+                              [],
+                              {
+                                hour:
+                                  "2-digit",
+                                minute:
+                                  "2-digit",
+                              }
+                            )}
+                          </div>
                         </div>
                       )
                     )}
