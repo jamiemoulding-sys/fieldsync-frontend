@@ -1,3 +1,6 @@
+// src/pages/Announcements.jsx
+// FULL FILE - MULTI COMPANY SAFE
+
 import { useEffect, useState } from "react";
 import { announcementAPI } from "../services/api";
 import { motion } from "framer-motion";
@@ -13,134 +16,92 @@ import {
 } from "lucide-react";
 
 export default function Announcements() {
-  const [items, setItems] =
-    useState([]);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const [loading, setLoading] =
-    useState(true);
-
-  const [saving, setSaving] =
-    useState(false);
-
-  const [form, setForm] =
-    useState({
-      title: "",
-      message: "",
-      priority: "normal",
-    });
+  const [form, setForm] = useState({
+    title: "",
+    message: "",
+    priority: "normal",
+  });
 
   useEffect(() => {
     load();
   }, []);
 
-  const load = async () => {
+  async function load() {
     try {
       setLoading(true);
 
-      const res =
-        await announcementAPI.getAll();
+      const data = await announcementAPI.getAll();
 
-      setItems(
-        Array.isArray(res)
-          ? res
-          : []
-      );
-
+      setItems(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error(err);
-
+      console.error("Load announcements failed:", err);
+      setItems([]);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const createItem =
-    async () => {
-      if (
-        !form.title.trim() ||
-        !form.message.trim()
-      ) {
-        return alert(
-          "Fill all fields"
-        );
-      }
+  async function createItem() {
+    if (!form.title.trim() || !form.message.trim()) {
+      alert("Fill all fields");
+      return;
+    }
 
-      try {
-        setSaving(true);
+    try {
+      setSaving(true);
 
-        await announcementAPI.create(
-          form
-        );
+      await announcementAPI.create({
+        title: form.title.trim(),
+        message: form.message.trim(),
+        priority: form.priority,
+      });
 
-        setForm({
-          title: "",
-          message: "",
-          priority:
-            "normal",
-        });
+      setForm({
+        title: "",
+        message: "",
+        priority: "normal",
+      });
 
-        await load();
+      await load();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to send announcement");
+    } finally {
+      setSaving(false);
+    }
+  }
 
-      } catch {
-        alert(
-          "Failed to send announcement"
-        );
+  async function deleteItem(id) {
+    const ok = window.confirm("Delete this announcement?");
+    if (!ok) return;
 
-      } finally {
-        setSaving(false);
-      }
-    };
+    try {
+      await announcementAPI.delete(id);
+      await load();
+    } catch (err) {
+      console.error(err);
+      alert("Delete failed");
+    }
+  }
 
-  const deleteItem =
-    async (id) => {
-      if (
-        !window.confirm(
-          "Delete this announcement?"
-        )
-      )
-        return;
-
-      try {
-        await announcementAPI.delete(
-          id
-        );
-
-        load();
-
-      } catch {
-        alert(
-          "Delete failed"
-        );
-      }
-    };
-
-  const getStyles = (
-    priority
-  ) => {
-    if (
-      priority ===
-      "critical"
-    ) {
+  function getStyles(priority) {
+    if (priority === "critical") {
       return "bg-red-500/10 border-red-500/30";
     }
 
-    if (
-      priority ===
-      "warning"
-    ) {
+    if (priority === "warning") {
       return "bg-yellow-500/10 border-yellow-500/30";
     }
 
     return "bg-[#020617] border-white/10";
-  };
+  }
 
-  const getIcon = (
-    priority
-  ) => {
-    if (
-      priority ===
-      "critical"
-    ) {
+  function getIcon(priority) {
+    if (priority === "critical") {
       return (
         <ShieldAlert
           size={16}
@@ -149,10 +110,7 @@ export default function Announcements() {
       );
     }
 
-    if (
-      priority ===
-      "warning"
-    ) {
+    if (priority === "warning") {
       return (
         <AlertTriangle
           size={16}
@@ -167,11 +125,15 @@ export default function Announcements() {
         className="text-indigo-400"
       />
     );
-  };
+  }
 
   if (loading) {
     return (
-      <div className="text-gray-400">
+      <div className="text-gray-400 flex items-center gap-2">
+        <Loader2
+          size={16}
+          className="animate-spin"
+        />
         Loading announcements...
       </div>
     );
@@ -179,7 +141,6 @@ export default function Announcements() {
 
   return (
     <div className="space-y-6">
-
       {/* HEADER */}
       <div className="flex justify-between items-center gap-4 flex-wrap">
         <div>
@@ -204,10 +165,8 @@ export default function Announcements() {
       {/* CREATE */}
       <div className="rounded-3xl p-[1px] bg-gradient-to-r from-indigo-500/30 to-transparent">
         <div className="bg-[#020617] border border-white/10 rounded-3xl p-6 space-y-4">
-
           <div className="flex items-center gap-2">
             <Plus size={16} />
-
             <h3 className="font-medium">
               New Message
             </h3>
@@ -218,8 +177,7 @@ export default function Announcements() {
             onChange={(e) =>
               setForm({
                 ...form,
-                title:
-                  e.target.value,
+                title: e.target.value,
               })
             }
             placeholder="Title"
@@ -233,8 +191,7 @@ export default function Announcements() {
             onChange={(e) =>
               setForm({
                 ...form,
-                message:
-                  e.target.value,
+                message: e.target.value,
               })
             }
             placeholder="Write your message..."
@@ -242,14 +199,11 @@ export default function Announcements() {
           />
 
           <select
-            value={
-              form.priority
-            }
+            value={form.priority}
             onChange={(e) =>
               setForm({
                 ...form,
-                priority:
-                  e.target.value,
+                priority: e.target.value,
               })
             }
             className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3"
@@ -268,12 +222,8 @@ export default function Announcements() {
           </select>
 
           <button
-            onClick={
-              createItem
-            }
-            disabled={
-              saving
-            }
+            onClick={createItem}
+            disabled={saving}
             className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 py-3 rounded-2xl font-medium flex items-center justify-center gap-2"
           >
             {saving ? (
@@ -282,102 +232,75 @@ export default function Announcements() {
                 className="animate-spin"
               />
             ) : (
-              <Megaphone
-                size={16}
-              />
+              <Megaphone size={16} />
             )}
 
             Send Announcement
           </button>
-
         </div>
       </div>
 
       {/* LIST */}
       <div className="space-y-4">
-
         {items.length === 0 && (
           <div className="text-gray-500">
             No announcements yet
           </div>
         )}
 
-        {items.map(
-          (item, i) => (
-            <motion.div
-              key={item.id}
-              initial={{
-                opacity: 0,
-                y: 18,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
-              transition={{
-                delay:
-                  i * 0.04,
-              }}
-              className="rounded-2xl p-[1px] bg-gradient-to-b from-white/10 to-transparent"
+        {items.map((item, i) => (
+          <motion.div
+            key={item.id}
+            initial={{
+              opacity: 0,
+              y: 18,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            transition={{
+              delay: i * 0.04,
+            }}
+            className="rounded-2xl p-[1px] bg-gradient-to-b from-white/10 to-transparent"
+          >
+            <div
+              className={`border rounded-2xl p-5 ${getStyles(
+                item.priority
+              )}`}
             >
-              <div
-                className={`border rounded-2xl p-5 ${getStyles(
-                  item.priority
-                )}`}
-              >
+              <div className="flex justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    {getIcon(item.priority)}
 
-                <div className="flex justify-between gap-4">
+                    <h3 className="font-medium">
+                      {item.title}
+                    </h3>
 
-                  <div className="flex-1">
-
-                    <div className="flex items-center gap-2">
-                      {getIcon(
-                        item.priority
-                      )}
-
-                      <h3 className="font-medium">
-                        {
-                          item.title
-                        }
-                      </h3>
-
-                      <span className="text-[10px] uppercase tracking-wider text-gray-400 ml-auto">
-                        {
-                          item.priority
-                        }
-                      </span>
-                    </div>
-
-                    <p className="text-sm text-gray-300 mt-3 leading-relaxed">
-                      {
-                        item.message
-                      }
-                    </p>
-
+                    <span className="text-[10px] uppercase tracking-wider text-gray-400 ml-auto">
+                      {item.priority}
+                    </span>
                   </div>
 
-                  <button
-                    onClick={() =>
-                      deleteItem(
-                        item.id
-                      )
-                    }
-                    className="text-red-400 hover:text-red-300"
-                  >
-                    <Trash2
-                      size={16}
-                    />
-                  </button>
-
+                  <p className="text-sm text-gray-300 mt-3 leading-relaxed">
+                    {item.message}
+                  </p>
                 </div>
 
+                <button
+                  onClick={() =>
+                    deleteItem(item.id)
+                  }
+                  className="text-red-400 hover:text-red-300"
+                >
+                  <Trash2 size={16} />
+                </button>
               </div>
-            </motion.div>
-          )
-        )}
-
+            </div>
+          </motion.div>
+        ))}
       </div>
-
     </div>
   );
 }

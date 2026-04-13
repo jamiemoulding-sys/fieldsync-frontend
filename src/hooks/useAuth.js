@@ -1,12 +1,3 @@
-/* =========================================================
-   src/hooks/useAuth.js
-   FULL FIXED FRONTEND VERSION
-   - Uses shared Supabase client
-   - Removed company_name column dependency
-   - Stable auth listener
-   - Clean session handling
-========================================================= */
-
 import {
   useState,
   useEffect,
@@ -29,70 +20,6 @@ export function useAuth() {
   const [loading, setLoading] =
     useState(true);
 
-  /* =====================================
-     FORMAT USER
-  ===================================== */
-
-  const formatUser = (
-    authUser,
-    profile = {}
-  ) => {
-    return {
-      id: authUser.id,
-
-      email:
-        authUser.email || "",
-
-      name:
-        profile.name ||
-        authUser.user_metadata
-          ?.name ||
-        "",
-
-      phone:
-        profile.phone || "",
-
-      role:
-        profile.role ||
-        "employee",
-
-      companyId:
-        profile.company_id ||
-        null,
-
-      company_id:
-        profile.company_id ||
-        null,
-
-      /* REMOVED old company_name column */
-      companyName: "",
-
-      jobTitle:
-        profile.job_title ||
-        "",
-
-      isPro:
-        profile.is_pro ||
-        false,
-
-      is_pro:
-        profile.is_pro ||
-        false,
-
-      current_plan:
-        profile.current_plan ||
-        "free",
-
-      subscription_status:
-        profile.subscription_status ||
-        "free",
-    };
-  };
-
-  /* =====================================
-     LOAD USER
-  ===================================== */
-
   const loadUser =
     useCallback(
       async () => {
@@ -106,9 +33,7 @@ export function useAuth() {
           } =
             await supabase.auth.getSession();
 
-          if (
-            !session?.user
-          ) {
+          if (!session?.user) {
             setUser(null);
             return;
           }
@@ -117,53 +42,81 @@ export function useAuth() {
             session.user;
 
           const {
-            data: profile,
+            data,
             error,
           } =
             await supabase
               .from("users")
-              .select("*")
+              .select(`
+                *,
+                companies (
+                  id,
+                  name,
+                  is_pro,
+                  current_plan,
+                  subscription_status
+                )
+              `)
               .eq(
                 "id",
                 authUser.id
               )
-              .maybeSingle();
+              .single();
 
-          if (error) {
-            console.error(
-              "PROFILE LOAD ERROR:",
-              error
-            );
-          }
+          if (error)
+            throw error;
 
-          const finalUser =
-            formatUser(
-              authUser,
-              profile || {}
-            );
+          setUser({
+            id: authUser.id,
+            email:
+              authUser.email,
 
-          setUser(
-            finalUser
-          );
+            name:
+              data.name || "",
+
+            phone:
+              data.phone || "",
+
+            role:
+              data.role ||
+              "employee",
+
+            companyId:
+              data.company_id,
+
+            companyName:
+              data.companies
+                ?.name || "",
+
+            jobTitle:
+              data.job_title ||
+              "",
+
+            isPro:
+              data.companies
+                ?.is_pro ||
+              false,
+
+            current_plan:
+              data.companies
+                ?.current_plan ||
+              "free",
+
+            subscription_status:
+              data.companies
+                ?.subscription_status ||
+              "free",
+          });
 
         } catch (err) {
-          console.error(
-            "AUTH LOAD ERROR:",
-            err
-          );
-
+          console.error(err);
           setUser(null);
-
         } finally {
           setLoading(false);
         }
       },
       []
     );
-
-  /* =====================================
-     AUTH LISTENER
-  ===================================== */
 
   useEffect(() => {
     loadUser();
@@ -173,52 +126,24 @@ export function useAuth() {
         listener,
     } =
       supabase.auth.onAuthStateChange(
-        (
-          event
-        ) => {
-          if (
-            event ===
-              "SIGNED_IN" ||
-            event ===
-              "TOKEN_REFRESHED" ||
-            event ===
-              "USER_UPDATED"
-          ) {
-            loadUser();
-          }
-
-          if (
-            event ===
-            "SIGNED_OUT"
-          ) {
-            setUser(null);
-          }
+        () => {
+          loadUser();
         }
       );
 
-    return () => {
-      listener
-        ?.subscription
-        ?.unsubscribe();
-    };
+    return () =>
+      listener.subscription.unsubscribe();
   }, [loadUser]);
-
-  /* =====================================
-     LOGIN
-  ===================================== */
 
   const login =
     async (
       email,
       password
     ) => {
-      const {
-        error,
-      } =
+      const { error } =
         await supabase.auth.signInWithPassword(
           {
-            email:
-              email.trim(),
+            email,
             password,
           }
         );
@@ -233,99 +158,18 @@ export function useAuth() {
       );
     };
 
-  /* =====================================
-     SIGNUP
-  ===================================== */
-
-  const signup =
-    async ({
-      email,
-      password,
-      name,
-    }) => {
-      const {
-        error,
-      } =
-        await supabase.auth.signUp(
-          {
-            email:
-              email.trim(),
-            password,
-            options: {
-              data: {
-                name:
-                  name || "",
-              },
-            },
-          }
-        );
-
-      if (error)
-        throw error;
-
-      navigate(
-        "/login"
-      );
-    };
-
-  /* =====================================
-     LOGOUT
-  ===================================== */
-
   const logout =
     async () => {
       await supabase.auth.signOut();
-
       setUser(null);
-
-      navigate(
-        "/login"
-      );
+      navigate("/login");
     };
-
-  /* =====================================
-     UPDATE USER
-  ===================================== */
-
-  const updateUser =
-    async (
-      updates
-    ) => {
-      if (!user)
-        return;
-
-      const {
-        error,
-      } =
-        await supabase
-          .from("users")
-          .update(
-            updates
-          )
-          .eq(
-            "id",
-            user.id
-          );
-
-      if (error)
-        throw error;
-
-      await loadUser();
-    };
-
-  /* =====================================
-     EXPORTS
-  ===================================== */
 
   return {
     user,
     loading,
-
     login,
-    signup,
     logout,
-
-    updateUser,
     reloadUser:
       loadUser,
 
@@ -339,17 +183,7 @@ export function useAuth() {
       user?.role ===
         "admin",
 
-    isEmployee:
-      user?.role ===
-      "employee",
-
     isPaid:
       user?.isPro,
-
-    currentPlan:
-      user?.current_plan,
-
-    subscriptionStatus:
-      user?.subscription_status,
   };
 }

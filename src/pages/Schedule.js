@@ -1,6 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
-import { userAPI, scheduleAPI } from "../services/api";
+// src/pages/Schedule.jsx
+// FULL FILE - FIXED FOR NEW MULTI COMPANY API
+
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import {
+  userAPI,
+  scheduleAPI,
+} from "../services/api";
+
 import { motion } from "framer-motion";
+
 import {
   CalendarDays,
   Users,
@@ -11,15 +24,24 @@ import {
   ChevronRight,
   Clock3,
   CheckCircle2,
+  Loader2,
 } from "lucide-react";
 
 export default function Schedule() {
-  const [users, setUsers] = useState([]);
-  const [schedules, setSchedules] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [users, setUsers] =
+    useState([]);
 
-  const [view, setView] = useState("calendar");
-  const [search, setSearch] = useState("");
+  const [schedules, setSchedules] =
+    useState([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [view, setView] =
+    useState("calendar");
+
+  const [search, setSearch] =
+    useState("");
 
   const [selectedUsers, setSelectedUsers] =
     useState([]);
@@ -54,11 +76,14 @@ export default function Schedule() {
     loadData();
   }, []);
 
-  const loadData = async () => {
+  async function loadData() {
     try {
       setLoading(true);
 
-      const [usersData, rotaData] =
+      const [
+        usersData,
+        rotaData,
+      ] =
         await Promise.all([
           userAPI.getAll(),
           scheduleAPI.getAll(),
@@ -82,13 +107,9 @@ export default function Schedule() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  /* ===================================
-     BULK CREATE
-  =================================== */
-
-  const createSchedule = async () => {
+  async function createSchedule() {
     if (
       !selectedUsers.length ||
       !startDate ||
@@ -96,7 +117,9 @@ export default function Schedule() {
       !start ||
       !end
     ) {
-      return alert("Fill all fields");
+      return alert(
+        "Fill all fields"
+      );
     }
 
     if (
@@ -112,46 +135,65 @@ export default function Schedule() {
       setCreating(true);
 
       let current = new Date(
-        startDate + "T00:00:00"
+        startDate +
+          "T00:00:00"
       );
 
-      const finish = new Date(
-        endDate + "T00:00:00"
-      );
+      const finish =
+        new Date(
+          endDate +
+            "T00:00:00"
+        );
 
       const requests = [];
 
-      while (current <= finish) {
+      while (
+        current <= finish
+      ) {
         const y =
           current.getFullYear();
 
         const m = String(
-          current.getMonth() + 1
-        ).padStart(2, "0");
+          current.getMonth() +
+            1
+        ).padStart(
+          2,
+          "0"
+        );
 
         const d = String(
           current.getDate()
-        ).padStart(2, "0");
+        ).padStart(
+          2,
+          "0"
+        );
 
         const dateStr = `${y}-${m}-${d}`;
 
         for (const userId of selectedUsers) {
           requests.push(
-            scheduleAPI.create({
-              user_id: userId,
-              date: dateStr,
-              start_time: `${dateStr}T${start}:00`,
-              end_time: `${dateStr}T${end}:00`,
-            })
+            scheduleAPI.create(
+              {
+                user_id:
+                  userId,
+                date:
+                  dateStr,
+                start_time: `${dateStr}T${start}:00`,
+                end_time: `${dateStr}T${end}:00`,
+              }
+            )
           );
         }
 
         current.setDate(
-          current.getDate() + 1
+          current.getDate() +
+            1
         );
       }
 
-      await Promise.all(requests);
+      await Promise.all(
+        requests
+      );
 
       setSelectedUsers([]);
       setStartDate("");
@@ -162,7 +204,7 @@ export default function Schedule() {
       await loadData();
 
       alert(
-        "Bulk shifts created successfully"
+        "Bulk shifts created"
       );
     } catch (err) {
       console.error(err);
@@ -172,9 +214,11 @@ export default function Schedule() {
     } finally {
       setCreating(false);
     }
-  };
+  }
 
-  const deleteShift = async (id) => {
+  async function deleteShift(
+    id
+  ) {
     if (
       !window.confirm(
         "Delete this shift?"
@@ -183,36 +227,51 @@ export default function Schedule() {
       return;
 
     try {
-      await scheduleAPI.delete(id);
-      loadData();
-    } catch {
-      alert("Delete failed");
-    }
-  };
+      await scheduleAPI.delete(
+        id
+      );
 
-  const changeMonth = (dir) => {
-    const next = new Date(
-      currentMonth
-    );
+      await loadData();
+    } catch (err) {
+      console.error(err);
+      alert(
+        "Delete failed"
+      );
+    }
+  }
+
+  function changeMonth(
+    dir
+  ) {
+    const next =
+      new Date(
+        currentMonth
+      );
 
     next.setMonth(
-      next.getMonth() + dir
+      next.getMonth() +
+        dir
     );
 
-    setCurrentMonth(next);
-  };
+    setCurrentMonth(
+      next
+    );
+  }
 
-  const endOfMonth = new Date(
-    currentMonth.getFullYear(),
-    currentMonth.getMonth() + 1,
-    0
-  );
+  const endOfMonth =
+    new Date(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth() +
+        1,
+      0
+    );
 
   const days = [];
 
   for (
     let i = 1;
-    i <= endOfMonth.getDate();
+    i <=
+    endOfMonth.getDate();
     i++
   ) {
     days.push(
@@ -224,51 +283,68 @@ export default function Schedule() {
     );
   }
 
-  const getShiftsForDay = (day) => {
-    return schedules.filter((s) => {
-      const shiftDate = new Date(
-        s.date + "T00:00:00"
-      );
+  function getShiftsForDay(
+    day
+  ) {
+    return schedules.filter(
+      (s) => {
+        const shiftDate =
+          new Date(
+            s.date +
+              "T00:00:00"
+          );
 
-      return (
-        shiftDate.toDateString() ===
-        day.toDateString()
-      );
-    });
-  };
+        return (
+          shiftDate.toDateString() ===
+          day.toDateString()
+        );
+      }
+    );
+  }
 
-  const filteredSchedules = useMemo(
-    () =>
-      schedules.filter((s) =>
-        `${s.name || ""}`
-          .toLowerCase()
-          .includes(
-            search.toLowerCase()
-          )
-      ),
-    [schedules, search]
-  );
+  const filteredSchedules =
+    useMemo(
+      () =>
+        schedules.filter(
+          (s) =>
+            `${s.name || ""}`
+              .toLowerCase()
+              .includes(
+                search.toLowerCase()
+              )
+        ),
+      [schedules, search]
+    );
 
   const totalShifts =
     schedules.length;
 
-  const totalStaff = users.length;
+  const totalStaff =
+    users.length;
 
   const todayShifts =
-    schedules.filter((s) => {
-      const shiftDate = new Date(
-        s.date + "T00:00:00"
-      );
+    schedules.filter(
+      (s) => {
+        const shiftDate =
+          new Date(
+            s.date +
+              "T00:00:00"
+          );
 
-      return (
-        shiftDate.toDateString() ===
-        new Date().toDateString()
-      );
-    }).length;
+        return (
+          shiftDate.toDateString() ===
+          new Date().toDateString()
+        );
+      }
+    ).length;
 
   if (loading) {
     return (
-      <div className="text-gray-400">
+      <div className="text-gray-400 flex items-center gap-2">
+        <Loader2
+          size={16}
+          className="animate-spin"
+        />
         Loading schedule...
       </div>
     );
@@ -307,10 +383,13 @@ export default function Schedule() {
 
           <button
             onClick={() =>
-              setView("grid")
+              setView(
+                "grid"
+              )
             }
             className={`px-4 py-2 rounded-xl text-sm ${
-              view === "grid"
+              view ===
+              "grid"
                 ? "bg-indigo-600 text-white"
                 : "bg-[#0f172a] text-gray-300"
             }`}
@@ -324,19 +403,33 @@ export default function Schedule() {
       <div className="grid md:grid-cols-4 gap-4">
         <StatCard
           title="Total Staff"
-          value={totalStaff}
-          icon={<Users size={16} />}
+          value={
+            totalStaff
+          }
+          icon={
+            <Users
+              size={16}
+            />
+          }
         />
 
         <StatCard
           title="Shifts Today"
-          value={todayShifts}
-          icon={<Clock3 size={16} />}
+          value={
+            todayShifts
+          }
+          icon={
+            <Clock3
+              size={16}
+            />
+          }
         />
 
         <StatCard
           title="Total Shifts"
-          value={totalShifts}
+          value={
+            totalShifts
+          }
           icon={
             <CalendarDays
               size={16}
@@ -358,7 +451,9 @@ export default function Schedule() {
       {/* BULK CREATE */}
       <div className="rounded-2xl border border-white/10 bg-[#020617] p-5">
         <div className="flex items-center gap-2 mb-4">
-          <Plus size={16} />
+          <Plus
+            size={16}
+          />
 
           <h3 className="font-medium">
             Bulk Assign Shifts
@@ -368,8 +463,12 @@ export default function Schedule() {
         <div className="grid md:grid-cols-5 gap-3">
           <select
             multiple
-            value={selectedUsers}
-            onChange={(e) =>
+            value={
+              selectedUsers
+            }
+            onChange={(
+              e
+            ) =>
               setSelectedUsers(
                 Array.from(
                   e.target
@@ -381,22 +480,33 @@ export default function Schedule() {
             }
             className="bg-[#0f172a] text-white border border-white/10 rounded-xl px-3 py-2 h-36"
           >
-            {users.map((u) => (
-              <option
-                key={u.id}
-                value={u.id}
-              >
-                {u.name}
-              </option>
-            ))}
+            {users.map(
+              (u) => (
+                <option
+                  key={
+                    u.id
+                  }
+                  value={
+                    u.id
+                  }
+                >
+                  {u.name}
+                </option>
+              )
+            )}
           </select>
 
           <input
             type="date"
-            value={startDate}
-            onChange={(e) =>
+            value={
+              startDate
+            }
+            onChange={(
+              e
+            ) =>
               setStartDate(
-                e.target.value
+                e.target
+                  .value
               )
             }
             className="bg-[#0f172a] text-white border border-white/10 rounded-xl px-3 py-2"
@@ -404,10 +514,15 @@ export default function Schedule() {
 
           <input
             type="date"
-            value={endDate}
-            onChange={(e) =>
+            value={
+              endDate
+            }
+            onChange={(
+              e
+            ) =>
               setEndDate(
-                e.target.value
+                e.target
+                  .value
               )
             }
             className="bg-[#0f172a] text-white border border-white/10 rounded-xl px-3 py-2"
@@ -415,10 +530,15 @@ export default function Schedule() {
 
           <input
             type="time"
-            value={start}
-            onChange={(e) =>
+            value={
+              start
+            }
+            onChange={(
+              e
+            ) =>
               setStart(
-                e.target.value
+                e.target
+                  .value
               )
             }
             className="bg-[#0f172a] text-white border border-white/10 rounded-xl px-3 py-2"
@@ -426,10 +546,15 @@ export default function Schedule() {
 
           <input
             type="time"
-            value={end}
-            onChange={(e) =>
+            value={
+              end
+            }
+            onChange={(
+              e
+            ) =>
               setEnd(
-                e.target.value
+                e.target
+                  .value
               )
             }
             className="bg-[#0f172a] text-white border border-white/10 rounded-xl px-3 py-2"
@@ -440,7 +565,9 @@ export default function Schedule() {
           onClick={
             createSchedule
           }
-          disabled={creating}
+          disabled={
+            creating
+          }
           className="w-full mt-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 py-3 rounded-xl font-medium"
         >
           {creating
@@ -459,22 +586,31 @@ export default function Schedule() {
         <input
           placeholder="Search employee..."
           value={search}
-          onChange={(e) =>
+          onChange={(
+            e
+          ) =>
             setSearch(
-              e.target.value
+              e.target
+                .value
             )
           }
           className="w-full bg-[#020617] border border-white/10 rounded-2xl pl-11 pr-4 py-3"
         />
       </div>
 
-      {/* GRID */}
-      {view === "grid" && (
+      {/* GRID VIEW */}
+      {view ===
+        "grid" && (
         <div className="grid md:grid-cols-3 gap-4">
           {filteredSchedules.map(
-            (s, i) => (
+            (
+              s,
+              i
+            ) => (
               <motion.div
-                key={s.id}
+                key={
+                  s.id
+                }
                 initial={{
                   opacity: 0,
                   y: 10,
@@ -493,7 +629,9 @@ export default function Schedule() {
                 <div className="flex justify-between">
                   <div>
                     <p className="font-medium">
-                      {s.name}
+                      {
+                        s.name
+                      }
                     </p>
 
                     <p className="text-xs text-gray-400 mt-1">
@@ -551,7 +689,7 @@ export default function Schedule() {
         </div>
       )}
 
-      {/* CALENDAR */}
+      {/* CALENDAR VIEW */}
       {view ===
         "calendar" && (
         <div>
@@ -577,9 +715,7 @@ export default function Schedule() {
                     "long",
                 }
               )}{" "}
-              {
-                currentMonth.getFullYear()
-              }
+              {currentMonth.getFullYear()}
             </h3>
 
             <button
@@ -609,7 +745,9 @@ export default function Schedule() {
 
                 return (
                   <div
-                    key={i}
+                    key={
+                      i
+                    }
                     className="bg-[#020617] border border-white/10 rounded-xl p-2 min-h-[130px]"
                   >
                     <div className="text-xs text-gray-500 mb-2">
@@ -644,8 +782,7 @@ export default function Schedule() {
                                   "2-digit",
                               }
                             )}{" "}
-                            -
-                            {" "}
+                            -{" "}
                             {new Date(
                               s.end_time
                             ).toLocaleTimeString(

@@ -1,3 +1,6 @@
+// src/pages/Tasks.jsx
+// FULL FILE - FIXED FOR NEW MULTI COMPANY API
+
 import { useState, useEffect } from "react";
 import { taskAPI, locationAPI } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
@@ -10,6 +13,7 @@ import {
   AlertTriangle,
   Search,
   X,
+  Loader2,
 } from "lucide-react";
 
 export default function Tasks() {
@@ -31,22 +35,19 @@ export default function Tasks() {
   const [selectedLocation, setSelectedLocation] =
     useState("");
 
-  const [completedTasks, setCompletedTasks] =
-    useState([]);
-
   useEffect(() => {
     if (authLoading || !user) return;
     loadData();
   }, [authLoading, user]);
 
-  const loadData = async () => {
+  async function loadData() {
     try {
       setLoading(true);
 
       const [tasksData, locationsData] =
         await Promise.all([
-          taskAPI.getTasks(),
-          locationAPI.getLocations(),
+          taskAPI.getAll(),
+          locationAPI.getAll(),
         ]);
 
       setTasks(
@@ -60,22 +61,24 @@ export default function Tasks() {
           ? locationsData
           : []
       );
-
     } catch (err) {
       console.error(err);
-
+      setTasks([]);
+      setLocations([]);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const handleCreateTask = async (e) => {
+  async function handleCreateTask(e) {
     e.preventDefault();
 
     try {
       await taskAPI.create({
         ...newTask,
-        location_id: selectedLocation,
+        location_id:
+          selectedLocation || null,
+        completed: false,
       });
 
       setShowModal(false);
@@ -88,51 +91,54 @@ export default function Tasks() {
 
       setSelectedLocation("");
 
-      loadData();
-
+      await loadData();
     } catch (err) {
+      console.error(err);
       alert("Failed to create task");
     }
-  };
+  }
 
-  const handleComplete = async (taskId) => {
+  async function handleComplete(taskId) {
     try {
-      await taskAPI.complete(taskId);
+      await taskAPI.update(taskId, {
+        completed: true,
+      });
 
-      setCompletedTasks((prev) => [
-        ...prev,
-        taskId,
-      ]);
-
+      await loadData();
     } catch (err) {
+      console.error(err);
       alert("Failed to complete task");
     }
-  };
+  }
 
   if (authLoading || loading) {
     return (
-      <div className="text-gray-400">
+      <div className="text-gray-400 flex items-center gap-2">
+        <Loader2
+          size={16}
+          className="animate-spin"
+        />
         Loading tasks...
       </div>
     );
   }
 
   const filteredTasks = tasks.filter((task) =>
-    `${task.title} ${task.description}`
+    `${task.title} ${task.description || ""}`
       .toLowerCase()
       .includes(search.toLowerCase())
   );
 
   const total = tasks.length;
-  const done = completedTasks.length;
+  const done = tasks.filter(
+    (x) => x.completed
+  ).length;
   const open = total - done;
 
   return (
     <div className="space-y-6">
-
       {/* HEADER */}
       <div className="flex justify-between items-center flex-wrap gap-4">
-
         <div>
           <h1 className="text-2xl font-semibold">
             Tasks
@@ -152,12 +158,10 @@ export default function Tasks() {
           <Plus size={16} />
           Add Task
         </button>
-
       </div>
 
       {/* KPI */}
       <div className="grid md:grid-cols-3 gap-4">
-
         <StatCard
           title="Total Tasks"
           value={total}
@@ -167,20 +171,22 @@ export default function Tasks() {
         <StatCard
           title="Open Tasks"
           value={open}
-          icon={<AlertTriangle size={16} />}
+          icon={
+            <AlertTriangle size={16} />
+          }
         />
 
         <StatCard
           title="Completed"
           value={done}
-          icon={<CheckCircle size={16} />}
+          icon={
+            <CheckCircle size={16} />
+          }
         />
-
       </div>
 
       {/* SEARCH */}
       <div className="relative">
-
         <Search
           size={16}
           className="absolute left-4 top-3.5 text-gray-500"
@@ -194,102 +200,93 @@ export default function Tasks() {
           placeholder="Search tasks..."
           className="w-full bg-[#020617] border border-white/10 rounded-2xl pl-11 pr-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500"
         />
-
       </div>
 
       {/* GRID */}
       <div className="grid md:grid-cols-3 gap-5">
+        {filteredTasks.map(
+          (task, i) => {
+            const isDone =
+              task.completed;
 
-        {filteredTasks.map((task, i) => {
-          const isDone =
-            completedTasks.includes(
-              task.id
-            );
+            const location =
+              locations.find(
+                (l) =>
+                  l.id ===
+                  task.location_id
+              );
 
-          const location =
-            locations.find(
-              (l) =>
-                l.id ===
-                task.location_id
-            );
+            return (
+              <motion.div
+                key={task.id}
+                initial={{
+                  opacity: 0,
+                  y: 20,
+                }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                }}
+                transition={{
+                  delay:
+                    i * 0.04,
+                }}
+                className="rounded-2xl p-[1px] bg-gradient-to-b from-white/10 to-transparent"
+              >
+                <div className="bg-[#020617] border border-white/10 rounded-2xl p-5 h-full flex flex-col justify-between">
+                  <div>
+                    <div className="flex justify-between items-start gap-3">
+                      <p className="font-semibold">
+                        {task.title}
+                      </p>
 
-          return (
-            <motion.div
-              key={task.id}
-              initial={{
-                opacity: 0,
-                y: 20,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
-              transition={{
-                delay: i * 0.04,
-              }}
-              className="rounded-2xl p-[1px] bg-gradient-to-b from-white/10 to-transparent"
-            >
-              <div className="bg-[#020617] border border-white/10 rounded-2xl p-5 h-full flex flex-col justify-between">
+                      <PriorityBadge
+                        priority={
+                          task.priority ||
+                          "normal"
+                        }
+                      />
+                    </div>
 
-                <div>
-
-                  <div className="flex justify-between items-start gap-3">
-
-                    <p className="font-semibold">
-                      {task.title}
+                    <p className="text-sm text-gray-400 mt-2">
+                      {task.description ||
+                        "No description"}
                     </p>
 
-                    <PriorityBadge
-                      priority={
-                        task.priority ||
-                        "normal"
-                      }
-                    />
+                    <div className="flex items-center gap-1 text-xs text-gray-500 mt-4">
+                      <MapPin size={12} />
 
-                  </div>
-
-                  <p className="text-sm text-gray-400 mt-2">
-                    {task.description ||
-                      "No description"}
-                  </p>
-
-                  <div className="flex items-center gap-1 text-xs text-gray-500 mt-4">
-                    <MapPin size={12} />
-                    {location?.name ||
-                      "Unknown"}
-                  </div>
-
-                </div>
-
-                <div className="mt-5">
-
-                  {isDone ? (
-                    <div className="flex items-center gap-2 text-green-400 text-sm">
-                      <CheckCircle
-                        size={16}
-                      />
-                      Completed
+                      {location?.name ||
+                        "Unknown"}
                     </div>
-                  ) : (
-                    <button
-                      onClick={() =>
-                        handleComplete(
-                          task.id
-                        )
-                      }
-                      className="w-full bg-green-600 hover:bg-green-500 py-2 rounded-xl text-sm transition"
-                    >
-                      Complete Task
-                    </button>
-                  )}
+                  </div>
 
+                  <div className="mt-5">
+                    {isDone ? (
+                      <div className="flex items-center gap-2 text-green-400 text-sm">
+                        <CheckCircle
+                          size={16}
+                        />
+                        Completed
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() =>
+                          handleComplete(
+                            task.id
+                          )
+                        }
+                        className="w-full bg-green-600 hover:bg-green-500 py-2 rounded-xl text-sm transition"
+                      >
+                        Complete Task
+                      </button>
+                    )}
+                  </div>
                 </div>
-
-              </div>
-            </motion.div>
-          );
-        })}
-
+              </motion.div>
+            );
+          }
+        )}
       </div>
 
       {filteredTasks.length === 0 && (
@@ -301,7 +298,6 @@ export default function Tasks() {
       {/* MODAL */}
       {showModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-
           <motion.div
             initial={{
               scale: 0.95,
@@ -313,9 +309,7 @@ export default function Tasks() {
             }}
             className="w-full max-w-md bg-[#020617] border border-white/10 rounded-2xl p-6"
           >
-
             <div className="flex justify-between items-center mb-4">
-
               <h2 className="text-lg font-semibold">
                 Create Task
               </h2>
@@ -328,7 +322,6 @@ export default function Tasks() {
               >
                 <X size={18} />
               </button>
-
             </div>
 
             <form
@@ -337,7 +330,6 @@ export default function Tasks() {
               }
               className="space-y-4"
             >
-
               <input
                 placeholder="Task title"
                 value={
@@ -347,8 +339,7 @@ export default function Tasks() {
                   setNewTask({
                     ...newTask,
                     title:
-                      e.target
-                        .value,
+                      e.target.value,
                   })
                 }
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
@@ -364,8 +355,7 @@ export default function Tasks() {
                   setNewTask({
                     ...newTask,
                     description:
-                      e.target
-                        .value,
+                      e.target.value,
                   })
                 }
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 min-h-[110px]"
@@ -379,8 +369,7 @@ export default function Tasks() {
                   setNewTask({
                     ...newTask,
                     priority:
-                      e.target
-                        .value,
+                      e.target.value,
                   })
                 }
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
@@ -388,9 +377,11 @@ export default function Tasks() {
                 <option value="low">
                   Low
                 </option>
+
                 <option value="normal">
                   Normal
                 </option>
+
                 <option value="high">
                   High
                 </option>
@@ -406,7 +397,6 @@ export default function Tasks() {
                   )
                 }
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
-                required
               >
                 <option value="">
                   Select Location
@@ -415,9 +405,7 @@ export default function Tasks() {
                 {locations.map(
                   (loc) => (
                     <option
-                      key={
-                        loc.id
-                      }
+                      key={loc.id}
                       value={
                         loc.id
                       }
@@ -426,20 +414,15 @@ export default function Tasks() {
                     </option>
                   )
                 )}
-
               </select>
 
               <button className="w-full bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-medium transition">
                 Create Task
               </button>
-
             </form>
-
           </motion.div>
-
         </div>
       )}
-
     </div>
   );
 }
@@ -454,9 +437,7 @@ function StatCard({
   return (
     <div className="rounded-2xl p-[1px] bg-gradient-to-b from-white/10 to-transparent">
       <div className="bg-[#020617] border border-white/10 rounded-2xl p-4">
-
         <div className="flex justify-between items-center">
-
           <p className="text-xs text-gray-400">
             {title}
           </p>
@@ -464,13 +445,11 @@ function StatCard({
           <div className="text-indigo-400">
             {icon}
           </div>
-
         </div>
 
         <h2 className="text-2xl mt-2 font-semibold">
           {value}
         </h2>
-
       </div>
     </div>
   );
