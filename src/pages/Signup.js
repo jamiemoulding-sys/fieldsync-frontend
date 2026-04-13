@@ -37,7 +37,7 @@ export default function Signup() {
   };
 
   /* =====================================
-     FULL SIGNUP FIX
+     FULL FIXED SIGNUP
   ===================================== */
   const handleSignup =
     async (e) => {
@@ -46,10 +46,10 @@ export default function Signup() {
       setError("");
 
       if (
-        !form.email ||
+        !form.email.trim() ||
         !form.password ||
         !form.confirmPassword ||
-        !form.companyName
+        !form.companyName.trim()
       ) {
         return setError(
           "Please fill all fields"
@@ -87,12 +87,6 @@ export default function Signup() {
                 form.email.trim(),
               password:
                 form.password,
-              options: {
-                data: {
-                  company_name:
-                    form.companyName.trim(),
-                },
-              },
             }
           );
 
@@ -144,16 +138,13 @@ export default function Signup() {
               id: authUser.id,
               email:
                 authUser.email,
-              name:
-                form.companyName.trim(),
-              role: "admin",
+              name: "Owner",
               phone: "",
-              job_title:
-                "Owner",
+              role: "admin",
               company_id:
                 company.id,
-              company_name:
-                company.name,
+              job_title:
+                "Owner",
               is_pro: false,
               current_plan:
                 "free",
