@@ -37,7 +37,9 @@ export default function Signup() {
   };
 
   /* =====================================
-     FULL FIXED SIGNUP
+     FULL PERMANENT FIX
+     users table only gets user columns
+     companies table gets billing columns
   ===================================== */
   const handleSignup =
     async (e) => {
@@ -145,11 +147,6 @@ export default function Signup() {
                 company.id,
               job_title:
                 "Owner",
-              is_pro: false,
-              current_plan:
-                "free",
-              subscription_status:
-                "free",
             });
 
         if (profileError)
@@ -166,7 +163,6 @@ export default function Signup() {
           err.message ||
             "Signup failed"
         );
-
       } finally {
         setLoading(false);
       }
