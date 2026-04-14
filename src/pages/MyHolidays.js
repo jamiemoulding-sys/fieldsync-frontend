@@ -13,6 +13,9 @@ export default function MyHoliday() {
   const [loading, setLoading] =
     useState(true);
 
+  const [saving, setSaving] =
+    useState(false);
+
   const [form, setForm] =
     useState({
       start_date: "",
@@ -46,17 +49,53 @@ export default function MyHoliday() {
   const submit = async (e) => {
     e.preventDefault();
 
-    await holidayAPI.create(
-      form
-    );
+    if (
+      !form.start_date ||
+      !form.end_date
+    ) {
+      return alert(
+        "Select dates"
+      );
+    }
 
-    setForm({
-      start_date: "",
-      end_date: "",
-      reason: "",
-    });
+    if (
+      form.end_date <
+      form.start_date
+    ) {
+      return alert(
+        "End date cannot be before start date"
+      );
+    }
 
-    load();
+    try {
+      setSaving(true);
+
+      await holidayAPI.create({
+        ...form,
+        type: "holiday",
+        status: "pending",
+      });
+
+      setForm({
+        start_date: "",
+        end_date: "",
+        reason: "",
+      });
+
+      await load();
+
+      alert(
+        "Holiday request sent"
+      );
+    } catch (err) {
+      console.error(err);
+
+      alert(
+        "Failed to submit request"
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   const badge = (status) => {
@@ -85,7 +124,6 @@ export default function MyHoliday() {
 
   return (
     <div className="space-y-6">
-
       <div>
         <h1 className="text-2xl font-semibold">
           My Holidays
@@ -100,9 +138,7 @@ export default function MyHoliday() {
         onSubmit={submit}
         className="rounded-2xl border border-white/10 p-6 bg-[#020617] space-y-4"
       >
-
         <div className="grid md:grid-cols-2 gap-4">
-
           <input
             type="date"
             value={
@@ -134,7 +170,6 @@ export default function MyHoliday() {
             className="bg-white/5 border border-white/10 rounded-xl px-4 py-3"
             required
           />
-
         </div>
 
         <textarea
@@ -153,18 +188,19 @@ export default function MyHoliday() {
         />
 
         <button
-          className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center gap-2"
+          type="submit"
+          disabled={saving}
+          className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center gap-2 disabled:opacity-60"
         >
           <Send size={16} />
-          Submit Request
+          {saving
+            ? "Sending..."
+            : "Submit Request"}
         </button>
-
       </form>
 
       <div className="rounded-2xl border border-white/10 overflow-hidden">
-
         <table className="w-full text-left">
-
           <thead className="bg-white/5 text-gray-400 text-sm">
             <tr>
               <th className="p-4">
@@ -180,43 +216,59 @@ export default function MyHoliday() {
           </thead>
 
           <tbody>
-            {rows.map(
-              (row) => (
-                <tr
-                  key={
-                    row.id
-                  }
-                  className="border-t border-white/5"
+            {rows.length ===
+            0 ? (
+              <tr>
+                <td
+                  colSpan="3"
+                  className="p-4 text-gray-500"
                 >
-                  <td className="p-4">
-                    {row.start_date} →{" "}
-                    {row.end_date}
-                  </td>
-
-                  <td className="p-4">
-                    {row.reason}
-                  </td>
-
-                  <td className="p-4">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs capitalize ${badge(
-                        row.status
-                      )}`}
-                    >
+                  No requests yet
+                </td>
+              </tr>
+            ) : (
+              rows.map(
+                (row) => (
+                  <tr
+                    key={
+                      row.id
+                    }
+                    className="border-t border-white/5"
+                  >
+                    <td className="p-4">
                       {
-                        row.status
+                        row.start_date
+                      }{" "}
+                      →{" "}
+                      {
+                        row.end_date
                       }
-                    </span>
-                  </td>
-                </tr>
+                    </td>
+
+                    <td className="p-4">
+                      {
+                        row.reason
+                      }
+                    </td>
+
+                    <td className="p-4">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs capitalize ${badge(
+                          row.status
+                        )}`}
+                      >
+                        {
+                          row.status
+                        }
+                      </span>
+                    </td>
+                  </tr>
+                )
               )
             )}
           </tbody>
-
         </table>
-
       </div>
-
     </div>
   );
 }

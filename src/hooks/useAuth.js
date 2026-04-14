@@ -20,6 +20,10 @@ export function useAuth() {
   const [loading, setLoading] =
     useState(true);
 
+  /* =====================================
+     LOAD USER PROFILE
+  ===================================== */
+
   const loadUser =
     useCallback(
       async () => {
@@ -35,7 +39,7 @@ export function useAuth() {
 
           if (!session?.user) {
             setUser(null);
-            return;
+            return null;
           }
 
           const authUser =
@@ -66,8 +70,9 @@ export function useAuth() {
           if (error)
             throw error;
 
-          setUser({
+          const profile = {
             id: authUser.id,
+
             email:
               authUser.email,
 
@@ -106,17 +111,59 @@ export function useAuth() {
               data.companies
                 ?.subscription_status ||
               "free",
-          });
+          };
+
+          setUser(profile);
+
+          return profile;
 
         } catch (err) {
           console.error(err);
           setUser(null);
+          return null;
         } finally {
           setLoading(false);
         }
       },
       []
     );
+
+  /* =====================================
+     ROUTE BY ROLE
+  ===================================== */
+
+  const routeUser = (
+    profile
+  ) => {
+    if (!profile) {
+      navigate("/login");
+      return;
+    }
+
+    if (
+      profile.role ===
+      "admin"
+    ) {
+      navigate("/dashboard");
+      return;
+    }
+
+    if (
+      profile.role ===
+      "manager"
+    ) {
+      navigate("/dashboard");
+      return;
+    }
+
+    navigate(
+      "/employee-dashboard"
+    );
+  };
+
+  /* =====================================
+     INIT SESSION
+  ===================================== */
 
   useEffect(() => {
     loadUser();
@@ -126,14 +173,41 @@ export function useAuth() {
         listener,
     } =
       supabase.auth.onAuthStateChange(
-        () => {
-          loadUser();
+        async (
+          event
+        ) => {
+          if (
+            event ===
+              "SIGNED_OUT"
+          ) {
+            setUser(null);
+            navigate(
+              "/login"
+            );
+            return;
+          }
+
+          if (
+            event ===
+              "SIGNED_IN" ||
+            event ===
+              "TOKEN_REFRESHED"
+          ) {
+            await loadUser();
+          }
         }
       );
 
     return () =>
       listener.subscription.unsubscribe();
-  }, [loadUser]);
+  }, [
+    loadUser,
+    navigate,
+  ]);
+
+  /* =====================================
+     LOGIN
+  ===================================== */
 
   const login =
     async (
@@ -151,18 +225,27 @@ export function useAuth() {
       if (error)
         throw error;
 
-      await loadUser();
+      const profile =
+        await loadUser();
 
-      navigate(
-        "/dashboard"
+      routeUser(
+        profile
       );
     };
+
+  /* =====================================
+     LOGOUT
+  ===================================== */
 
   const logout =
     async () => {
       await supabase.auth.signOut();
+
       setUser(null);
-      navigate("/login");
+
+      navigate(
+        "/login"
+      );
     };
 
   return {

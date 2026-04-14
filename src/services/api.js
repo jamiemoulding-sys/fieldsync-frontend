@@ -740,20 +740,23 @@ export const inviteAPI = {
   send: async ({ email, role }) => {
     const user = await getCurrentUser();
 
-    const { error } =
-      await supabase.auth.signInWithOtp({
+    const { data, error } =
+      await supabase.auth.admin.inviteUserByEmail(
         email,
-        options: {
+        {
           data: {
             role: role || "employee",
             company_id: user.company_id,
           },
-        },
-      });
+          redirectTo:
+            window.location.origin +
+            "/accept-invite",
+        }
+      );
 
     if (error) throw error;
 
-    return true;
+    return data;
   },
 };
 
