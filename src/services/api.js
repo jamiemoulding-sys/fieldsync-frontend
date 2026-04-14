@@ -1,6 +1,6 @@
 // src/services/api.js
 // FULL FIXED COPY/PASTE VERSION
-// Multi-company safe + no duplicate exports + syntax fixed
+// Multi-company safe + legacy methods restored
 
 import axios from "axios";
 import supabase from "../lib/supabase";
@@ -182,6 +182,10 @@ export const locationAPI = {
     return data || [];
   },
 
+  getLocations: async () => {
+    return await locationAPI.getAll();
+  },
+
   create: async (payload) => {
     const companyId = await getCompanyId();
 
@@ -247,6 +251,10 @@ export const taskAPI = {
     return data || [];
   },
 
+  getTasks: async () => {
+    return await taskAPI.getAll();
+  },
+
   create: async (payload) => {
     const companyId = await getCompanyId();
 
@@ -268,6 +276,23 @@ export const taskAPI = {
     const { error } = await supabase
       .from("tasks")
       .update(payload)
+      .eq("id", id)
+      .eq("company_id", companyId);
+
+    if (error) throw error;
+
+    return true;
+  },
+
+  complete: async (id) => {
+    const companyId = await getCompanyId();
+
+    const { error } = await supabase
+      .from("tasks")
+      .update({
+        completed: true,
+        completed_at: new Date().toISOString(),
+      })
       .eq("id", id)
       .eq("company_id", companyId);
 
@@ -312,6 +337,22 @@ export const shiftAPI = {
     return data || [];
   },
 
+  getActive: async () => {
+    const user = await getCurrentUser();
+
+    const { data, error } = await supabase
+      .from("shifts")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("company_id", user.company_id)
+      .is("clock_out_time", null)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    return data;
+  },
+
   clockIn: async (payload = {}) => {
     const user = await getCurrentUser();
 
@@ -349,6 +390,22 @@ export const reportAPI = {
       ).length,
     };
   },
+
+  getTimesheets: async () => {
+    const companyId = await getCompanyId();
+
+    const { data, error } = await supabase
+      .from("shifts")
+      .select("*, users(name,email)")
+      .eq("company_id", companyId)
+      .order("clock_in_time", {
+        ascending: false,
+      });
+
+    if (error) throw error;
+
+    return data || [];
+  },
 };
 
 /* ==================================================
@@ -368,6 +425,7 @@ export const announcementAPI = {
       });
 
     if (error) throw error;
+
     return data || [];
   },
 
@@ -382,6 +440,7 @@ export const announcementAPI = {
       });
 
     if (error) throw error;
+
     return true;
   },
 
@@ -395,6 +454,7 @@ export const announcementAPI = {
       .eq("company_id", companyId);
 
     if (error) throw error;
+
     return true;
   },
 };
