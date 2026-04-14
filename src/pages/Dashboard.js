@@ -1,6 +1,6 @@
 // src/pages/Dashboard.js
-// FINAL 100% REAL DATA VERSION
-// No fake charts / launch ready / copy-paste ready
+// FULL FIXED PRO VERSION
+// Restored live map + fixed charts + real APIs + dark UI
 
 import { useEffect, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   RefreshCw,
   Loader2,
+  MapPin,
 } from "lucide-react";
 
 import {
@@ -39,6 +40,15 @@ import {
   YAxis,
 } from "recharts";
 
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+} from "react-leaflet";
+
+import "leaflet/dist/leaflet.css";
+
 /* ================================================= */
 
 export default function Dashboard() {
@@ -46,8 +56,13 @@ export default function Dashboard() {
 
   if (!user) return <Loading />;
 
-  if (user.role === "admin") return <AdminDashboard />;
-  if (user.role === "manager") return <ManagerDashboard />;
+  if (user.role === "admin") {
+    return <AdminDashboard />;
+  }
+
+  if (user.role === "manager") {
+    return <ManagerDashboard />;
+  }
 
   return <EmployeeDashboard />;
 }
@@ -61,55 +76,22 @@ function EmployeeDashboard() {
   const [shift, setShift] = useState(null);
   const [schedule, setSchedule] = useState([]);
   const [holidays, setHolidays] = useState([]);
-  const [worked, setWorked] = useState(0);
 
   useEffect(() => {
     load();
   }, []);
 
-  useEffect(() => {
-    let timer;
-
-    if (shift?.clock_in_time) {
-      timer = setInterval(() => {
-        const start = new Date(
-          shift.clock_in_time
-        ).getTime();
-
-        const now = Date.now();
-
-        const breakSecs =
-          shift.total_break_seconds || 0;
-
-        setWorked(
-          Math.floor(
-            (now - start) / 1000 - breakSecs
-          )
-        );
-      }, 1000);
-    }
-
-    return () => clearInterval(timer);
-  }, [shift]);
-
   async function load() {
     try {
-      setLoading(true);
-
-      const [a, b, c] =
-        await Promise.all([
-          shiftAPI.getActive(),
-          scheduleAPI.getMine(),
-          holidayAPI.getMine(),
-        ]);
+      const [a, b, c] = await Promise.all([
+        shiftAPI.getActive(),
+        scheduleAPI.getMine(),
+        holidayAPI.getMine(),
+      ]);
 
       setShift(a || null);
-      setSchedule(
-        Array.isArray(b) ? b : []
-      );
-      setHolidays(
-        Array.isArray(c) ? c : []
-      );
+      setSchedule(b || []);
+      setHolidays(c || []);
     } finally {
       setLoading(false);
     }
@@ -121,22 +103,14 @@ function EmployeeDashboard() {
     <div className="space-y-6">
       <Title
         title="Welcome Back"
-        sub="Your personal workspace"
+        sub="Your workspace"
       />
 
       <div className="grid md:grid-cols-4 gap-4">
         <Card
           title="Status"
-          value={
-            shift ? "Clocked In" : "Offline"
-          }
+          value={shift ? "Clocked In" : "Offline"}
           icon={<Clock3 size={16} />}
-        />
-
-        <Card
-          title="Worked Today"
-          value={format(worked)}
-          icon={<Activity size={16} />}
         />
 
         <Card
@@ -146,46 +120,17 @@ function EmployeeDashboard() {
         />
 
         <Card
-          title="Leave Requests"
+          title="Holiday Requests"
           value={holidays.length}
           icon={<Plane size={16} />}
         />
+
+        <Card
+          title="Today"
+          value={new Date().toLocaleDateString()}
+          icon={<Activity size={16} />}
+        />
       </div>
-
-      <Panel title="Upcoming Schedule">
-        {schedule.length === 0 ? (
-          <p className="text-gray-400">
-            No shifts scheduled
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {schedule
-              .slice(0, 5)
-              .map((item) => (
-                <div
-                  key={item.id}
-                  className="border border-white/10 rounded-xl p-4"
-                >
-                  <p className="font-medium">
-                    {item.date}
-                  </p>
-
-                  <p className="text-sm text-gray-400">
-                    {item.start_time?.slice(
-                      11,
-                      16
-                    )}{" "}
-                    -{" "}
-                    {item.end_time?.slice(
-                      11,
-                      16
-                    )}
-                  </p>
-                </div>
-              ))}
-          </div>
-        )}
-      </Panel>
     </div>
   );
 }
@@ -195,11 +140,8 @@ function EmployeeDashboard() {
 /* ================================================= */
 
 function ManagerDashboard() {
-  const [loading, setLoading] =
-    useState(true);
-
-  const [stats, setStats] =
-    useState({});
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({});
 
   useEffect(() => {
     load();
@@ -207,16 +149,14 @@ function ManagerDashboard() {
 
   async function load() {
     try {
-      setLoading(true);
-
-      const data =
-        await reportAPI.getSummary();
-
+      const data = await reportAPI.getSummary();
       setStats(data || {});
     } finally {
       setLoading(false);
     }
   }
+
+  if (loading) return <Loading />;
 
   const taskData = [
     {
@@ -232,13 +172,11 @@ function ManagerDashboard() {
     },
   ];
 
-  if (loading) return <Loading />;
-
   return (
     <div className="space-y-6">
       <Title
         title="Manager Dashboard"
-        sub="Team operations"
+        sub="Operations overview"
       />
 
       <div className="grid md:grid-cols-4 gap-4">
@@ -262,18 +200,17 @@ function ManagerDashboard() {
 
         <Card
           title="Completed"
-          value={
-            stats.completedTasks || 0
-          }
-          icon={
-            <CheckCircle2 size={16} />
-          }
+          value={stats.completedTasks || 0}
+          icon={<CheckCircle2 size={16} />}
         />
       </div>
 
       <Panel title="Task Status">
         <ChartBox>
-          <ResponsiveContainer>
+          <ResponsiveContainer
+            width="100%"
+            height="100%"
+          >
             <BarChart data={taskData}>
               <XAxis dataKey="name" />
               <YAxis />
@@ -295,43 +232,32 @@ function ManagerDashboard() {
 /* ================================================= */
 
 function AdminDashboard() {
-  const [loading, setLoading] =
-    useState(true);
-
-  const [stats, setStats] =
-    useState({});
-
-  const [plan, setPlan] =
-    useState("free");
-
-  const [updated, setUpdated] =
-    useState("");
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({});
+  const [plan, setPlan] = useState("free");
+  const [updated, setUpdated] = useState("");
+  const [liveStaff, setLiveStaff] = useState([]);
 
   useEffect(() => {
     load();
 
-    const timer =
-      setInterval(load, 15000);
+    const timer = setInterval(load, 15000);
 
-    return () =>
-      clearInterval(timer);
+    return () => clearInterval(timer);
   }, []);
 
   async function load() {
     try {
-      setLoading(true);
-
-      const [summary, bill] =
+      const [summary, bill, shifts] =
         await Promise.all([
           reportAPI.getSummary(),
           billingAPI.getStatus(),
+          shiftAPI.getActiveAll(),
         ]);
 
       setStats(summary || {});
-      setPlan(
-        bill?.plan || "free"
-      );
-
+      setPlan(bill?.plan || "free");
+      setLiveStaff(shifts || []);
       setUpdated(
         new Date().toLocaleTimeString()
       );
@@ -339,6 +265,8 @@ function AdminDashboard() {
       setLoading(false);
     }
   }
+
+  if (loading) return <Loading />;
 
   const attendance =
     stats.users > 0
@@ -360,50 +288,26 @@ function AdminDashboard() {
     },
   ];
 
-  const workloadData = [
+  const chartData = [
+    {
+      name: "Users",
+      value: stats.users || 0,
+    },
     {
       name: "Tasks",
       value: stats.tasks || 0,
     },
     {
-      name: "Completed",
-      value:
-        stats.completedTasks || 0,
-    },
-    {
       name: "Live",
-      value:
-        stats.activeUsers || 0,
+      value: stats.activeUsers || 0,
     },
   ];
-
-  const trendData = [
-    {
-      day: "Users",
-      value: stats.users || 0,
-    },
-    {
-      day: "Tasks",
-      value: stats.tasks || 0,
-    },
-    {
-      day: "Shifts",
-      value: stats.shifts || 0,
-    },
-    {
-      day: "Done",
-      value:
-        stats.completedTasks || 0,
-    },
-  ];
-
-  if (loading) return <Loading />;
 
   return (
     <div className="space-y-6">
       <Title
         title="Admin Dashboard"
-        sub="Real business analytics"
+        sub="Business overview"
       />
 
       <div className="grid md:grid-cols-4 gap-4">
@@ -421,9 +325,7 @@ function AdminDashboard() {
 
         <Card
           title="Clocked In"
-          value={
-            stats.activeUsers || 0
-          }
+          value={stats.activeUsers || 0}
           icon={<Clock3 size={16} />}
         />
 
@@ -437,11 +339,12 @@ function AdminDashboard() {
       <div className="grid lg:grid-cols-3 gap-4">
         <Panel title="Business Activity">
           <ChartBox>
-            <ResponsiveContainer>
-              <AreaChart
-                data={trendData}
-              >
-                <XAxis dataKey="day" />
+            <ResponsiveContainer
+              width="100%"
+              height="100%"
+            >
+              <AreaChart data={chartData}>
+                <XAxis dataKey="name" />
                 <YAxis />
                 <Tooltip />
                 <Area
@@ -455,27 +358,12 @@ function AdminDashboard() {
           </ChartBox>
         </Panel>
 
-        <Panel title="Operations">
-          <ChartBox>
-            <ResponsiveContainer>
-              <BarChart
-                data={workloadData}
-              >
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar
-                  dataKey="value"
-                  fill="#22c55e"
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartBox>
-        </Panel>
-
         <Panel title="Attendance">
           <ChartBox>
-            <ResponsiveContainer>
+            <ResponsiveContainer
+              width="100%"
+              height="100%"
+            >
               <PieChart>
                 <Pie
                   data={pieData}
@@ -495,7 +383,75 @@ function AdminDashboard() {
             {attendance}%
           </p>
         </Panel>
+
+        <Panel title="Live Staff">
+          <div className="space-y-3 max-h-[300px] overflow-auto">
+            {liveStaff.length === 0 && (
+              <p className="text-gray-400">
+                No active staff
+              </p>
+            )}
+
+            {liveStaff.map((row) => (
+              <div
+                key={row.id}
+                className="border border-white/10 rounded-xl p-3"
+              >
+                <p className="font-medium">
+                  {row.users?.name ||
+                    row.users?.email ||
+                    "Staff"}
+                </p>
+
+                <p className="text-xs text-gray-400 mt-1">
+                  Clocked in
+                </p>
+              </div>
+            ))}
+          </div>
+        </Panel>
       </div>
+
+      <Panel title="Live Map View">
+        <div className="h-[420px] rounded-2xl overflow-hidden">
+          <MapContainer
+            center={[52.63, 1.29]}
+            zoom={10}
+            style={{
+              height: "100%",
+              width: "100%",
+            }}
+          >
+            <TileLayer
+              attribution="&copy; OpenStreetMap"
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+
+            {liveStaff.map((staff) => {
+              if (
+                !staff.latitude ||
+                !staff.longitude
+              )
+                return null;
+
+              return (
+                <Marker
+                  key={staff.id}
+                  position={[
+                    staff.latitude,
+                    staff.longitude,
+                  ]}
+                >
+                  <Popup>
+                    {staff.users?.name ||
+                      "Employee"}
+                  </Popup>
+                </Marker>
+              );
+            })}
+          </MapContainer>
+        </div>
+      </Panel>
 
       <Panel title="Live Updates">
         <div className="text-sm text-gray-400 flex items-center gap-2">
@@ -523,10 +479,7 @@ function Loading() {
   );
 }
 
-function Title({
-  title,
-  sub,
-}) {
+function Title({ title, sub }) {
   return (
     <div>
       <h1 className="text-3xl font-semibold">
@@ -583,27 +536,8 @@ function ChartBox({
   children,
 }) {
   return (
-    <div style={{ height: 260 }}>
+    <div className="h-[260px] min-w-0">
       {children}
     </div>
   );
-}
-
-function format(sec) {
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor(
-    (sec % 3600) / 60
-  );
-  const s = sec % 60;
-
-  return `${String(h).padStart(
-    2,
-    "0"
-  )}:${String(m).padStart(
-    2,
-    "0"
-  )}:${String(s).padStart(
-    2,
-    "0"
-  )}`;
 }
