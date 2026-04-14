@@ -13,7 +13,6 @@ import supabase from "../lib/supabase";
 
 /* =====================================================
 GLOBAL SINGLETON STATE
-Prevents multiple hook instances causing lock errors
 ===================================================== */
 
 let authUserState = null;
@@ -47,7 +46,8 @@ function setGlobalLoading(value) {
 }
 
 /* =====================================================
-LOAD PROFILE
+SAFE PROFILE FETCH
+FIXED: removed recursive companies join
 ===================================================== */
 
 async function fetchProfile() {
@@ -63,63 +63,87 @@ async function fetchProfile() {
 
     const authUser = session.user;
 
+    /* -----------------------------
+       STEP 1: USER PROFILE ONLY
+    ----------------------------- */
+
     const {
-      data,
-      error,
+      data: userRow,
+      error: userError,
     } = await supabase
       .from("users")
       .select(`
-        *,
-        companies (
+        id,
+        name,
+        phone,
+        role,
+        company_id,
+        job_title
+      `)
+      .eq("id", authUser.id)
+      .single();
+
+    if (userError) throw userError;
+
+    /* -----------------------------
+       STEP 2: COMPANY SEPARATE
+    ----------------------------- */
+
+    let company = null;
+
+    if (userRow.company_id) {
+      const {
+        data: companyRow,
+      } = await supabase
+        .from("companies")
+        .select(`
           id,
           name,
           is_pro,
           current_plan,
           subscription_status
-        )
-      `)
-      .eq("id", authUser.id)
-      .single();
+        `)
+        .eq("id", userRow.company_id)
+        .single();
 
-    if (error) throw error;
+      company = companyRow || null;
+    }
+
+    /* -----------------------------
+       FINAL PROFILE
+    ----------------------------- */
 
     const profile = {
       id: authUser.id,
       email: authUser.email,
 
       name:
-        data.name || "",
+        userRow.name || "",
 
       phone:
-        data.phone || "",
+        userRow.phone || "",
 
       role:
-        data.role ||
+        userRow.role ||
         "employee",
 
       companyId:
-        data.company_id,
+        userRow.company_id,
 
       companyName:
-        data.companies?.name ||
-        "",
+        company?.name || "",
 
       jobTitle:
-        data.job_title ||
-        "",
+        userRow.job_title || "",
 
       isPro:
-        data.companies?.is_pro ||
-        false,
+        company?.is_pro || false,
 
       current_plan:
-        data.companies
-          ?.current_plan ||
-        "free",
+        company?.current_plan || "free",
 
       subscription_status:
-        data.companies
-          ?.subscription_status ||
+        company?.subscription_status ||
         "free",
     };
 
@@ -134,7 +158,7 @@ async function fetchProfile() {
 }
 
 /* =====================================================
-INIT ONCE ONLY
+INIT
 ===================================================== */
 
 async function initAuth() {
@@ -150,8 +174,7 @@ async function initAuth() {
     supabase.auth.onAuthStateChange(
       async (event) => {
         if (
-          event ===
-          "SIGNED_OUT"
+          event === "SIGNED_OUT"
         ) {
           setGlobalUser(null);
           setGlobalLoading(false);
@@ -159,8 +182,7 @@ async function initAuth() {
         }
 
         if (
-          event ===
-            "SIGNED_IN" ||
+          event === "SIGNED_IN" ||
           event ===
             "TOKEN_REFRESHED" ||
           event ===
@@ -224,8 +246,7 @@ export function useAuth() {
   }, []);
 
   /* =====================================================
-  SAFE RELOAD
-  Prevent duplicate parallel requests
+  RELOAD USER
   ===================================================== */
 
   const reloadUser =
