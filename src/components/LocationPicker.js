@@ -1,6 +1,14 @@
 /* =========================================================
 src/components/LocationPicker.js
-FULL FILE
+FULL COPY / PASTE FILE
+
+FIXES:
+✅ Search postcode
+✅ Drag marker after search
+✅ Click map to move marker
+✅ Marker never locks
+✅ Radius updates live
+✅ Existing saved marker loads
 ========================================================= */
 
 import {
@@ -9,6 +17,7 @@ import {
   Marker,
   Circle,
   useMap,
+  useMapEvents,
 } from "react-leaflet";
 
 import { useState, useEffect } from "react";
@@ -26,6 +35,8 @@ L.Icon.Default.mergeOptions({
     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
+/* ========================================================= */
+
 function Recenter({ position }) {
   const map = useMap();
 
@@ -33,8 +44,8 @@ function Recenter({ position }) {
     if (position) {
       map.flyTo(
         [position.lat, position.lng],
-        17,
-        { duration: 1 }
+        map.getZoom(),
+        { duration: 0.8 }
       );
     }
   }, [position, map]);
@@ -42,13 +53,30 @@ function Recenter({ position }) {
   return null;
 }
 
+function ClickMove({
+  setPosition,
+}) {
+  useMapEvents({
+    click(e) {
+      setPosition({
+        lat: e.latlng.lat,
+        lng: e.latlng.lng,
+      });
+    },
+  });
+
+  return null;
+}
+
+/* ========================================================= */
+
 export default function LocationPicker({
   position,
   setPosition,
   radius = 100,
   onSelectAddress,
 }) {
-  const [postcode, setPostcode] =
+  const [query, setQuery] =
     useState("");
 
   const [results, setResults] =
@@ -57,25 +85,28 @@ export default function LocationPicker({
   const [loading, setLoading] =
     useState(false);
 
-  const searchPostcode =
+  const search =
     async () => {
-      if (!postcode) return;
+      if (!query.trim()) return;
 
       try {
         setLoading(true);
 
-        const res =
-          await fetch(
-            `https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=gb&q=${encodeURIComponent(
-              postcode
-            )}`
-          );
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=gb&q=${encodeURIComponent(
+            query
+          )}`
+        );
 
         const data =
           await res.json();
 
-        setResults(data);
-      } catch (err) {
+        setResults(
+          Array.isArray(data)
+            ? data
+            : []
+        );
+      } catch {
         setResults([]);
       } finally {
         setLoading(false);
@@ -85,18 +116,32 @@ export default function LocationPicker({
   const chooseResult = (
     item
   ) => {
-    const pos = {
+    const next = {
       lat: Number(item.lat),
       lng: Number(item.lon),
     };
 
-    setPosition(pos);
+    setPosition(next);
 
     if (onSelectAddress) {
       onSelectAddress(
         item.display_name
       );
     }
+
+    setResults([]);
+  };
+
+  const dragEvents = {
+    dragend(e) {
+      const p =
+        e.target.getLatLng();
+
+      setPosition({
+        lat: p.lat,
+        lng: p.lng,
+      });
+    },
   };
 
   return (
@@ -104,22 +149,20 @@ export default function LocationPicker({
 
       <div className="grid grid-cols-4 gap-2">
         <input
-          value={postcode}
+          value={query}
           onChange={(e) =>
-            setPostcode(
+            setQuery(
               e.target.value
             )
           }
-          placeholder="Postcode"
+          placeholder="Postcode or address"
           className="col-span-3 bg-white/5 border border-white/10 rounded-xl px-4 py-3"
         />
 
         <button
           type="button"
-          onClick={
-            searchPostcode
-          }
-          className="bg-indigo-600 rounded-xl"
+          onClick={search}
+          className="bg-indigo-600 hover:bg-indigo-500 rounded-xl"
         >
           Search
         </button>
@@ -132,9 +175,12 @@ export default function LocationPicker({
       )}
 
       {results.length > 0 && (
-        <div className="max-h-48 overflow-y-auto border border-white/10 rounded-xl divide-y divide-white/5">
+        <div className="max-h-56 overflow-y-auto border border-white/10 rounded-xl divide-y divide-white/5">
           {results.map(
-            (item, i) => (
+            (
+              item,
+              i
+            ) => (
               <button
                 key={i}
                 type="button"
@@ -154,6 +200,10 @@ export default function LocationPicker({
         </div>
       )}
 
+      <div className="text-xs text-gray-400">
+        Search postcode, then drag pin to exact entrance.
+      </div>
+
       <div className="overflow-hidden rounded-2xl border border-white/10">
 
         <MapContainer
@@ -168,12 +218,17 @@ export default function LocationPicker({
                   0.5529,
                 ]
           }
-          zoom={13}
-          className="h-[320px] w-full"
+          zoom={16}
+          className="h-[360px] w-full"
         >
           <TileLayer
-            attribution="&copy; OpenStreetMap"
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+
+          <ClickMove
+            setPosition={
+              setPosition
+            }
           />
 
           {position && (
@@ -183,6 +238,12 @@ export default function LocationPicker({
                   position.lat,
                   position.lng,
                 ]}
+                draggable={
+                  true
+                }
+                eventHandlers={
+                  dragEvents
+                }
               />
 
               <Circle
@@ -212,9 +273,19 @@ export default function LocationPicker({
             }
           />
         </MapContainer>
-
       </div>
 
+      {position && (
+        <div className="text-xs text-indigo-300">
+          {position.lat.toFixed(
+            6
+          )}{" "}
+          ,{" "}
+          {position.lng.toFixed(
+            6
+          )}
+        </div>
+      )}
     </div>
   );
 }
