@@ -43,7 +43,7 @@ export default function HolidayRequests() {
     load();
   }, []);
 
-  const load = async () => {
+  async function load() {
     try {
       setLoading(true);
 
@@ -55,83 +55,89 @@ export default function HolidayRequests() {
           ? data
           : []
       );
+    } catch (err) {
+      console.error(err);
+      setRequests([]);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  /* ====================================
-     APPROVE / REJECT
-  ==================================== */
-
-  const updateStatus = async (
+  /* FIXED APPROVE / REJECT */
+  async function updateStatus(
     id,
     status
-  ) => {
-    await holidayAPI.update(id, {
-      status,
-    });
-    await load();
-  };
+  ) {
+    try {
+      if (status === "approved") {
+        await holidayAPI.approve(id);
+      } else {
+        await holidayAPI.reject(id);
+      }
 
-  /* ====================================
-     CREATE + REMOVE CONFLICT SHIFTS
-  ==================================== */
+      await load();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update");
+    }
+  }
 
-  const createLeave = async () => {
+  async function createLeave() {
     if (
       !form.name ||
       !form.start_date ||
       !form.end_date
     ) {
-      return alert("Fill all fields");
+      return alert(
+        "Fill all fields"
+      );
     }
 
-    await holidayAPI.create(form);
-
-    /* remove rota clashes */
     try {
-      const rota =
-        await scheduleAPI.getAll();
+      await holidayAPI.create(form);
 
-      const clashes =
-        rota.filter((s) => {
-          if (
-            s.name !== form.name
-          )
-            return false;
+      try {
+        const rota =
+          await scheduleAPI.getAll();
 
-          return (
-            s.date >=
-              form.start_date &&
-            s.date <=
-              form.end_date
+        const clashes =
+          rota.filter((s) => {
+            if (
+              s.name !== form.name
+            )
+              return false;
+
+            return (
+              s.date >=
+                form.start_date &&
+              s.date <=
+                form.end_date
+            );
+          });
+
+        for (const row of clashes) {
+          await scheduleAPI.delete(
+            row.id
           );
-        });
+        }
+      } catch {}
 
-      for (const row of clashes) {
-        await scheduleAPI.delete(
-          row.id
-        );
-      }
-    } catch {}
+      setOpenModal(false);
 
-    setOpenModal(false);
+      setForm({
+        name: "",
+        type: "holiday",
+        start_date: "",
+        end_date: "",
+        status: "approved",
+      });
 
-    setForm({
-      name: "",
-      type: "holiday",
-      start_date: "",
-      end_date: "",
-      status: "approved",
-    });
-
-    load();
-  };
-
-  /* ====================================
-     FILTERS
-  ==================================== */
+      await load();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save");
+    }
+  }
 
   const filtered =
     requests.filter((r) => {
@@ -166,10 +172,6 @@ export default function HolidayRequests() {
         "rejected"
     ).length;
 
-  /* ====================================
-     CALENDAR
-  ==================================== */
-
   const endOfMonth = new Date(
     currentMonth.getFullYear(),
     currentMonth.getMonth() + 1,
@@ -192,9 +194,9 @@ export default function HolidayRequests() {
     );
   }
 
-  const getRequestsForDay = (
+  function getRequestsForDay(
     day
-  ) => {
+  ) {
     return filtered.filter(
       (r) => {
         const start =
@@ -215,9 +217,9 @@ export default function HolidayRequests() {
         );
       }
     );
-  };
+  }
 
-  const changeMonth = (dir) => {
+  function changeMonth(dir) {
     const next =
       new Date(
         currentMonth
@@ -229,11 +231,11 @@ export default function HolidayRequests() {
     );
 
     setCurrentMonth(next);
-  };
+  }
 
-  const getTypeStyle = (
+  function getTypeStyle(
     type
-  ) => {
+  ) {
     if (
       type ===
       "sickness"
@@ -247,37 +249,39 @@ export default function HolidayRequests() {
       return "bg-orange-500/20 text-orange-300";
 
     return "bg-blue-500/20 text-blue-300";
-  };
+  }
 
-  const getTypeIcon = (
+  function getTypeIcon(
     type
-  ) => {
+  ) {
     if (
       type ===
       "sickness"
-    )
+    ) {
       return (
         <HeartPulse
           size={12}
         />
       );
+    }
 
     if (
       type ===
       "unauthorised"
-    )
+    ) {
       return (
         <AlertTriangle
           size={12}
         />
       );
+    }
 
     return (
       <CalendarDays
         size={12}
       />
     );
-  };
+  }
 
   if (loading) {
     return (
@@ -290,7 +294,6 @@ export default function HolidayRequests() {
 
   return (
     <div className="space-y-6">
-      {/* HEADER */}
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-semibold">
@@ -309,11 +312,10 @@ export default function HolidayRequests() {
             value={filter}
             onChange={(e) =>
               setFilter(
-                e.target
-                  .value
+                e.target.value
               )
             }
-            className="bg-[#0f172a] text-white border border-white/10 rounded-xl px-4 py-2"
+            className="bg-[#0f172a] border border-white/10 rounded-xl px-4 py-2"
           >
             <option value="all">
               All
@@ -343,7 +345,6 @@ export default function HolidayRequests() {
         </div>
       </div>
 
-      {/* KPI */}
       <div className="grid md:grid-cols-4 gap-4">
         <StatCard
           title="Total"
@@ -388,113 +389,23 @@ export default function HolidayRequests() {
         />
       </div>
 
-      {/* CALENDAR */}
-      <div className="rounded-2xl border border-white/10 bg-[#020617] p-5">
-        <div className="flex justify-between items-center mb-5">
-          <button
-            onClick={() =>
-              changeMonth(
-                -1
-              )
-            }
-            className="p-2 rounded-xl bg-[#0f172a]"
-          >
-            <ChevronLeft
-              size={18}
-            />
-          </button>
-
-          <h3 className="font-medium">
-            {currentMonth.toLocaleString(
-              "default",
-              {
-                month:
-                  "long",
-              }
-            )}{" "}
-            {
-              currentMonth.getFullYear()
-            }
-          </h3>
-
-          <button
-            onClick={() =>
-              changeMonth(
-                1
-              )
-            }
-            className="p-2 rounded-xl bg-[#0f172a]"
-          >
-            <ChevronRight
-              size={18}
-            />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-7 gap-2">
-          {days.map(
-            (
-              day,
-              i
-            ) => {
-              const entries =
-                getRequestsForDay(
-                  day
-                );
-
-              return (
-                <div
-                  key={i}
-                  className="bg-white/5 rounded-xl p-2 min-h-[120px]"
-                >
-                  <div className="text-xs text-gray-500 mb-2">
-                    {day.getDate()}
-                  </div>
-
-                  {entries.map(
-                    (
-                      r
-                    ) => (
-                      <div
-                        key={
-                          r.id
-                        }
-                        className={`text-xs px-2 py-1 rounded mb-1 flex items-center gap-1 ${getTypeStyle(
-                          r.type
-                        )}`}
-                      >
-                        {getTypeIcon(
-                          r.type
-                        )}
-                        {r.name}
-                      </div>
-                    )
-                  )}
-                </div>
-              );
-            }
-          )}
-        </div>
-      </div>
-
-      {/* TABLE */}
       <div className="rounded-2xl border border-white/10 overflow-hidden bg-[#020617]">
         <table className="w-full text-sm">
           <thead className="bg-white/5 text-gray-400">
             <tr>
-              <th className="text-left p-4">
+              <th className="p-4 text-left">
                 Employee
               </th>
-              <th className="text-left p-4">
+              <th className="p-4 text-left">
                 Type
               </th>
-              <th className="text-left p-4">
+              <th className="p-4 text-left">
                 Dates
               </th>
-              <th className="text-left p-4">
+              <th className="p-4 text-left">
                 Status
               </th>
-              <th className="text-left p-4">
+              <th className="p-4 text-left">
                 Action
               </th>
             </tr>
@@ -519,7 +430,7 @@ export default function HolidayRequests() {
                   transition={{
                     delay:
                       i *
-                      0.03,
+                      0.02,
                   }}
                   className="border-t border-white/5"
                 >
@@ -589,104 +500,6 @@ export default function HolidayRequests() {
           </tbody>
         </table>
       </div>
-
-      {/* MODAL */}
-      {openModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center px-6 z-50">
-          <div className="w-full max-w-md rounded-2xl bg-[#020617] border border-white/10 p-6 space-y-4">
-            <h2 className="text-lg font-semibold">
-              Add Leave
-            </h2>
-
-            <input
-              placeholder="Employee name"
-              value={form.name}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  name: e.target
-                    .value,
-                })
-              }
-              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10"
-            />
-
-            <select
-              value={form.type}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  type: e.target
-                    .value,
-                })
-              }
-              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10"
-            >
-              <option value="holiday">
-                Holiday
-              </option>
-              <option value="sickness">
-                Sickness
-              </option>
-              <option value="unauthorised">
-                Unauthorised
-              </option>
-            </select>
-
-            <input
-              type="date"
-              value={
-                form.start_date
-              }
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  start_date:
-                    e.target
-                      .value,
-                })
-              }
-              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10"
-            />
-
-            <input
-              type="date"
-              value={
-                form.end_date
-              }
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  end_date:
-                    e.target
-                      .value,
-                })
-              }
-              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10"
-            />
-
-            <button
-              onClick={
-                createLeave
-              }
-              className="w-full py-3 rounded-xl bg-indigo-600"
-            >
-              Save
-            </button>
-
-            <button
-              onClick={() =>
-                setOpenModal(
-                  false
-                )
-              }
-              className="w-full text-sm text-gray-400"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
