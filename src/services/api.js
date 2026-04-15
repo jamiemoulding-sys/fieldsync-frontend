@@ -632,73 +632,51 @@ HOLIDAYS
 ================================================== */
 
 export const holidayAPI = {
-  getAll: async () => {
-    const companyId = await getCompanyId();
-
-    const { data, error } = await supabase
-      .from("holidayrequests")
-      .select("*")
-      .eq("company_id", companyId)
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-    return data || [];
-  },
-
   getMine: async () => {
-    const user = await getCurrentUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    const { data, error } = await supabase
-      .from("holidayrequests")
+    return supabase
+      .from("holidays")
       .select("*")
       .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-    return data || [];
-  },
-
-  create: async (payload) => {
-    const user = await getCurrentUser();
-
-    const { error } = await supabase
-      .from("holidayrequests")
-      .insert({
-        ...payload,
-        user_id: user.id,
-        company_id: user.company_id,
-        status: "pending",
+      .order("created_at", {
+        ascending: false,
       });
-
-    if (error) throw error;
-    return true;
   },
 
-  update: async (id, payload) => {
-    const companyId = await getCompanyId();
+  create: async (payload) =>
+    supabase
+      .from("holidays")
+      .insert([payload]),
 
-    const { error } = await supabase
-      .from("holidayrequests")
-      .update(payload)
-      .eq("id", id)
-      .eq("company_id", companyId);
+  getAll: async () =>
+    supabase
+      .from("holidays")
+      .select(`
+        *,
+        users(name,email)
+      `)
+      .order("created_at", {
+        ascending: false,
+      }),
 
-    if (error) throw error;
-    return true;
-  },
+  approve: async (id) =>
+    supabase
+      .from("holidays")
+      .update({
+        status: "approved",
+      })
+      .eq("id", id),
 
-  delete: async (id) => {
-    const companyId = await getCompanyId();
-
-    const { error } = await supabase
-      .from("holidayrequests")
-      .delete()
-      .eq("id", id)
-      .eq("company_id", companyId);
-
-    if (error) throw error;
-    return true;
-  },
+  reject: async (id) =>
+    supabase
+      .from("holidays")
+      .update({
+        status: "rejected",
+      })
+      .eq("id", id),
 };
 
 /* ==================================================
