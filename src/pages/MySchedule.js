@@ -1,4 +1,7 @@
 // src/pages/MySchedule.jsx
+// FULL PATCHED VERSION
+// Your file preserved + upgrades added
+
 import { useEffect, useMemo, useState } from "react";
 import { scheduleAPI } from "../services/api";
 import {
@@ -6,15 +9,25 @@ import {
   Clock3,
   Loader2,
   RefreshCw,
+  Download,
+  History,
 } from "lucide-react";
 
 export default function MySchedule() {
   const [rows, setRows] = useState([]);
-  const [loading, setLoading] =
-    useState(true);
+  const [loading, setLoading] = useState(true);
+  const [showHistory, setShowHistory] =
+    useState(false);
 
   useEffect(() => {
     load();
+
+    const timer = setInterval(
+      load,
+      30000
+    );
+
+    return () => clearInterval(timer);
   }, []);
 
   async function load() {
@@ -36,10 +49,6 @@ export default function MySchedule() {
       setLoading(false);
     }
   }
-
-  const thisWeek = useMemo(() => {
-    return rows.slice(0, 7).length;
-  }, [rows]);
 
   function formatDate(date) {
     if (!date) return "-";
@@ -70,6 +79,140 @@ export default function MySchedule() {
     );
   }
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const upcoming = useMemo(() => {
+    return rows
+      .filter((row) => {
+        const d = new Date(
+          row.date
+        );
+        d.setHours(0, 0, 0, 0);
+        return d >= today;
+      })
+      .sort(
+        (a, b) =>
+          new Date(a.date) -
+          new Date(b.date)
+      );
+  }, [rows]);
+
+  const history = useMemo(() => {
+    return rows
+      .filter((row) => {
+        const d = new Date(
+          row.date
+        );
+        d.setHours(0, 0, 0, 0);
+        return d < today;
+      })
+      .sort(
+        (a, b) =>
+          new Date(b.date) -
+          new Date(a.date)
+      );
+  }, [rows]);
+
+  const thisWeek = useMemo(() => {
+    const now = new Date();
+    const weekEnd = new Date();
+    weekEnd.setDate(
+      now.getDate() + 7
+    );
+
+    return upcoming.filter(
+      (r) =>
+        new Date(r.date) <=
+        weekEnd
+    ).length;
+  }, [upcoming]);
+
+  const workedHours = useMemo(() => {
+    let total = 0;
+
+    history.forEach((row) => {
+      if (
+        row.start_time &&
+        row.end_time
+      ) {
+        const start =
+          new Date(
+            row.start_time
+          );
+        const end =
+          new Date(
+            row.end_time
+          );
+
+        const hrs =
+          (end - start) /
+          1000 /
+          60 /
+          60;
+
+        total += hrs;
+      }
+    });
+
+    return total.toFixed(1);
+  }, [history]);
+
+  function exportCSV() {
+    const rowsCSV = [
+      [
+        "Date",
+        "Start",
+        "End",
+      ],
+    ];
+
+    history.forEach((row) => {
+      rowsCSV.push([
+        row.date || "",
+        row.start_time || "",
+        row.end_time || "",
+      ]);
+    });
+
+    const csv = rowsCSV
+      .map((r) =>
+        r
+          .map(
+            (x) =>
+              `"${x}"`
+          )
+          .join(",")
+      )
+      .join("\n");
+
+    const blob = new Blob(
+      [csv],
+      {
+        type: "text/csv",
+      }
+    );
+
+    const url =
+      URL.createObjectURL(
+        blob
+      );
+
+    const a =
+      document.createElement(
+        "a"
+      );
+
+    a.href = url;
+    a.download =
+      "my-shifts.csv";
+    a.click();
+
+    URL.revokeObjectURL(
+      url
+    );
+  }
+
   if (loading) {
     return (
       <div className="text-gray-400 flex items-center gap-2">
@@ -97,21 +240,53 @@ export default function MySchedule() {
           </p>
         </div>
 
-        <button
-          onClick={load}
-          className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 flex items-center gap-2"
-        >
-          <RefreshCw size={15} />
-          Refresh
-        </button>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={load}
+            className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 flex items-center gap-2"
+          >
+            <RefreshCw
+              size={15}
+            />
+            Refresh
+          </button>
+
+          <button
+            onClick={() =>
+              setShowHistory(
+                !showHistory
+              )
+            }
+            className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 flex items-center gap-2"
+          >
+            <History
+              size={15}
+            />
+            History
+          </button>
+
+          <button
+            onClick={
+              exportCSV
+            }
+            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 flex items-center gap-2"
+          >
+            <Download
+              size={15}
+            />
+            Export
+          </button>
+        </div>
       </div>
 
       {/* STATS */}
-      <div className="grid md:grid-cols-3 gap-4">
+      <div className="grid md:grid-cols-4 gap-4">
 
         <Card
           title="Upcoming"
-          value={rows.length}
+          value={
+            upcoming.length
+          }
           icon={
             <CalendarDays size={16} />
           }
@@ -128,9 +303,10 @@ export default function MySchedule() {
         <Card
           title="Next Shift"
           value={
-            rows[0]
+            upcoming[0]
               ? formatDate(
-                  rows[0].date
+                  upcoming[0]
+                    .date
                 )
               : "-"
           }
@@ -139,9 +315,19 @@ export default function MySchedule() {
           }
         />
 
+        <Card
+          title="Worked Hours"
+          value={
+            workedHours
+          }
+          icon={
+            <Clock3 size={16} />
+          }
+        />
+
       </div>
 
-      {/* TABLE */}
+      {/* UPCOMING */}
       <div className="rounded-2xl border border-white/10 overflow-hidden bg-[#020617]">
 
         <table className="w-full text-left">
@@ -160,39 +346,88 @@ export default function MySchedule() {
           </thead>
 
           <tbody>
-            {rows.map((row) => (
-              <tr
-                key={row.id}
-                className="border-t border-white/5"
-              >
-                <td className="p-4">
-                  {formatDate(
-                    row.date
-                  )}
-                </td>
+            {upcoming.map(
+              (row) => (
+                <tr
+                  key={
+                    row.id
+                  }
+                  className="border-t border-white/5"
+                >
+                  <td className="p-4">
+                    {formatDate(
+                      row.date
+                    )}
+                  </td>
 
-                <td className="p-4">
-                  {formatTime(
-                    row.start_time
-                  )}
-                </td>
+                  <td className="p-4">
+                    {formatTime(
+                      row.start_time
+                    )}
+                  </td>
 
-                <td className="p-4">
-                  {formatTime(
-                    row.end_time
-                  )}
-                </td>
-              </tr>
-            ))}
+                  <td className="p-4">
+                    {formatTime(
+                      row.end_time
+                    )}
+                  </td>
+                </tr>
+              )
+            )}
           </tbody>
         </table>
 
-        {rows.length === 0 && (
+        {upcoming.length ===
+          0 && (
           <div className="p-8 text-center text-gray-500">
-            No shifts assigned
+            No upcoming shifts
           </div>
         )}
       </div>
+
+      {/* HISTORY */}
+      {showHistory && (
+        <div className="rounded-2xl border border-white/10 overflow-hidden bg-[#020617]">
+
+          <div className="p-4 font-medium border-b border-white/10">
+            Past Shifts
+          </div>
+
+          {history.map(
+            (row) => (
+              <div
+                key={
+                  row.id
+                }
+                className="p-4 border-t border-white/5"
+              >
+                <div>
+                  {formatDate(
+                    row.date
+                  )}
+                </div>
+
+                <div className="text-sm text-gray-400 mt-1">
+                  {formatTime(
+                    row.start_time
+                  )}{" "}
+                  -{" "}
+                  {formatTime(
+                    row.end_time
+                  )}
+                </div>
+              </div>
+            )
+          )}
+
+          {history.length ===
+            0 && (
+            <div className="p-8 text-center text-gray-500">
+              No past shifts
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
