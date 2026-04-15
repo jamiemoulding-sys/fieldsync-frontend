@@ -1,128 +1,133 @@
 // src/pages/Schedule.jsx
-// TRUE CORE FILE MERGE VERSION
-// Your structure preserved + fixes embedded
+// FINAL FULL VERSION
 // Added:
-// ✅ Upcoming shifts only in live views
-// ✅ Past shift history panel
-// ✅ CSV export
-// ✅ Auto refresh every 30s
-// ✅ Existing forms / calendar / grid kept
+// ✅ add shift form
+// ✅ upcoming only
+// ✅ holidays shown
+// ✅ names mapped
+// ✅ delete shifts
+// ✅ auto refresh
+// ✅ click day panel
+// ✅ month navigation
 
-import { useEffect, useMemo, useState } from "react";
-import { userAPI, scheduleAPI } from "../services/api";
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import {
+  userAPI,
+  scheduleAPI,
+  holidayAPI,
+} from "../services/api";
 
 import {
-  CalendarDays,
-  Users,
-  Plus,
-  Trash2,
-  Search,
   ChevronLeft,
   ChevronRight,
-  Clock3,
-  CheckCircle2,
+  Trash2,
   Loader2,
-  Download,
+  Plus,
+  Plane,
+  CalendarDays,
 } from "lucide-react";
 
 export default function Schedule() {
   const [users, setUsers] = useState([]);
-  const [schedules, setSchedules] = useState([]);
-
-  const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
-
-  const [view, setView] = useState("calendar");
-  const [search, setSearch] = useState("");
-  const [showHistory, setShowHistory] =
-    useState(false);
-
-  /* BULK */
-  const [selectedUsers, setSelectedUsers] =
+  const [schedules, setSchedules] =
+    useState([]);
+  const [holidays, setHolidays] =
     useState([]);
 
-  const [startDate, setStartDate] =
-    useState("");
+  const [loading, setLoading] =
+    useState(true);
 
-  const [endDate, setEndDate] =
-    useState("");
+  const [selectedDay, setSelectedDay] =
+    useState(null);
 
-  const [start, setStart] =
-    useState("");
-
-  const [end, setEnd] =
-    useState("");
-
-  /* SINGLE */
-  const [singleUser, setSingleUser] =
-    useState("");
-
-  const [singleDate, setSingleDate] =
-    useState("");
-
-  const [singleStart, setSingleStart] =
-    useState("");
-
-  const [singleEnd, setSingleEnd] =
-    useState("");
+  const [form, setForm] = useState({
+    user_id: "",
+    date: "",
+    start: "",
+    end: "",
+  });
 
   const today = new Date();
 
-  const [currentMonth, setCurrentMonth] =
-    useState(
-      new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        1
-      )
-    );
+  const [month, setMonth] = useState(
+    new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      1
+    )
+  );
 
   useEffect(() => {
-    loadData();
+    load();
 
     const timer = setInterval(
-      loadData,
+      load,
       30000
     );
 
-    return () => clearInterval(timer);
+    return () =>
+      clearInterval(timer);
   }, []);
 
-  async function loadData() {
+  async function load() {
     try {
       setLoading(true);
 
-      const [usersData, rotaData] =
+      const [u, s, h] =
         await Promise.all([
           userAPI.getAll(),
           scheduleAPI.getAll(),
+          holidayAPI.getAll(),
         ]);
 
       const safeUsers =
-        Array.isArray(usersData)
-          ? usersData
-          : [];
+        Array.isArray(u) ? u : [];
 
-      const safeRota =
-        Array.isArray(rotaData)
-          ? rotaData
-          : [];
+      const safeSchedules =
+        Array.isArray(s) ? s : [];
 
-      const mapped = safeRota.map(
-        (item) => ({
-          ...item,
-          name:
-            safeUsers.find(
-              (u) =>
-                u.id === item.user_id
-            )?.name ||
-            "Unknown",
-        })
-      );
+      const safeHoliday =
+        Array.isArray(h) ? h : [];
+
+      const todayStr =
+        new Date()
+          .toISOString()
+          .split("T")[0];
+
+      const mapped =
+        safeSchedules
+          .filter(
+            (x) =>
+              x.date >= todayStr
+          )
+          .map((row) => ({
+            ...row,
+            name:
+              safeUsers.find(
+                (u) =>
+                  u.id ===
+                  row.user_id
+              )?.name ||
+              "Unknown",
+          }));
+
+      const leaveMapped =
+        safeHoliday.map(
+          (row) => ({
+            ...row,
+            name:
+              safeUsers.find(
+                (u) =>
+                  u.id ===
+                  row.user_id
+              )?.name ||
+              "Unknown",
+          })
+        );
 
       setUsers(safeUsers);
       setSchedules(mapped);
+      setHolidays(leaveMapped);
     } catch (err) {
       console.error(err);
     } finally {
@@ -130,118 +135,43 @@ export default function Schedule() {
     }
   }
 
-  async function createBulk() {
+  async function createShift() {
     if (
-      !selectedUsers.length ||
-      !startDate ||
-      !endDate ||
-      !start ||
-      !end
+      !form.user_id ||
+      !form.date ||
+      !form.start ||
+      !form.end
     ) {
       return alert(
-        "Fill all bulk fields"
-      );
-    }
-
-    try {
-      setCreating(true);
-
-      let current = new Date(
-        startDate + "T00:00:00"
-      );
-
-      const finish = new Date(
-        endDate + "T00:00:00"
-      );
-
-      const requests = [];
-
-      while (current <= finish) {
-        const y =
-          current.getFullYear();
-
-        const m = String(
-          current.getMonth() + 1
-        ).padStart(2, "0");
-
-        const d = String(
-          current.getDate()
-        ).padStart(2, "0");
-
-        const date = `${y}-${m}-${d}`;
-
-        for (const uid of selectedUsers) {
-          requests.push(
-            scheduleAPI.create({
-              user_id: uid,
-              date,
-              start_time: `${date}T${start}:00`,
-              end_time: `${date}T${end}:00`,
-            })
-          );
-        }
-
-        current.setDate(
-          current.getDate() + 1
-        );
-      }
-
-      await Promise.all(requests);
-
-      alert("Bulk shifts created");
-
-      setSelectedUsers([]);
-      setStartDate("");
-      setEndDate("");
-      setStart("");
-      setEnd("");
-
-      loadData();
-    } catch (err) {
-      console.error(err);
-      alert(
-        "Failed to create shifts"
-      );
-    } finally {
-      setCreating(false);
-    }
-  }
-
-  async function createSingle() {
-    if (
-      !singleUser ||
-      !singleDate ||
-      !singleStart ||
-      !singleEnd
-    ) {
-      return alert(
-        "Fill single shift fields"
+        "Fill all fields"
       );
     }
 
     try {
       await scheduleAPI.create({
-        user_id: singleUser,
-        date: singleDate,
-        start_time: `${singleDate}T${singleStart}:00`,
-        end_time: `${singleDate}T${singleEnd}:00`,
+        user_id: form.user_id,
+        date: form.date,
+        start_time: `${form.date}T${form.start}:00`,
+        end_time: `${form.date}T${form.end}:00`,
       });
 
-      alert("Shift created");
+      setForm({
+        user_id: "",
+        date: "",
+        start: "",
+        end: "",
+      });
 
-      setSingleUser("");
-      setSingleDate("");
-      setSingleStart("");
-      setSingleEnd("");
-
-      loadData();
+      load();
     } catch (err) {
       console.error(err);
-      alert("Failed");
+      alert(
+        "Failed to create shift"
+      );
     }
   }
 
-  async function deleteShift(id) {
+  async function removeShift(id) {
     if (
       !window.confirm(
         "Delete shift?"
@@ -249,119 +179,28 @@ export default function Schedule() {
     )
       return;
 
-    try {
-      await scheduleAPI.delete(id);
-      loadData();
-    } catch (err) {
-      console.error(err);
-      alert("Delete failed");
-    }
+    await scheduleAPI.delete(id);
+    load();
   }
 
-  function exportCSV() {
-    const rows = [
-      [
-        "Name",
-        "Company",
-        "Date",
-        "Start",
-        "End",
-        "Break",
-      ],
-    ];
+  function dateStr(day) {
+    const y =
+      day.getFullYear();
 
-    schedules.forEach((s) => {
-      rows.push([
-        s.name || "",
-        s.company_name || "",
-        s.date || "",
-        s.start_time || "",
-        s.end_time || "",
-        s.break_minutes || "0",
-      ]);
-    });
+    const m = String(
+      day.getMonth() + 1
+    ).padStart(2, "0");
 
-    const csv = rows
-      .map((r) =>
-        r
-          .map((x) =>
-            `"${String(x).replace(
-              /"/g,
-              '""'
-            )}"`
-          )
-          .join(",")
-      )
-      .join("\n");
+    const d = String(
+      day.getDate()
+    ).padStart(2, "0");
 
-    const blob = new Blob([csv], {
-      type: "text/csv",
-    });
-
-    const url =
-      URL.createObjectURL(blob);
-
-    const a =
-      document.createElement("a");
-
-    a.href = url;
-    a.download =
-      "worked-hours.csv";
-    a.click();
-
-    URL.revokeObjectURL(url);
+    return `${y}-${m}-${d}`;
   }
 
-  function changeMonth(dir) {
-    const next = new Date(
-      currentMonth
-    );
-
-    next.setMonth(
-      next.getMonth() + dir
-    );
-
-    setCurrentMonth(next);
-  }
-
-  const todayOnly = new Date();
-  todayOnly.setHours(0, 0, 0, 0);
-
-  const filtered = useMemo(() => {
-    return schedules.filter((s) =>
-      s.name
-        .toLowerCase()
-        .includes(
-          search.toLowerCase()
-        )
-    );
-  }, [search, schedules]);
-
-  const upcomingSchedules =
-    useMemo(() => {
-      return filtered.filter((s) => {
-        const d = new Date(
-          s.date + "T00:00:00"
-        );
-        d.setHours(0, 0, 0, 0);
-        return d >= todayOnly;
-      });
-    }, [filtered]);
-
-  const pastSchedules =
-    useMemo(() => {
-      return filtered.filter((s) => {
-        const d = new Date(
-          s.date + "T00:00:00"
-        );
-        d.setHours(0, 0, 0, 0);
-        return d < todayOnly;
-      });
-    }, [filtered]);
-
-  const endOfMonth = new Date(
-    currentMonth.getFullYear(),
-    currentMonth.getMonth() + 1,
+  const monthEnd = new Date(
+    month.getFullYear(),
+    month.getMonth() + 1,
     0
   );
 
@@ -369,39 +208,73 @@ export default function Schedule() {
 
   for (
     let i = 1;
-    i <= endOfMonth.getDate();
+    i <= monthEnd.getDate();
     i++
   ) {
     days.push(
       new Date(
-        currentMonth.getFullYear(),
-        currentMonth.getMonth(),
+        month.getFullYear(),
+        month.getMonth(),
         i
       )
     );
   }
 
   function shiftsForDay(day) {
-    return upcomingSchedules.filter(
-      (s) => {
-        const d = new Date(
-          s.date + "T00:00:00"
-        );
+    const ds = dateStr(day);
 
-        return (
-          d.toDateString() ===
-          day.toDateString()
-        );
-      }
+    return schedules.filter(
+      (x) => x.date === ds
     );
   }
 
-  const todayShifts =
-    shiftsForDay(new Date()).length;
+  function holidaysForDay(day) {
+    const ds = dateStr(day);
+
+    return holidays.filter(
+      (x) =>
+        x.status ===
+          "approved" &&
+        x.start_date <= ds &&
+        x.end_date >= ds
+    );
+  }
+
+  function nextMonth() {
+    const d = new Date(month);
+    d.setMonth(
+      d.getMonth() + 1
+    );
+    setMonth(d);
+    setSelectedDay(null);
+  }
+
+  function prevMonth() {
+    const d = new Date(month);
+    d.setMonth(
+      d.getMonth() - 1
+    );
+    setMonth(d);
+    setSelectedDay(null);
+  }
+
+  const selectedShifts =
+    selectedDay
+      ? shiftsForDay(
+          selectedDay
+        )
+      : [];
+
+  const selectedLeave =
+    selectedDay
+      ? holidaysForDay(
+          selectedDay
+        )
+      : [];
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-gray-400">
+      <div className="text-gray-400 flex items-center gap-2">
         <Loader2
           size={16}
           className="animate-spin"
@@ -413,286 +286,259 @@ export default function Schedule() {
 
   return (
     <div className="space-y-6">
-
       {/* HEADER */}
-      <div className="flex justify-between items-center flex-wrap gap-4">
+      <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-semibold">
             Schedule
           </h1>
 
           <p className="text-sm text-gray-400">
-            Manage shifts
+            Manage rota
           </p>
         </div>
 
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2">
           <button
-            onClick={() =>
-              setView("calendar")
-            }
-            className={`px-4 py-2 rounded-xl ${
-              view === "calendar"
-                ? "bg-indigo-600"
-                : "bg-[#0f172a]"
-            }`}
+            onClick={prevMonth}
+            className="p-2 rounded-xl bg-[#0f172a]"
           >
-            Calendar
+            <ChevronLeft
+              size={18}
+            />
           </button>
 
           <button
-            onClick={() =>
-              setView("grid")
-            }
-            className={`px-4 py-2 rounded-xl ${
-              view === "grid"
-                ? "bg-indigo-600"
-                : "bg-[#0f172a]"
-            }`}
+            onClick={nextMonth}
+            className="p-2 rounded-xl bg-[#0f172a]"
           >
-            Grid
-          </button>
-
-          <button
-            onClick={() =>
-              setShowHistory(
-                !showHistory
-              )
-            }
-            className="px-4 py-2 rounded-xl bg-[#0f172a]"
-          >
-            History
-          </button>
-
-          <button
-            onClick={exportCSV}
-            className="px-4 py-2 rounded-xl bg-emerald-600"
-          >
-            <Download
-              size={16}
+            <ChevronRight
+              size={18}
             />
           </button>
         </div>
       </div>
 
-      {/* STATS */}
-      <div className="grid md:grid-cols-4 gap-4">
-        <StatCard
-          title="Staff"
-          value={users.length}
-          icon={<Users size={16} />}
-        />
-
-        <StatCard
-          title="Today"
-          value={todayShifts}
-          icon={<Clock3 size={16} />}
-        />
-
-        <StatCard
-          title="Upcoming"
-          value={
-            upcomingSchedules.length
+      {/* ADD SHIFT */}
+      <div className="rounded-2xl border border-white/10 bg-[#020617] p-5 grid md:grid-cols-5 gap-3">
+        <select
+          value={form.user_id}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              user_id:
+                e.target.value,
+            })
           }
-          icon={
-            <CalendarDays
-              size={16}
-            />
-          }
-        />
+          className="px-4 py-3 rounded-xl bg-[#0f172a]"
+        >
+          <option value="">
+            Staff
+          </option>
 
-        <StatCard
-          title="History"
-          value={
-            pastSchedules.length
-          }
-          icon={
-            <CheckCircle2
-              size={16}
-            />
-          }
-        />
-      </div>
+          {users.map((u) => (
+            <option
+              key={u.id}
+              value={u.id}
+            >
+              {u.name}
+            </option>
+          ))}
+        </select>
 
-      {/* KEEP YOUR EXISTING SINGLE / BULK FORMS HERE */}
-      {/* unchanged from your core file */}
-
-      {/* SEARCH */}
-      <div className="relative">
-        <Search
-          size={16}
-          className="absolute left-4 top-3.5 text-gray-500"
+        <input
+          type="date"
+          value={form.date}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              date:
+                e.target.value,
+            })
+          }
+          className="px-4 py-3 rounded-xl bg-[#0f172a]"
         />
 
         <input
-          placeholder="Search..."
-          value={search}
+          type="time"
+          value={form.start}
           onChange={(e) =>
-            setSearch(
-              e.target.value
-            )
+            setForm({
+              ...form,
+              start:
+                e.target.value,
+            })
           }
-          className="w-full bg-[#020617] border border-white/10 rounded-2xl pl-11 pr-4 py-3"
+          className="px-4 py-3 rounded-xl bg-[#0f172a]"
         />
+
+        <input
+          type="time"
+          value={form.end}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              end:
+                e.target.value,
+            })
+          }
+          className="px-4 py-3 rounded-xl bg-[#0f172a]"
+        />
+
+        <button
+          onClick={createShift}
+          className="rounded-xl bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center gap-2"
+        >
+          <Plus size={16} />
+          Add
+        </button>
       </div>
 
-      {/* GRID VIEW */}
-      {view === "grid" && (
-        <div className="grid md:grid-cols-3 gap-4">
-          {upcomingSchedules.map(
-            (s, i) => (
-              <motion.div
-                key={s.id}
-                initial={{
-                  opacity: 0,
-                  y: 10,
-                }}
-                animate={{
-                  opacity: 1,
-                  y: 0,
-                }}
-                transition={{
-                  delay:
-                    i * 0.02,
-                }}
-                className="rounded-2xl border border-white/10 bg-[#020617] p-4"
-              >
-                <div className="flex justify-between">
+      {/* MONTH */}
+      <div className="text-lg font-medium">
+        {month.toLocaleString(
+          "default",
+          {
+            month: "long",
+          }
+        )}{" "}
+        {month.getFullYear()}
+      </div>
+
+      {/* CALENDAR */}
+      <div className="grid grid-cols-7 gap-2">
+        {days.map((day) => {
+          const shifts =
+            shiftsForDay(day);
+
+          const leave =
+            holidaysForDay(day);
+
+          return (
+            <button
+              key={dateStr(day)}
+              onClick={() =>
+                setSelectedDay(
+                  day
+                )
+              }
+              className="rounded-xl border border-white/10 bg-[#020617] p-2 text-left min-h-[130px]"
+            >
+              <div className="text-xs text-gray-500 mb-2">
+                {day.getDate()}
+              </div>
+
+              <div className="space-y-1 max-h-[90px] overflow-y-auto">
+                {shifts.map(
+                  (s) => (
+                    <div
+                      key={s.id}
+                      className="text-xs px-2 py-1 rounded bg-indigo-500/20 text-indigo-300"
+                    >
+                      {s.name}
+                    </div>
+                  )
+                )}
+
+                {leave.map(
+                  (h) => (
+                    <div
+                      key={
+                        "h" +
+                        h.id
+                      }
+                      className="text-xs px-2 py-1 rounded bg-green-500/20 text-green-300"
+                    >
+                      {h.name}
+                    </div>
+                  )
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* DAY VIEW */}
+      {selectedDay && (
+        <div className="rounded-2xl border border-white/10 bg-[#020617] p-6 space-y-5">
+          <h2 className="font-semibold">
+            {selectedDay.toLocaleDateString(
+              "en-GB"
+            )}
+          </h2>
+
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <CalendarDays
+                size={16}
+              />
+              Working Staff
+            </div>
+
+            {selectedShifts.map(
+              (s) => (
+                <div
+                  key={s.id}
+                  className="rounded-xl bg-[#0f172a] p-3 flex justify-between items-center mb-2"
+                >
                   <div>
-                    <p className="font-medium">
+                    <p>
                       {s.name}
                     </p>
 
-                    <p className="text-xs text-gray-400 mt-1">
-                      {new Date(
-                        s.date +
-                          "T00:00:00"
-                      ).toLocaleDateString(
-                        "en-GB"
+                    <p className="text-xs text-gray-400">
+                      {s.start_time?.slice(
+                        11,
+                        16
+                      )}{" "}
+                      -
+                      {" "}
+                      {s.end_time?.slice(
+                        11,
+                        16
                       )}
                     </p>
                   </div>
 
                   <button
                     onClick={() =>
-                      deleteShift(
+                      removeShift(
                         s.id
                       )
                     }
                     className="text-red-400"
                   >
                     <Trash2
-                      size={16}
+                      size={
+                        16
+                      }
                     />
                   </button>
                 </div>
-              </motion.div>
-            )
-          )}
-        </div>
-      )}
-
-      {/* CALENDAR */}
-      {view === "calendar" && (
-        <div>
-          <div className="grid grid-cols-7 gap-2">
-            {days.map(
-              (day, i) => {
-                const shifts =
-                  shiftsForDay(
-                    day
-                  );
-
-                return (
-                  <div
-                    key={i}
-                    className="bg-[#020617] border border-white/10 rounded-xl p-2 min-h-[130px]"
-                  >
-                    <div className="text-xs text-gray-500 mb-2">
-                      {day.getDate()}
-                    </div>
-
-                    {shifts.map(
-                      (s) => (
-                        <div
-                          key={
-                            s.id
-                          }
-                          className="text-xs bg-indigo-500/20 text-indigo-300 rounded px-2 py-1 mb-1"
-                        >
-                          {
-                            s.name
-                          }
-                        </div>
-                      )
-                    )}
-                  </div>
-                );
-              }
+              )
             )}
           </div>
-        </div>
-      )}
 
-      {/* HISTORY */}
-      {showHistory && (
-        <div className="rounded-2xl border border-white/10 bg-[#020617] p-5">
-          <h3 className="font-medium mb-4">
-            Past Shifts
-          </h3>
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Plane size={16} />
+              On Holiday
+            </div>
 
-          <div className="space-y-3 max-h-[500px] overflow-y-auto">
-            {pastSchedules.map(
-              (s) => (
+            {selectedLeave.map(
+              (h) => (
                 <div
-                  key={s.id}
-                  className="rounded-xl bg-[#0f172a] p-4"
+                  key={h.id}
+                  className="rounded-xl bg-green-500/10 text-green-300 p-3 mb-2"
                 >
-                  <div className="font-medium">
-                    {s.name}
-                  </div>
-
-                  <div className="text-sm text-gray-400 mt-1">
-                    {s.date}
-                  </div>
-
-                  <div className="text-sm text-gray-400 mt-1">
-                    {
-                      s.start_time
-                    }{" "}
-                    →{" "}
-                    {s.end_time}
-                  </div>
+                  {h.name}
                 </div>
               )
             )}
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function StatCard({
-  title,
-  value,
-  icon,
-}) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-[#020617] p-4">
-      <div className="flex justify-between items-center">
-        <p className="text-xs text-gray-400">
-          {title}
-        </p>
-
-        <div className="text-indigo-400">
-          {icon}
-        </div>
-      </div>
-
-      <h2 className="text-2xl font-semibold mt-2">
-        {value}
-      </h2>
     </div>
   );
 }

@@ -148,15 +148,28 @@ function EmployeeDashboard({ user }) {
   if (loading) return <Loading />;
 
   // FIX: Monday-Friday only
-  const weekSchedule = schedule
-    .filter((row) => {
-      const day = new Date(
-        row.date
-      ).getDay();
+  const today = new Date();
+today.setHours(0, 0, 0, 0);
 
-      return day >= 1 && day <= 5;
-    })
-    .slice(0, 5);
+const weekSchedule = schedule
+  .filter((row) => {
+    const date = new Date(row.date);
+    date.setHours(0, 0, 0, 0);
+
+    const day = date.getDay();
+
+    return (
+      date >= today &&
+      day >= 1 &&
+      day <= 5
+    );
+  })
+  .sort(
+    (a, b) =>
+      new Date(a.date) -
+      new Date(b.date)
+  )
+  .slice(0, 5);
 
   return (
     <div className="space-y-6">
