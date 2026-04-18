@@ -135,7 +135,7 @@ function MainDashboard({ user }) {
     .slice(0, 3);
 
   return (
-    <div className="flex min-h-screen bg-[#020617] text-white">
+   <div className="min-h-screen bg-[#020617] text-white">
 
       {/* ONLY SIDEBAR */}
       
