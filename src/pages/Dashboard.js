@@ -1,16 +1,13 @@
 // src/pages/Dashboard.js
-// TRUE ELITE FINAL v3
-// MERGED VERSION
+// TRUE ELITE FINAL v3 FIXED
 // ✅ Nothing removed
 // ✅ Bugs fixed only
 // ✅ Live map kept
 // ✅ Charts width bug fixed
+// ✅ Leaflet marker fix
+// ✅ Safe loading
 // ✅ Real data only
 // ✅ Existing sections preserved
-// ✅ Better safe loading
-// ✅ Refresh retained
-// ✅ Quick routes retained
-// ✅ Employee/Admin/Manager dashboards
 
 import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
@@ -58,7 +55,20 @@ import {
   Popup,
 } from "react-leaflet";
 
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+
+/* FIX LEAFLET ICON */
+delete L.Icon.Default.prototype._getIconUrl;
+
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+});
 
 /* ================================================= */
 
@@ -105,6 +115,8 @@ function EmployeeDashboard({ user }) {
       setShift(a || null);
       setTasks(Array.isArray(b) ? b : []);
       setHolidays(Array.isArray(c) ? c : []);
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -195,6 +207,8 @@ function MainDashboard({ user, admin }) {
       }
 
       setUpdated(new Date().toLocaleTimeString());
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -247,7 +261,6 @@ function MainDashboard({ user, admin }) {
         sub="Enterprise control centre"
       />
 
-      {/* KPI */}
       <div className="grid md:grid-cols-4 gap-4">
         <Card
           title="Employees"
@@ -284,7 +297,6 @@ function MainDashboard({ user, admin }) {
         />
       </div>
 
-      {/* PAYROLL */}
       <div className="grid md:grid-cols-2 gap-4">
         <Card
           title="Today's Wages"
@@ -311,27 +323,24 @@ function MainDashboard({ user, admin }) {
         />
       </div>
 
-      {/* WARNINGS */}
       {missingRates > 0 && (
         <Warning>
-          {missingRates} staff missing hourly rates.
+          {missingRates} staff missing hourly
+          rates.
         </Warning>
       )}
 
       {overContract > 0 && (
         <Warning>
-          {overContract} staff above contracted hours.
+          {overContract} staff above contracted
+          hours.
         </Warning>
       )}
 
-      {/* CHARTS */}
       <div className="grid lg:grid-cols-2 gap-4 min-w-0">
         <Panel title="Wage Trend">
           <ChartBox>
-            <ResponsiveContainer
-              width="100%"
-              height="100%"
-            >
+            <ResponsiveContainer width="100%" height="100%">
               <BarChart data={wageData}>
                 <CartesianGrid stroke="#1e293b" />
                 <XAxis dataKey="name" />
@@ -349,10 +358,7 @@ function MainDashboard({ user, admin }) {
 
         <Panel title="Attendance">
           <ChartBox>
-            <ResponsiveContainer
-              width="100%"
-              height="100%"
-            >
+            <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={pieData}
@@ -374,12 +380,10 @@ function MainDashboard({ user, admin }) {
         </Panel>
       </div>
 
-      {/* LIVE MAP */}
       <Panel title="Live Staff Map">
         <LiveMap live={live} />
       </Panel>
 
-      {/* QUICK ACTIONS */}
       <QuickActions
         items={[
           ["/employees", "Employees"],
@@ -389,7 +393,6 @@ function MainDashboard({ user, admin }) {
         ]}
       />
 
-      {/* UPDATES */}
       <Panel title="Live Updates">
         <div className="text-sm text-gray-400 flex gap-2 items-center">
           <RefreshCw size={14} />
@@ -438,7 +441,10 @@ function LiveMap({ live }) {
           width: "100%",
         }}
       >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        <TileLayer
+          attribution="&copy; OpenStreetMap"
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
 
         {points.map((x) => (
           <Marker
@@ -527,7 +533,6 @@ function Panel({ title, children }) {
       <h2 className="font-semibold mb-4 text-lg">
         {title}
       </h2>
-
       {children}
     </div>
   );

@@ -156,13 +156,77 @@ export const userAPI = {
   update: async (id, payload) => {
     const companyId = await getCompanyId();
 
+    /* ONLY SEND REAL DATABASE COLUMNS */
+    const cleanPayload = {
+      ...(payload.name !== undefined && { name: payload.name }),
+      ...(payload.email !== undefined && { email: payload.email }),
+      ...(payload.role !== undefined && { role: payload.role }),
+      ...(payload.hourly_rate !== undefined && {
+        hourly_rate:
+          payload.hourly_rate === ""
+            ? null
+            : Number(payload.hourly_rate),
+      }),
+      ...(payload.contracted_hours !== undefined && {
+        contracted_hours:
+          payload.contracted_hours === ""
+            ? null
+            : Number(payload.contracted_hours),
+      }),
+      ...(payload.overtime_rate !== undefined && {
+        overtime_rate:
+          payload.overtime_rate === ""
+            ? null
+            : Number(payload.overtime_rate),
+      }),
+      ...(payload.night_rate !== undefined && {
+        night_rate:
+          payload.night_rate === ""
+            ? null
+            : Number(payload.night_rate),
+      }),
+      ...(payload.employment_type !== undefined && {
+        employment_type:
+          payload.employment_type || null,
+      }),
+      ...(payload.department !== undefined && {
+        department:
+          payload.department || null,
+      }),
+      ...(payload.start_date !== undefined && {
+        start_date:
+          payload.start_date || null,
+      }),
+      ...(payload.holiday_allowance !== undefined && {
+        holiday_allowance:
+          payload.holiday_allowance === ""
+            ? null
+            : Number(payload.holiday_allowance),
+      }),
+      ...(payload.payroll_id !== undefined && {
+        payroll_id:
+          payload.payroll_id || null,
+      }),
+      ...(payload.phone !== undefined && {
+        phone: payload.phone || null,
+      }),
+      ...(payload.emergency_contact !== undefined && {
+        emergency_contact:
+          payload.emergency_contact || null,
+      }),
+    };
+
     const { error } = await supabase
       .from("users")
-      .update(payload)
+      .update(cleanPayload)
       .eq("id", id)
       .eq("company_id", companyId);
 
-    if (error) throw error;
+    if (error) {
+      console.error(error);
+      throw error;
+    }
+
     return true;
   },
 
