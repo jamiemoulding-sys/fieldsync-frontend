@@ -16,7 +16,11 @@ import {
   Plus,
   ChevronLeft,
   ChevronRight,
+  X,
 } from "lucide-react";
+
+const inputStyle =
+  "w-full px-4 py-3 rounded-xl bg-[#111827] text-white border border-white/20 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 outline-none";
 
 export default function Schedule() {
   const [users, setUsers] = useState([]);
@@ -25,26 +29,25 @@ export default function Schedule() {
   const [holidays, setHolidays] = useState([]);
 
   const [view, setView] = useState("month");
-  const [currentDate, setCurrentDate] = useState(new Date());
-
+  const [date, setDate] = useState(new Date());
   const [showAdd, setShowAdd] = useState(false);
 
   const [form, setForm] = useState({
-    user_ids: [],
-    location_id: "",
     from: "",
     to: "",
     start: "09:00",
     end: "17:00",
+    location_id: "",
     allow_overtime: false,
     days: [1, 2, 3, 4, 5],
+    user_ids: [],
   });
 
   useEffect(() => {
-    loadData();
+    load();
   }, []);
 
-  async function loadData() {
+  async function load() {
     try {
       const [u, l, s, h] = await Promise.all([
         userAPI.getAll(),
@@ -62,22 +65,6 @@ export default function Schedule() {
     }
   }
 
-  function back() {
-    if (view === "month") {
-      setCurrentDate(moment(currentDate).subtract(1, "month").toDate());
-    } else {
-      setCurrentDate(moment(currentDate).subtract(7, "days").toDate());
-    }
-  }
-
-  function next() {
-    if (view === "month") {
-      setCurrentDate(moment(currentDate).add(1, "month").toDate());
-    } else {
-      setCurrentDate(moment(currentDate).add(7, "days").toDate());
-    }
-  }
-
   function getUser(id) {
     return users.find((x) => x.id === id) || {};
   }
@@ -86,161 +73,145 @@ export default function Schedule() {
     return locations.find((x) => x.id === id) || {};
   }
 
-  function isHoliday(userId, date) {
+  function prev() {
+    setDate(
+      moment(date)
+        .subtract(view === "month" ? 1 : 7, view === "month" ? "month" : "days")
+        .toDate()
+    );
+  }
+
+  function next() {
+    setDate(
+      moment(date)
+        .add(view === "month" ? 1 : 7, view === "month" ? "month" : "days")
+        .toDate()
+    );
+  }
+
+  function isHoliday(userId, ds) {
     return holidays.some(
       (h) =>
         h.user_id === userId &&
         h.status === "approved" &&
-        date >= h.start_date &&
-        date <= h.end_date
+        ds >= h.start_date &&
+        ds <= h.end_date
     );
-  }
-
-  async function createBulkShifts() {
-    if (
-      !form.user_ids.length ||
-      !form.from ||
-      !form.to ||
-      !form.start ||
-      !form.end
-    ) {
-      return alert("Fill all fields");
-    }
-
-    let day = moment(form.from);
-    const end = moment(form.to);
-
-    while (day.isSameOrBefore(end, "day")) {
-      const weekday = day.day();
-
-      if (form.days.includes(weekday)) {
-        for (const uid of form.user_ids) {
-          const date = day.format("YYYY-MM-DD");
-
-          if (isHoliday(uid, date)) continue;
-
-          await scheduleAPI.create({
-            user_id: uid,
-            date,
-            location_id: form.location_id || null,
-            start_time: `${date}T${form.start}:00`,
-            end_time: `${date}T${form.end}:00`,
-            allow_overtime: form.allow_overtime,
-          });
-        }
-      }
-
-      day.add(1, "day");
-    }
-
-    setShowAdd(false);
-    loadData();
   }
 
   async function deleteShift(id) {
     if (!window.confirm("Delete shift?")) return;
     await scheduleAPI.delete(id);
-    loadData();
+    load();
   }
 
-  const monthStart = moment(currentDate).startOf("month");
-  const monthEnd = moment(currentDate).endOf("month");
+  async function createBulk() {
+    if (
+      !form.from ||
+      !form.to ||
+      !form.start ||
+      !form.end ||
+      !form.user_ids.length
+    ) {
+      return alert("Fill all fields");
+    }
+
+    let d = moment(form.from);
+    const end = moment(form.to);
+
+    while (d.isSameOrBefore(end, "day")) {
+      const weekday = d.day();
+
+      if (form.days.includes(weekday)) {
+        const ds = d.format("YYYY-MM-DD");
+
+        for (const uid of form.user_ids) {
+          if (isHoliday(uid, ds)) continue;
+
+          await scheduleAPI.create({
+            user_id: uid,
+            date: ds,
+            location_id: form.location_id || null,
+            start_time: `${ds}T${form.start}:00`,
+            end_time: `${ds}T${form.end}:00`,
+            allow_overtime: form.allow_overtime,
+          });
+        }
+      }
+
+      d.add(1, "day");
+    }
+
+    setShowAdd(false);
+    load();
+  }
+
+  const monthStart = moment(date).startOf("month");
+  const monthEnd = moment(date).endOf("month");
 
   const monthShifts = useMemo(() => {
     return shifts.filter((s) =>
       moment(s.date).isBetween(monthStart, monthEnd, null, "[]")
     );
-  }, [shifts, currentDate]);
+  }, [shifts, date]);
 
   const monthHours = monthShifts.reduce((sum, s) => {
-    const hrs =
-      (new Date(s.end_time) - new Date(s.start_time)) / 3600000;
-    return sum + hrs;
+    return (
+      sum +
+      (new Date(s.end_time) - new Date(s.start_time)) / 3600000
+    );
   }, 0);
 
   const monthWages = monthShifts.reduce((sum, s) => {
     const hrs =
       (new Date(s.end_time) - new Date(s.start_time)) / 3600000;
 
-    const user = getUser(s.user_id);
-    const rate = Number(user.hourly_rate || 0);
+    const rate = Number(getUser(s.user_id).hourly_rate || 0);
 
     return sum + hrs * rate;
   }, 0);
-
-  const weekDays = Array.from({ length: 7 }).map((_, i) =>
-    moment(currentDate).startOf("week").add(i, "days")
-  );
 
   return (
     <div className="space-y-6">
 
       {/* KPI */}
       <div className="grid md:grid-cols-4 gap-4">
-        <Card
-          title="Month Shifts"
-          value={monthShifts.length}
-          icon={<CalendarDays size={16} />}
-        />
-
-        <Card
-          title="Month Hours"
-          value={monthHours.toFixed(1)}
-          icon={<Clock3 size={16} />}
-        />
-
-        <Card
-          title="Month Wages"
-          value={`£${monthWages.toFixed(2)}`}
-          icon={<PoundSterling size={16} />}
-        />
-
-        <Card
-          title="Staff"
-          value={users.length}
-          icon={<Users size={16} />}
-        />
+        <Stat title="Month Shifts" value={monthShifts.length} icon={<CalendarDays size={16} />} />
+        <Stat title="Month Hours" value={monthHours.toFixed(1)} icon={<Clock3 size={16} />} />
+        <Stat title="Month Wages" value={`£${monthWages.toFixed(2)}`} icon={<PoundSterling size={16} />} />
+        <Stat title="Staff" value={users.length} icon={<Users size={16} />} />
       </div>
 
       {/* TOP BAR */}
-      <div className="rounded-2xl border border-white/10 bg-[#020617] px-5 py-4 flex flex-wrap items-center justify-between gap-4">
+      <div className="rounded-2xl border border-white/10 bg-[#020617] p-5 flex flex-wrap items-center justify-between gap-4">
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setCurrentDate(new Date())}
-            className="px-4 py-2 rounded-xl bg-[#0f172a] border border-white/10"
-          >
+        <div className="flex gap-2">
+          <button onClick={() => setDate(new Date())} className="px-4 py-2 rounded-xl bg-[#111827] border border-white/10">
             Today
           </button>
 
-          <button
-            onClick={back}
-            className="px-4 py-2 rounded-xl bg-[#0f172a] border border-white/10"
-          >
-            Back
+          <button onClick={prev} className="px-4 py-2 rounded-xl bg-[#111827] border border-white/10">
+            <ChevronLeft size={16} />
           </button>
 
-          <button
-            onClick={next}
-            className="px-4 py-2 rounded-xl bg-[#0f172a] border border-white/10"
-          >
-            Next
+          <button onClick={next} className="px-4 py-2 rounded-xl bg-[#111827] border border-white/10">
+            <ChevronRight size={16} />
           </button>
         </div>
 
         <div className="text-lg font-semibold">
           {view === "month"
-            ? moment(currentDate).format("MMMM YYYY")
-            : `${weekDays[0].format("DD MMM")} - ${weekDays[6].format("DD MMM")}`}
+            ? moment(date).format("MMMM YYYY")
+            : `${moment(date).startOf("week").format("DD MMM")} - ${moment(date)
+                .endOf("week")
+                .format("DD MMM")}`}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex gap-2">
           <button
             onClick={() => setView("month")}
             className={`px-4 py-2 rounded-xl ${
-              view === "month"
-                ? "bg-indigo-600"
-                : "bg-[#0f172a]"
+              view === "month" ? "bg-indigo-600" : "bg-[#111827]"
             }`}
           >
             Month
@@ -249,9 +220,7 @@ export default function Schedule() {
           <button
             onClick={() => setView("week")}
             className={`px-4 py-2 rounded-xl ${
-              view === "week"
-                ? "bg-indigo-600"
-                : "bg-[#0f172a]"
+              view === "week" ? "bg-indigo-600" : "bg-[#111827]"
             }`}
           >
             Week
@@ -270,169 +239,125 @@ export default function Schedule() {
       {/* MONTH */}
       {view === "month" && (
         <MonthView
-          currentDate={currentDate}
+          date={date}
           shifts={shifts}
           holidays={holidays}
-          users={users}
-          locations={locations}
-          onDelete={deleteShift}
+          getUser={getUser}
+          getLocation={getLocation}
+          deleteShift={deleteShift}
         />
       )}
 
       {/* WEEK */}
       {view === "week" && (
-        <div className="rounded-2xl border border-white/10 bg-[#020617] overflow-hidden">
-          <div className="grid grid-cols-7 border-b border-white/10">
-            {weekDays.map((d) => (
-              <div
-                key={d.format()}
-                className="p-4 font-semibold text-center border-r border-white/10"
-              >
-                {d.format("ddd DD")}
-              </div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-7">
-            {weekDays.map((d) => {
-              const ds = d.format("YYYY-MM-DD");
-
-              const dayShifts = shifts.filter(
-                (x) => x.date === ds
-              );
-
-              const dayHoliday = holidays.filter(
-                (x) =>
-                  x.status === "approved" &&
-                  ds >= x.start_date &&
-                  ds <= x.end_date
-              );
-
-              return (
-                <div
-                  key={ds}
-                  className="min-h-[500px] p-3 border-r border-white/10 space-y-2"
-                >
-                  {dayHoliday.map((h) => (
-                    <div
-                      key={h.id}
-                      className="rounded-xl bg-green-600 px-3 py-2 text-sm"
-                    >
-                      Holiday - {h.name || getUser(h.user_id).name}
-                    </div>
-                  ))}
-
-                  {dayShifts.map((s) => (
-                    <div
-                      key={s.id}
-                      className="rounded-xl bg-indigo-600 px-3 py-2 text-sm"
-                    >
-                      {getUser(s.user_id).name} <br />
-                      {moment(s.start_time).format("HH:mm")} -{" "}
-                      {moment(s.end_time).format("HH:mm")} <br />
-                      {getLocation(s.location_id).name ||
-                        "No Location"}
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <WeekView
+          date={date}
+          shifts={shifts}
+          holidays={holidays}
+          getUser={getUser}
+          getLocation={getLocation}
+          deleteShift={deleteShift}
+        />
       )}
 
       {/* ADD MODAL */}
       {showAdd && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl rounded-2xl bg-[#020617] border border-white/10 p-6 space-y-4">
+          <div className="w-full max-w-5xl rounded-3xl bg-[#020617] border border-white/10 p-8 space-y-6">
 
-            <h2 className="text-xl font-semibold">
-              Bulk Add Shifts
-            </h2>
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-semibold">
+                Bulk Add Shifts
+              </h2>
 
-            <div className="grid md:grid-cols-2 gap-3">
-
-              <input
-                type="date"
-                value={form.from}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    from: e.target.value,
-                  })
-                }
-                className="inputStyle"
-              />
-
-              <input
-                type="date"
-                value={form.to}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    to: e.target.value,
-                  })
-                }
-                className="inputStyle"
-              />
-
-              <input
-                type="time"
-                value={form.start}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    start: e.target.value,
-                  })
-                }
-                className="inputStyle"
-              />
-
-              <input
-                type="time"
-                value={form.end}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    end: e.target.value,
-                  })
-                }
-                className="inputStyle"
-              />
-
-              <select
-                value={form.location_id}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    location_id: e.target.value,
-                  })
-                }
-                className="inputStyle"
+              <button
+                onClick={() => setShowAdd(false)}
+                className="p-2 rounded-xl bg-[#111827]"
               >
-                <option value="">
-                  Select Location
-                </option>
+                <X size={18} />
+              </button>
+            </div>
 
-                {locations.map((l) => (
-                  <option
-                    key={l.id}
-                    value={l.id}
-                  >
-                    {l.name}
-                  </option>
-                ))}
-              </select>
+            <div className="grid md:grid-cols-2 gap-4">
 
-              <label className="rounded-xl bg-[#0f172a] px-4 py-3 flex items-center gap-2">
+              <div>
+                <p className="text-sm text-gray-400 mb-2">From</p>
+                <input
+                  type="date"
+                  className={inputStyle}
+                  value={form.from}
+                  onChange={(e) =>
+                    setForm({ ...form, from: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-400 mb-2">To</p>
+                <input
+                  type="date"
+                  className={inputStyle}
+                  value={form.to}
+                  onChange={(e) =>
+                    setForm({ ...form, to: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-400 mb-2">Start Time</p>
+                <input
+                  type="time"
+                  className={inputStyle}
+                  value={form.start}
+                  onChange={(e) =>
+                    setForm({ ...form, start: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-400 mb-2">End Time</p>
+                <input
+                  type="time"
+                  className={inputStyle}
+                  value={form.end}
+                  onChange={(e) =>
+                    setForm({ ...form, end: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-400 mb-2">Location</p>
+                <select
+                  className={inputStyle}
+                  value={form.location_id}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      location_id: e.target.value,
+                    })
+                  }
+                >
+                  <option value="">Select Location</option>
+
+                  {locations.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <label className="rounded-xl bg-[#111827] px-4 py-3 flex items-center gap-3 mt-7">
                 <input
                   type="checkbox"
                   checked={form.allow_overtime}
                   onChange={(e) =>
                     setForm({
                       ...form,
-                      allow_overtime:
-                        e.target.checked,
+                      allow_overtime: e.target.checked,
                     })
                   }
                 />
@@ -440,105 +365,99 @@ export default function Schedule() {
               </label>
             </div>
 
-            {/* WEEKDAY TICKS */}
-            <div className="grid grid-cols-7 gap-2">
-              {[
-                ["Sun", 0],
-                ["Mon", 1],
-                ["Tue", 2],
-                ["Wed", 3],
-                ["Thu", 4],
-                ["Fri", 5],
-                ["Sat", 6],
-              ].map(([label, val]) => (
-                <label
-                  key={val}
-                  className="rounded-xl bg-[#0f172a] px-3 py-2 text-center"
-                >
-                  <input
-                    type="checkbox"
-                    checked={form.days.includes(val)}
-                    onChange={() => {
-                      if (
-                        form.days.includes(val)
-                      ) {
-                        setForm({
-                          ...form,
-                          days: form.days.filter(
-                            (x) => x !== val
-                          ),
-                        });
-                      } else {
-                        setForm({
-                          ...form,
-                          days: [
-                            ...form.days,
-                            val,
-                          ],
-                        });
-                      }
-                    }}
-                  />
-                  <div>{label}</div>
-                </label>
-              ))}
+            {/* DAYS */}
+            <div>
+              <p className="text-sm text-gray-400 mb-3">
+                Days To Repeat
+              </p>
+
+              <div className="grid grid-cols-7 gap-2">
+                {[
+                  ["Sun", 0],
+                  ["Mon", 1],
+                  ["Tue", 2],
+                  ["Wed", 3],
+                  ["Thu", 4],
+                  ["Fri", 5],
+                  ["Sat", 6],
+                ].map(([label, val]) => (
+                  <label
+                    key={val}
+                    className="rounded-xl bg-[#111827] p-3 text-center"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={form.days.includes(val)}
+                      onChange={() => {
+                        if (form.days.includes(val)) {
+                          setForm({
+                            ...form,
+                            days: form.days.filter(
+                              (x) => x !== val
+                            ),
+                          });
+                        } else {
+                          setForm({
+                            ...form,
+                            days: [...form.days, val],
+                          });
+                        }
+                      }}
+                    />
+                    <div className="mt-2">{label}</div>
+                  </label>
+                ))}
+              </div>
             </div>
 
             {/* STAFF */}
-            <div className="grid md:grid-cols-3 gap-2 max-h-60 overflow-auto">
-              {users.map((u) => (
-                <label
-                  key={u.id}
-                  className="rounded-xl bg-[#0f172a] px-3 py-2 flex gap-2"
-                >
-                  <input
-                    type="checkbox"
-                    checked={form.user_ids.includes(
-                      u.id
-                    )}
-                    onChange={() => {
-                      if (
-                        form.user_ids.includes(
-                          u.id
-                        )
-                      ) {
-                        setForm({
-                          ...form,
-                          user_ids:
-                            form.user_ids.filter(
-                              (x) =>
-                                x !== u.id
+            <div>
+              <p className="text-sm text-gray-400 mb-3">
+                Staff
+              </p>
+
+              <div className="grid md:grid-cols-3 gap-2 max-h-56 overflow-auto">
+                {users.map((u) => (
+                  <label
+                    key={u.id}
+                    className="rounded-xl bg-[#111827] px-4 py-3 flex gap-3"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={form.user_ids.includes(u.id)}
+                      onChange={() => {
+                        if (form.user_ids.includes(u.id)) {
+                          setForm({
+                            ...form,
+                            user_ids: form.user_ids.filter(
+                              (x) => x !== u.id
                             ),
-                        });
-                      } else {
-                        setForm({
-                          ...form,
-                          user_ids: [
-                            ...form.user_ids,
-                            u.id,
-                          ],
-                        });
-                      }
-                    }}
-                  />
-                  {u.name}
-                </label>
-              ))}
+                          });
+                        } else {
+                          setForm({
+                            ...form,
+                            user_ids: [...form.user_ids, u.id],
+                          });
+                        }
+                      }}
+                    />
+                    {u.name}
+                  </label>
+                ))}
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               <button
-                onClick={createBulkShifts}
-                className="py-3 rounded-xl bg-emerald-600"
+                onClick={createBulk}
+                className="py-3 rounded-xl bg-emerald-600 font-medium"
               >
-                Save
+                Save Shifts
               </button>
 
               <button
-                onClick={() =>
-                  setShowAdd(false)
-                }
-                className="py-3 rounded-xl bg-[#0f172a]"
+                onClick={() => setShowAdd(false)}
+                className="py-3 rounded-xl bg-[#111827]"
               >
                 Cancel
               </button>
@@ -547,96 +466,80 @@ export default function Schedule() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
 
 function MonthView({
-  currentDate,
+  date,
   shifts,
   holidays,
-  users,
-  locations,
-  onDelete,
+  getUser,
+  getLocation,
+  deleteShift,
 }) {
-  const start = moment(currentDate).startOf("month").startOf("week");
-  const end = moment(currentDate).endOf("month").endOf("week");
+  const start = moment(date).startOf("month").startOf("week");
+  const end = moment(date).endOf("month").endOf("week");
 
   const days = [];
-  let day = start.clone();
+  let d = start.clone();
 
-  while (day.isSameOrBefore(end, "day")) {
-    days.push(day.clone());
-    day.add(1, "day");
+  while (d.isSameOrBefore(end, "day")) {
+    days.push(d.clone());
+    d.add(1, "day");
   }
 
   return (
     <div className="rounded-2xl border border-white/10 bg-[#020617] overflow-hidden">
+
       <div className="grid grid-cols-7 bg-white/5">
-        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-          <div key={d} className="p-3 text-center font-semibold">
-            {d}
+        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((x) => (
+          <div key={x} className="p-3 text-center font-semibold">
+            {x}
           </div>
         ))}
       </div>
 
       <div className="grid grid-cols-7">
-        {days.map((d) => {
-          const ds = d.format("YYYY-MM-DD");
+        {days.map((day) => {
+          const ds = day.format("YYYY-MM-DD");
 
-          const dayShifts = shifts.filter(
-            (x) => x.date === ds
-          );
+          const dayShifts = shifts.filter((x) => x.date === ds);
 
-          const dayHoliday = holidays.filter(
-            (x) =>
-              x.status === "approved" &&
-              ds >= x.start_date &&
-              ds <= x.end_date
+          const dayHol = holidays.filter(
+            (h) =>
+              h.status === "approved" &&
+              ds >= h.start_date &&
+              ds <= h.end_date
           );
 
           return (
             <div
               key={ds}
-              className="min-h-[160px] p-2 border border-white/5 space-y-1"
+              className="min-h-[160px] border border-white/5 p-2 space-y-1"
             >
               <div className="text-sm text-gray-400">
-                {d.format("DD")}
+                {day.format("DD")}
               </div>
 
-              {dayHoliday.map((h) => (
+              {dayHol.map((h) => (
                 <div
                   key={h.id}
                   className="rounded-lg bg-green-600 px-2 py-1 text-xs"
                 >
-                  {h.name || users.find((u) => u.id === h.user_id)?.name} HOLIDAY
+                  {h.name || getUser(h.user_id).name} HOLIDAY
                 </div>
               ))}
 
               {dayShifts.slice(0, 3).map((s) => (
                 <button
                   key={s.id}
-                  onDoubleClick={() =>
-                    onDelete(s.id)
-                  }
+                  onDoubleClick={() => deleteShift(s.id)}
                   className="w-full text-left rounded-lg bg-indigo-600 px-2 py-1 text-xs"
                 >
-                  {
-                    users.find(
-                      (u) =>
-                        u.id === s.user_id
-                    )?.name
-                  }{" "}
-                  •{" "}
-                  {
-                    locations.find(
-                      (l) =>
-                        l.id ===
-                        s.location_id
-                    )?.name ||
-                    "No Location"
-                  }
+                  {getUser(s.user_id).name} •{" "}
+                  {getLocation(s.location_id).name ||
+                    "No Location"}
                 </button>
               ))}
             </div>
@@ -647,20 +550,90 @@ function MonthView({
   );
 }
 
-function Card({
-  title,
-  value,
-  icon,
+function WeekView({
+  date,
+  shifts,
+  holidays,
+  getUser,
+  getLocation,
+  deleteShift,
 }) {
+  const start = moment(date).startOf("week");
+
+  const days = Array.from({ length: 7 }).map((_, i) =>
+    start.clone().add(i, "days")
+  );
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-[#020617] overflow-hidden">
+
+      <div className="grid grid-cols-7 bg-white/5">
+        {days.map((d) => (
+          <div
+            key={d.format()}
+            className="p-3 text-center font-semibold"
+          >
+            {d.format("ddd DD")}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7">
+        {days.map((day) => {
+          const ds = day.format("YYYY-MM-DD");
+
+          const dayShifts = shifts.filter((x) => x.date === ds);
+
+          const dayHol = holidays.filter(
+            (h) =>
+              h.status === "approved" &&
+              ds >= h.start_date &&
+              ds <= h.end_date
+          );
+
+          return (
+            <div
+              key={ds}
+              className="min-h-[500px] border-r border-white/10 p-3 space-y-2"
+            >
+              {dayHol.map((h) => (
+                <div
+                  key={h.id}
+                  className="rounded-xl bg-green-600 px-3 py-2 text-sm"
+                >
+                  Holiday - {h.name || getUser(h.user_id).name}
+                </div>
+              ))}
+
+              {dayShifts.map((s) => (
+                <button
+                  key={s.id}
+                  onDoubleClick={() => deleteShift(s.id)}
+                  className="w-full text-left rounded-xl bg-indigo-600 px-3 py-2 text-sm"
+                >
+                  {getUser(s.user_id).name}
+                  <br />
+                  {moment(s.start_time).format("HH:mm")} -{" "}
+                  {moment(s.end_time).format("HH:mm")}
+                  <br />
+                  {getLocation(s.location_id).name ||
+                    "No Location"}
+                </button>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function Stat({ title, value, icon }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-[#020617] p-5">
       <div className="flex justify-between">
-        <p className="text-sm text-gray-400">
-          {title}
-        </p>
-        <div className="text-indigo-400">
-          {icon}
-        </div>
+        <p className="text-sm text-gray-400">{title}</p>
+        <div className="text-indigo-400">{icon}</div>
       </div>
 
       <h2 className="text-3xl font-semibold mt-3">
