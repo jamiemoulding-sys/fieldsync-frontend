@@ -34,6 +34,7 @@ export default function Schedule() {
   const [locations, setLocations] = useState([]);
 
   const [loading, setLoading] = useState(true);
+
   const [view, setView] = useState("month");
   const [date, setDate] = useState(new Date());
 
@@ -42,25 +43,23 @@ export default function Schedule() {
   const [form, setForm] = useState({
     user_ids: [],
     location_id: "",
+    date: "",
+    from: "",
+    to: "",
     start: "09:00",
     end: "17:00",
-    single_date: "",
-
-    bulk_from: "",
-    bulk_to: "",
-    bulk_days: "mon-fri",
-
-    overtime: false,
+    mode: "single",
     open_shift: false,
+    overtime: false,
   });
 
   useEffect(() => {
-    loadData(true);
+    loadData();
   }, []);
 
-  async function loadData(show = false) {
+  async function loadData() {
     try {
-      if (show) setLoading(true);
+      setLoading(true);
 
       const [
         shiftRes,
@@ -78,17 +77,30 @@ export default function Schedule() {
         ? userRes
         : [];
 
-      const safeLocations =
-        Array.isArray(locationRes)
-          ? locationRes
-          : [];
+      const safeLocations = Array.isArray(
+        locationRes
+      )
+        ? locationRes
+        : [];
+
+      const safeShifts = Array.isArray(
+        shiftRes
+      )
+        ? shiftRes
+        : [];
+
+      const safeHoliday = Array.isArray(
+        holidayRes
+      )
+        ? holidayRes
+        : [];
 
       setUsers(safeUsers);
       setLocations(safeLocations);
 
       const userMap = {};
       const rateMap = {};
-      const locMap = {};
+      const locationMap = {};
 
       safeUsers.forEach((u) => {
         userMap[u.id] =
@@ -100,94 +112,88 @@ export default function Schedule() {
       });
 
       safeLocations.forEach((l) => {
-        locMap[l.id] =
+        locationMap[l.id] =
           l.name || "Location";
       });
 
-      const holidays =
-        Array.isArray(holidayRes)
-          ? holidayRes
-          : [];
+      const shiftEvents = safeShifts.map(
+        (s) => {
+          const start = new Date(
+            s.start_time
+          );
 
-      const holidayEvents = holidays
-        .filter(
-          (h) =>
-            h.status === "approved"
-        )
-        .map((h) => ({
-          id: `holiday-${h.id}`,
-          type: "holiday",
-          start: new Date(
-            h.start_date +
-              "T00:00:00"
-          ),
-          end: new Date(
-            h.end_date +
-              "T23:59:59"
-          ),
-          title: `${
-            h.name ||
-            userMap[h.user_id] ||
-            "Staff"
-          } • HOLIDAY`,
-          allDay: true,
-        }));
+          const end = new Date(
+            s.end_time
+          );
 
-      const shiftEvents = (
-        Array.isArray(shiftRes)
-          ? shiftRes
-          : []
-      ).map((s) => {
-        const start =
-          new Date(s.start_time);
+          const open =
+            s.is_open || !s.user_id;
 
-        const end = new Date(
-          s.end_time
-        );
+          const person = open
+            ? "OPEN SHIFT"
+            : userMap[s.user_id] ||
+              "Staff";
 
-        const open =
-          s.is_open ||
-          !s.user_id;
+          const hours = `${moment(
+            start
+          ).format("HH:mm")} - ${moment(
+            end
+          ).format("HH:mm")}`;
 
-        const name = open
-          ? "OPEN SHIFT"
-          : userMap[s.user_id] ||
-            "Staff";
+          const loc =
+            locationMap[
+              s.location_id
+            ] || "No Location";
 
-        const hours = `${moment(
-          start
-        ).format("H:mm")} - ${moment(
-          end
-        ).format("H:mm")}`;
+          return {
+            id: s.id,
+            type: open
+              ? "open"
+              : "shift",
+            start,
+            end,
+            title: `${person} • ${hours} • ${loc}`,
+            resource: {
+              user_id:
+                s.user_id,
+              hourly_rate:
+                rateMap[
+                  s.user_id
+                ] || 0,
+              overtime:
+                s.overtime,
+            },
+          };
+        }
+      );
 
-        return {
-          id: s.id,
-          type: open
-            ? "open"
-            : "shift",
-          start,
-          end,
-          title: `${name} • ${hours}${
-            s.location_id
-              ? ` • ${
-                  locMap[
-                    s.location_id
-                  ] || ""
-                }`
-              : ""
-          }`,
-          resource: {
-            user_id:
-              s.user_id,
-            hourly_rate:
-              rateMap[
-                s.user_id
-              ] || 0,
-            overtime:
-              s.overtime,
-          },
-        };
-      });
+      const holidayEvents =
+        safeHoliday
+          .filter(
+            (h) =>
+              h.status ===
+              "approved"
+          )
+          .map((h) => ({
+            id: `holiday-${h.id}`,
+            type: "holiday",
+            start: new Date(
+              h.start_date +
+                "T00:00:00"
+            ),
+            end: new Date(
+              h.end_date +
+                "T23:59:59"
+            ),
+            allDay: true,
+            title: `${
+              h.name ||
+              userMap[
+                h.user_id
+              ] ||
+              "Staff"
+            } • HOLIDAY`,
+          }));
 
       setEvents([
         ...shiftEvents,
@@ -200,21 +206,26 @@ export default function Schedule() {
     }
   }
 
-  function onHoliday(userId, day) {
+  function userOnHoliday(
+    userId,
+    checkDate
+  ) {
+    const user =
+      users.find(
+        (u) => u.id === userId
+      ) || {};
+
+    const name = (
+      user.name || ""
+    ).toLowerCase();
+
     return events.some(
       (e) =>
         e.type === "holiday" &&
         e.title
           .toLowerCase()
-          .includes(
-            (
-              users.find(
-                (u) =>
-                  u.id === userId
-              )?.name || ""
-            ).toLowerCase()
-          ) &&
-        moment(day).isBetween(
+          .includes(name) &&
+        moment(checkDate).isBetween(
           e.start,
           e.end,
           "day",
@@ -225,7 +236,7 @@ export default function Schedule() {
 
   async function createSingle() {
     if (
-      !form.single_date ||
+      !form.date ||
       !form.location_id
     )
       return;
@@ -235,23 +246,23 @@ export default function Schedule() {
         ? [null]
         : form.user_ids;
 
-    for (const userId of selected) {
+    for (const id of selected) {
       if (
-        userId &&
-        onHoliday(
-          userId,
-          form.single_date
+        id &&
+        userOnHoliday(
+          id,
+          form.date
         )
       )
         continue;
 
       await scheduleAPI.create({
-        user_id: userId,
+        user_id: id,
         location_id:
           form.location_id,
-        date: form.single_date,
-        start_time: `${form.single_date}T${form.start}`,
-        end_time: `${form.single_date}T${form.end}`,
+        date: form.date,
+        start_time: `${form.date}T${form.start}`,
+        end_time: `${form.date}T${form.end}`,
         overtime:
           form.overtime,
         is_open:
@@ -260,23 +271,23 @@ export default function Schedule() {
     }
 
     setShowModal(false);
-    loadData(false);
+    loadData();
   }
 
   async function createBulk() {
     if (
-      !form.bulk_from ||
-      !form.bulk_to ||
+      !form.from ||
+      !form.to ||
       !form.location_id
     )
       return;
 
     let day = moment(
-      form.bulk_from
+      form.from
     );
 
     const end = moment(
-      form.bulk_to
+      form.to
     );
 
     while (
@@ -285,58 +296,46 @@ export default function Schedule() {
         "day"
       )
     ) {
-      const dow = day.day();
+      const selected =
+        form.open_shift
+          ? [null]
+          : form.user_ids;
 
-      const allowed =
-        form.bulk_days ===
-        "all"
-          ? true
-          : dow >= 1 &&
-            dow <= 5;
-
-      if (allowed) {
-        const selected =
-          form.open_shift
-            ? [null]
-            : form.user_ids;
-
-        for (const userId of selected) {
-          if (
-            userId &&
-            onHoliday(
-              userId,
-              day
-            )
+      for (const id of selected) {
+        if (
+          id &&
+          userOnHoliday(
+            id,
+            day
           )
-            continue;
+        )
+          continue;
 
-          await scheduleAPI.create({
-            user_id:
-              userId,
-            location_id:
-              form.location_id,
-            date: day.format(
-              "YYYY-MM-DD"
-            ),
-            start_time: `${day.format(
-              "YYYY-MM-DD"
-            )}T${form.start}`,
-            end_time: `${day.format(
-              "YYYY-MM-DD"
-            )}T${form.end}`,
-            overtime:
-              form.overtime,
-            is_open:
-              form.open_shift,
-          });
-        }
+        await scheduleAPI.create({
+          user_id: id,
+          location_id:
+            form.location_id,
+          date: day.format(
+            "YYYY-MM-DD"
+          ),
+          start_time: `${day.format(
+            "YYYY-MM-DD"
+          )}T${form.start}`,
+          end_time: `${day.format(
+            "YYYY-MM-DD"
+          )}T${form.end}`,
+          overtime:
+            form.overtime,
+          is_open:
+            form.open_shift,
+        });
       }
 
       day.add(1, "day");
     }
 
     setShowModal(false);
-    loadData(false);
+    loadData();
   }
 
   async function moveShift({
@@ -359,10 +358,10 @@ export default function Schedule() {
       }
     );
 
-    loadData(false);
+    loadData();
   }
 
-  const monthData =
+  const monthlyEvents =
     useMemo(() => {
       return events.filter((e) =>
         moment(e.start).isSame(
@@ -372,58 +371,52 @@ export default function Schedule() {
       );
     }, [events, date]);
 
-  const shifts =
-    monthData.filter(
-      (e) =>
-        e.type === "shift" ||
-        e.type === "open"
+  const monthlyShifts =
+    monthlyEvents.filter(
+      (x) =>
+        x.type === "shift" ||
+        x.type === "open"
     ).length;
 
-  const hours =
-    monthData
+  const monthlyHours =
+    monthlyEvents
       .filter(
-        (e) =>
-          e.type === "shift"
+        (x) =>
+          x.type === "shift"
       )
       .reduce(
-        (
-          sum,
-          e
-        ) =>
+        (sum, x) =>
           sum +
           moment(
-            e.end
+            x.end
           ).diff(
-            e.start,
+            x.start,
             "minutes"
           ) /
             60,
         0
       );
 
-  const wages =
-    monthData
+  const monthlyWages =
+    monthlyEvents
       .filter(
-        (e) =>
-          e.type === "shift"
+        (x) =>
+          x.type === "shift"
       )
       .reduce(
-        (
-          sum,
-          e
-        ) => {
+        (sum, x) => {
           const hrs =
             moment(
-              e.end
+              x.end
             ).diff(
-              e.start,
+              x.start,
               "minutes"
             ) / 60;
 
           return (
             sum +
             hrs *
-              (e.resource
+              (x.resource
                 ?.hourly_rate ||
                 0)
           );
@@ -431,7 +424,9 @@ export default function Schedule() {
         0
       );
 
-  function eventStyle(event) {
+  function eventStyleGetter(
+    event
+  ) {
     if (
       event.type ===
       "holiday"
@@ -467,10 +462,7 @@ export default function Schedule() {
     return {
       style: {
         background:
-          event.resource
-            ?.overtime
-            ? "#dc2626"
-            : "#6366f1",
+          "#6366f1",
         border: "none",
         borderRadius:
           "8px",
@@ -489,6 +481,7 @@ export default function Schedule() {
   return (
     <div className="space-y-6">
 
+      {/* HEADER */}
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-semibold">
@@ -501,46 +494,37 @@ export default function Schedule() {
 
         <div className="flex gap-2">
           <button
-            onClick={() =>
-              loadData(
-                false
-              )
-            }
+            onClick={loadData}
             className="px-4 py-2 rounded-xl bg-white/5"
           >
-            <RefreshCw
-              size={16}
-            />
+            <RefreshCw size={16} />
           </button>
 
           <button
             onClick={() =>
-              setShowModal(
-                true
-              )
+              setShowModal(true)
             }
-            className="px-4 py-2 rounded-xl bg-indigo-600 flex items-center gap-2"
+            className="px-4 py-2 rounded-xl bg-indigo-600 flex gap-2 items-center"
           >
-            <Plus
-              size={16}
-            />
+            <Plus size={16} />
             Add Shift
           </button>
         </div>
       </div>
 
+      {/* KPI */}
       <div className="grid md:grid-cols-3 gap-4">
         <Card
-          title="Monthly Shifts"
-          value={shifts}
+          title="Month Shifts"
+          value={monthlyShifts}
           icon={
             <CalendarDays size={16} />
           }
         />
 
         <Card
-          title="Monthly Hours"
-          value={hours.toFixed(
+          title="Month Hours"
+          value={monthlyHours.toFixed(
             1
           )}
           icon={
@@ -549,8 +533,8 @@ export default function Schedule() {
         />
 
         <Card
-          title="Monthly Wage"
-          value={`£${wages.toFixed(
+          title="Month Wages"
+          value={`£${monthlyWages.toFixed(
             2
           )}`}
           icon={
@@ -559,7 +543,9 @@ export default function Schedule() {
         />
       </div>
 
+      {/* CALENDAR */}
       <div className="rounded-2xl border border-white/10 bg-[#020617] p-4 schedule-wrap">
+
         <DnDCalendar
           localizer={
             localizer
@@ -574,18 +560,19 @@ export default function Schedule() {
           views={[
             Views.MONTH,
             Views.WEEK,
+            Views.AGENDA,
           ]}
-          startAccessor="start"
-          endAccessor="end"
           popup
           selectable
           resizable
+          startAccessor="start"
+          endAccessor="end"
           style={{
             height:
               "82vh",
           }}
           eventPropGetter={
-            eventStyle
+            eventStyleGetter
           }
           onEventDrop={
             moveShift
@@ -594,39 +581,101 @@ export default function Schedule() {
             moveShift
           }
           components={{
-            week: WeekSimple,
+            week:
+              CustomWeekView,
           }}
         />
+
       </div>
 
+      {/* MODAL */}
       {showModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
 
-          <div className="w-full max-w-2xl bg-[#020617] border border-white/10 rounded-2xl p-6">
+          <div className="w-full max-w-3xl bg-[#020617] border border-white/10 rounded-2xl p-6 space-y-4">
 
-            <h2 className="text-xl font-semibold mb-4">
-              Add Single / Bulk Shift
+            <h2 className="text-xl font-semibold">
+              Add Shift / Bulk Schedule
             </h2>
 
-            <div className="grid md:grid-cols-2 gap-3 mb-3">
+            <select
+              value={form.mode}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  mode:
+                    e.target.value,
+                })
+              }
+              className="w-full bg-[#0f172a] text-white rounded-xl px-4 py-3"
+            >
+              <option value="single">
+                Single Shift
+              </option>
+              <option value="bulk">
+                Bulk Schedule
+              </option>
+            </select>
 
-              <input
-                type="date"
-                value={
-                  form.single_date
-                }
-                onChange={(
-                  e
-                ) =>
-                  setForm({
-                    ...form,
-                    single_date:
-                      e.target
-                        .value,
-                  })
-                }
-                className="bg-[#0f172a] text-white rounded-xl px-4 py-3"
-              />
+            <div className="grid md:grid-cols-2 gap-3">
+              {form.mode ===
+              "single" ? (
+                <input
+                  type="date"
+                  value={
+                    form.date
+                  }
+                  onChange={(
+                    e
+                  ) =>
+                    setForm({
+                      ...form,
+                      date:
+                        e.target
+                          .value,
+                    })
+                  }
+                  className="bg-[#0f172a] text-white rounded-xl px-4 py-3"
+                />
+              ) : (
+                <>
+                  <input
+                    type="date"
+                    value={
+                      form.from
+                    }
+                    onChange={(
+                      e
+                    ) =>
+                      setForm({
+                        ...form,
+                        from:
+                          e.target
+                            .value,
+                      })
+                    }
+                    className="bg-[#0f172a] text-white rounded-xl px-4 py-3"
+                  />
+
+                  <input
+                    type="date"
+                    value={
+                      form.to
+                    }
+                    onChange={(
+                      e
+                    ) =>
+                      setForm({
+                        ...form,
+                        to:
+                          e.target
+                            .value,
+                      })
+                    }
+                    className="bg-[#0f172a] text-white rounded-xl px-4 py-3"
+                  />
+                </>
+              )}
 
               <select
                 value={
@@ -701,124 +750,57 @@ export default function Schedule() {
                 }
                 className="bg-[#0f172a] text-white rounded-xl px-4 py-3"
               />
-
             </div>
 
-            <div className="rounded-xl bg-[#0f172a] p-4 mb-3">
-              <p className="text-sm mb-3">
+            {/* MULTI STAFF */}
+            <div className="rounded-xl bg-[#0f172a] p-4">
+              <p className="mb-3 text-sm">
                 Select Multiple Staff
               </p>
 
               <div className="grid md:grid-cols-3 gap-2">
-                {users.map(
-                  (
-                    u
-                  ) => (
-                    <label
-                      key={
+                {users.map((u) => (
+                  <label
+                    key={u.id}
+                    className="flex gap-2 text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={form.user_ids.includes(
                         u.id
-                      }
-                      className="text-sm flex gap-2"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={form.user_ids.includes(
-                          u.id
-                        )}
-                        onChange={() => {
-                          const exists =
-                            form.user_ids.includes(
-                              u.id
-                            );
+                      )}
+                      onChange={() => {
+                        const exists =
+                          form.user_ids.includes(
+                            u.id
+                          );
 
-                          setForm({
-                            ...form,
-                            user_ids:
-                              exists
-                                ? form.user_ids.filter(
-                                    (
-                                      x
-                                    ) =>
-                                      x !==
-                                      u.id
-                                  )
-                                : [
-                                    ...form.user_ids,
-                                    u.id,
-                                  ],
-                          });
-                        }}
-                      />
-                      {u.name}
-                    </label>
-                  )
-                )}
+                        setForm({
+                          ...form,
+                          user_ids:
+                            exists
+                              ? form.user_ids.filter(
+                                  (
+                                    x
+                                  ) =>
+                                    x !==
+                                    u.id
+                                )
+                              : [
+                                  ...form.user_ids,
+                                  u.id,
+                                ],
+                        });
+                      }}
+                    />
+
+                    {u.name}
+                  </label>
+                ))}
               </div>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-3 mb-3">
-              <input
-                type="date"
-                value={
-                  form.bulk_from
-                }
-                onChange={(
-                  e
-                ) =>
-                  setForm({
-                    ...form,
-                    bulk_from:
-                      e.target
-                        .value,
-                  })
-                }
-                className="bg-[#0f172a] text-white rounded-xl px-4 py-3"
-              />
-
-              <input
-                type="date"
-                value={
-                  form.bulk_to
-                }
-                onChange={(
-                  e
-                ) =>
-                  setForm({
-                    ...form,
-                    bulk_to:
-                      e.target
-                        .value,
-                  })
-                }
-                className="bg-[#0f172a] text-white rounded-xl px-4 py-3"
-              />
-
-              <select
-                value={
-                  form.bulk_days
-                }
-                onChange={(
-                  e
-                ) =>
-                  setForm({
-                    ...form,
-                    bulk_days:
-                      e.target
-                        .value,
-                  })
-                }
-                className="bg-[#0f172a] text-white rounded-xl px-4 py-3"
-              >
-                <option value="mon-fri">
-                  Mon - Fri
-                </option>
-                <option value="all">
-                  All Days
-                </option>
-              </select>
-            </div>
-
-            <div className="flex gap-6 text-sm mb-4">
+            <div className="flex gap-6 text-sm">
               <label className="flex gap-2">
                 <input
                   type="checkbox"
@@ -860,36 +842,26 @@ export default function Schedule() {
               </label>
             </div>
 
-            <div className="space-y-2">
-              <button
-                onClick={
-                  createSingle
-                }
-                className="w-full py-3 rounded-xl bg-indigo-600"
-              >
-                Add Single Shift
-              </button>
+            <button
+              onClick={() =>
+                form.mode ===
+                "single"
+                  ? createSingle()
+                  : createBulk()
+              }
+              className="w-full py-3 rounded-xl bg-indigo-600"
+            >
+              Save Schedule
+            </button>
 
-              <button
-                onClick={
-                  createBulk
-                }
-                className="w-full py-3 rounded-xl bg-emerald-600"
-              >
-                Add Bulk Multi Staff
-              </button>
-
-              <button
-                onClick={() =>
-                  setShowModal(
-                    false
-                  )
-                }
-                className="w-full py-3 rounded-xl bg-white/5"
-              >
-                Cancel
-              </button>
-            </div>
+            <button
+              onClick={() =>
+                setShowModal(false)
+              }
+              className="w-full py-3 rounded-xl bg-white/5"
+            >
+              Cancel
+            </button>
 
           </div>
 
@@ -920,7 +892,8 @@ export default function Schedule() {
   );
 }
 
-function WeekSimple({
+/* CUSTOM WEEK VIEW */
+function CustomWeekView({
   date,
   events,
 }) {
@@ -937,7 +910,7 @@ function WeekSimple({
   );
 
   return (
-    <div className="grid grid-cols-7 gap-2 h-full p-2">
+    <div className="grid grid-cols-7 gap-3 p-3 h-full overflow-auto">
       {days.map((day) => {
         const rows =
           events.filter((e) =>
@@ -952,23 +925,38 @@ function WeekSimple({
         return (
           <div
             key={day.format()}
-            className="bg-[#0f172a] rounded-xl p-2 overflow-auto"
+            className="rounded-xl bg-[#0f172a] p-3 min-h-[600px]"
           >
-            <div className="font-semibold text-sm mb-2">
+            <div className="font-semibold mb-3 text-sm border-b border-white/10 pb-2">
               {day.format(
-                "ddd DD"
+                "ddd DD MMM"
               )}
             </div>
 
             <div className="space-y-2">
-              {rows.map(
-                (r) => (
-                  <div
-                    key={r.id}
-                    className="text-xs rounded-lg px-2 py-2 bg-white/5"
-                  >
-                    {r.title}
-                  </div>
+              {rows.length ===
+              0 ? (
+                <div className="text-xs text-gray-500">
+                  No shifts
+                </div>
+              ) : (
+                rows.map(
+                  (r) => (
+                    <div
+                      key={r.id}
+                      className={`text-xs rounded-lg px-2 py-2 ${
+                        r.type ===
+                        "holiday"
+                          ? "bg-green-600/20 text-green-300"
+                          : r.type ===
+                            "open"
+                          ? "bg-yellow-500/20 text-yellow-300"
+                          : "bg-indigo-600/20 text-indigo-300"
+                      }`}
+                    >
+                      {r.title}
+                    </div>
+                  )
                 )
               )}
             </div>
@@ -990,6 +978,7 @@ function Card({
         <p className="text-xs text-gray-400">
           {title}
         </p>
+
         <div className="text-indigo-400">
           {icon}
         </div>
