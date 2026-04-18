@@ -834,21 +834,42 @@ export const announcementAPI = {
 
 /* =====================================================
 REPORTS
-UPGRADED AI ANALYTICS + COSTING
+FIXED TRIAL SAFE VERSION
+14 DAY TRIAL + FAIL SAFE API LOADS
 ===================================================== */
 
 export const reportAPI = {
   getSummary: async () => {
-    const users = await userAPI.getAll();
-    const tasks = await taskAPI.getAll();
-    const shifts = await shiftAPI.getAll();
+    /* SAFE LOADS */
+    const users =
+      await userAPI
+        .getAll()
+        .catch(() => []);
+
+    const tasks =
+      await taskAPI
+        .getAll()
+        .catch(() => []);
+
+    const shifts =
+      await shiftAPI
+        .getAll()
+        .catch(() => []);
+
+    const holidays =
+      await holidayAPI
+        .getAll()
+        .catch(() => []);
 
     const now = new Date();
 
-    const today = now.toISOString().split("T")[0];
+    const today =
+      now.toISOString().split("T")[0];
 
     const weekAgo = new Date();
-    weekAgo.setDate(now.getDate() - 7);
+    weekAgo.setDate(
+      now.getDate() - 7
+    );
 
     let todayWages = 0;
     let weekWages = 0;
@@ -862,42 +883,54 @@ export const reportAPI = {
     for (const row of shifts) {
       const user =
         users.find(
-          (u) => u.id === row.user_id
+          (u) =>
+            u.id === row.user_id
         ) || {};
 
-      const rate =
-        Number(
-          user.hourly_rate ||
+      const rate = Number(
+        user.hourly_rate ||
           user.hour_rate ||
           12
-        );
+      );
 
-      const start = row.clock_in_time
-        ? new Date(row.clock_in_time)
-        : null;
+      const start =
+        row.clock_in_time
+          ? new Date(
+              row.clock_in_time
+            )
+          : null;
 
-      const end = row.clock_out_time
-        ? new Date(row.clock_out_time)
-        : new Date();
+      const end =
+        row.clock_out_time
+          ? new Date(
+              row.clock_out_time
+            )
+          : new Date();
 
       if (!start) continue;
 
       const sec =
         Math.floor(
-          (end - start) / 1000
+          (end - start) /
+            1000
         ) -
         Number(
-          row.total_break_seconds || 0
+          row.total_break_seconds ||
+            0
         );
 
       const hours =
-        sec > 0 ? sec / 3600 : 0;
+        sec > 0
+          ? sec / 3600
+          : 0;
 
       const cost =
         hours * rate;
 
       const date =
-        start.toISOString().split("T")[0];
+        start
+          .toISOString()
+          .split("T")[0];
 
       if (date === today) {
         todayWages += cost;
@@ -907,7 +940,7 @@ export const reportAPI = {
         weekWages += cost;
       }
 
-      /* AI Flags */
+      /* FLAGS */
 
       const startHour =
         start.getHours();
@@ -938,23 +971,24 @@ export const reportAPI = {
       }
     }
 
-    /* sickness pattern */
-    const holidays =
-      await holidayAPI.getAll();
-
     sicknessFlags =
       holidays.filter((x) =>
         String(
           x.reason || ""
-        ).toLowerCase().includes(
-          "sick"
         )
+          .toLowerCase()
+          .includes("sick")
       ).length;
 
     return {
       users: users.length,
+
       tasks: tasks.length,
+
       shifts: shifts.length,
+
+      totalShifts:
+        shifts.length,
 
       activeUsers:
         shifts.filter(
@@ -1011,9 +1045,10 @@ export const reportAPI = {
   },
 
   getTimesheets: async () =>
-    await shiftAPI.getAll(),
+    await shiftAPI
+      .getAll()
+      .catch(() => []),
 };
-
 /* =====================================================
 PERFORMANCE
 ===================================================== */
