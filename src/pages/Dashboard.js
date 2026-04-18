@@ -1,55 +1,39 @@
 // src/pages/Dashboard.js
-// FIELDSYNC PREMIUM DASHBOARD v1
-// COPY / PASTE READY
-// ✅ Premium modern UI
-// ✅ Real data only
-// ✅ No fake stats
-// ✅ No NaN wages
-// ✅ Live map always visible
-// ✅ Smart insights
-// ✅ Employee / Manager / Admin modes
-// ✅ Existing APIs used
-// ✅ Clean enterprise style
+// FIELDSYNC PREMIUM DASHBOARD
+// EXACT LAYOUT VERSION
+// Real data only
+// Copy / Paste Ready
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
 import {
+  userAPI,
   shiftAPI,
   holidayAPI,
-  reportAPI,
   billingAPI,
-  taskAPI,
-  userAPI,
+  scheduleAPI,
 } from "../services/api";
 
 import {
   Users,
   Clock3,
-  Briefcase,
   Plane,
-  CreditCard,
-  PoundSterling,
-  Loader2,
-  CheckCircle2,
-  AlertTriangle,
-  RefreshCw,
   MapPin,
-  TrendingUp,
+  CreditCard,
+  Loader2,
+  Search,
+  Bell,
+  LogOut,
 } from "lucide-react";
 
 import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
   PieChart,
   Pie,
   Cell,
+  ResponsiveContainer,
   Tooltip,
-  XAxis,
-  YAxis,
-  CartesianGrid,
 } from "recharts";
 
 import {
@@ -68,102 +52,19 @@ export default function Dashboard() {
 
   if (loading || !user) return <Loading />;
 
-  if (user.role === "employee") {
-    return <EmployeeDashboard user={user} />;
-  }
-
-  return <MainDashboard user={user} admin={user.role === "admin"} />;
+  return <PremiumDashboard user={user} />;
 }
 
 /* ================================================= */
-/* EMPLOYEE */
-/* ================================================= */
 
-function EmployeeDashboard({ user }) {
+function PremiumDashboard({ user }) {
   const [loading, setLoading] = useState(true);
-  const [tasks, setTasks] = useState([]);
-  const [shift, setShift] = useState(null);
-  const [holidays, setHolidays] = useState([]);
 
-  useEffect(() => {
-    load();
-  }, []);
-
-  async function load() {
-    try {
-      const [a, b, c] = await Promise.all([
-        shiftAPI.getActive(),
-        taskAPI.getAll(),
-        holidayAPI.getMine(),
-      ]);
-
-      setShift(a || null);
-      setTasks(Array.isArray(b) ? b : []);
-      setHolidays(Array.isArray(c) ? c : []);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  if (loading) return <Loading />;
-
-  return (
-    <div className="space-y-6">
-      <Hero
-        title={`Good morning, ${user.name}`}
-        subtitle="Here's your workday overview."
-      />
-
-      <div className="grid md:grid-cols-4 gap-4">
-        <StatCard
-          title="Status"
-          value={shift ? "Clocked In" : "Off Duty"}
-          icon={<Clock3 size={18} />}
-        />
-
-        <StatCard
-          title="Tasks"
-          value={tasks.length}
-          icon={<Briefcase size={18} />}
-        />
-
-        <StatCard
-          title="Completed"
-          value={tasks.filter((x) => x.completed).length}
-          icon={<CheckCircle2 size={18} />}
-        />
-
-        <StatCard
-          title="Holiday Requests"
-          value={holidays.length}
-          icon={<Plane size={18} />}
-        />
-      </div>
-
-      <QuickActions
-        items={[
-          ["/tasks", "My Tasks"],
-          ["/timesheet", "My Hours"],
-          ["/holidays", "My Holidays"],
-        ]}
-      />
-    </div>
-  );
-}
-
-/* ================================================= */
-/* MAIN */
-/* ================================================= */
-
-function MainDashboard({ user, admin }) {
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({});
   const [staff, setStaff] = useState([]);
   const [live, setLive] = useState([]);
-  const [tasks, setTasks] = useState([]);
-  const [holidays, setHolidays] = useState([]);
+  const [leave, setLeave] = useState([]);
   const [plan, setPlan] = useState("free");
-  const [updated, setUpdated] = useState("");
+  const [shifts, setShifts] = useState([]);
 
   useEffect(() => {
     load();
@@ -174,27 +75,25 @@ function MainDashboard({ user, admin }) {
 
   async function load() {
     try {
-      const req = [
-        reportAPI.getSummary(),
+      const [
+        users,
+        active,
+        holidays,
+        billing,
+        rota,
+      ] = await Promise.all([
         userAPI.getAll(),
         shiftAPI.getActiveAll(),
-        taskAPI.getAll(),
         holidayAPI.getAll(),
-      ];
+        billingAPI.getStatus(),
+        scheduleAPI.getAll(),
+      ]);
 
-      if (admin) req.push(billingAPI.getStatus());
-
-      const res = await Promise.all(req);
-
-      setStats(res[0] || {});
-      setStaff(Array.isArray(res[1]) ? res[1] : []);
-      setLive(Array.isArray(res[2]) ? res[2] : []);
-      setTasks(Array.isArray(res[3]) ? res[3] : []);
-      setHolidays(Array.isArray(res[4]) ? res[4] : []);
-
-      if (admin) setPlan(res[5]?.plan || "free");
-
-      setUpdated(new Date().toLocaleTimeString());
+      setStaff(Array.isArray(users) ? users : []);
+      setLive(Array.isArray(active) ? active : []);
+      setLeave(Array.isArray(holidays) ? holidays : []);
+      setPlan(billing?.plan || "free");
+      setShifts(Array.isArray(rota) ? rota : []);
     } finally {
       setLoading(false);
     }
@@ -202,236 +101,305 @@ function MainDashboard({ user, admin }) {
 
   if (loading) return <Loading />;
 
-  const totalUsers = Number(stats.users || staff.length || 0);
-  const activeUsers = Number(stats.activeUsers || live.length || 0);
+  const today = new Date()
+    .toISOString()
+    .split("T")[0];
 
-  const attendance =
-    totalUsers > 0
-      ? Math.round((activeUsers / totalUsers) * 100)
+  const employees = staff.length;
+
+  const clockedIn = live.length;
+
+  const onLeave = leave.filter(
+    (x) =>
+      x.status === "approved" &&
+      x.start_date <= today &&
+      x.end_date >= today
+  ).length;
+
+  const locations = live.filter(
+    (x) => x.latitude && x.longitude
+  ).length;
+
+  const absent =
+    employees - clockedIn - onLeave > 0
+      ? employees - clockedIn - onLeave
       : 0;
 
-  const todayWages = Number(stats.todayWages || 0);
-  const weekWages = Number(stats.weekWages || 0);
-
-  const safeToday = isNaN(todayWages) ? 0 : todayWages;
-  const safeWeek = isNaN(weekWages) ? 0 : weekWages;
-
-  const paid = staff.filter(
-    (x) => Number(x.hourly_rate || 0) > 0
-  ).length;
-
-  const missingRates = staff.length - paid;
-
-  const overContract = staff.filter(
-    (x) =>
-      Number(x.contracted_hours || 0) > 0 &&
-      Number(x.week_hours || 0) >
-        Number(x.contracted_hours || 0)
-  ).length;
-
-  const pendingLeave = holidays.filter(
-    (x) => x.status === "pending"
-  ).length;
-
-  const openTasks = tasks.filter(
-    (x) => !x.completed
-  ).length;
-
-  const wageData = [
-    { name: "Today", value: safeToday },
-    { name: "Week", value: safeWeek },
+  const attendanceData = [
+    {
+      name: "Present",
+      value: clockedIn,
+    },
+    {
+      name: "Absent",
+      value: absent,
+    },
+    {
+      name: "Leave",
+      value: onLeave,
+    },
   ];
 
-  const pieData = [
-    { name: "Present", value: attendance },
-    { name: "Away", value: 100 - attendance },
-  ];
+  const todayWages = calcTodayWages(
+    live,
+    staff
+  );
 
-  const insights = [];
+  const weeklyWages = calcWeekWages(
+    staff
+  );
 
-  if (missingRates > 0)
-    insights.push(
-      `${missingRates} staff missing pay rates`
-    );
-
-  if (overContract > 0)
-    insights.push(
-      `${overContract} staff over contracted hours`
-    );
-
-  if (pendingLeave > 0)
-    insights.push(
-      `${pendingLeave} leave requests pending`
-    );
-
-  if (openTasks > 0)
-    insights.push(`${openTasks} open tasks remain`);
+  const upcoming = shifts
+    .filter((x) => x.date >= today)
+    .slice(0, 3);
 
   return (
-    <div className="space-y-6">
-      <Hero
-        title={`Good morning, ${user.name}`}
-        subtitle="Here’s what’s happening with your workforce today."
-      />
-
-      {/* KPI */}
-      <div className="grid xl:grid-cols-5 md:grid-cols-3 gap-4">
-        <StatCard
-          title="Employees"
-          value={totalUsers}
-          icon={<Users size={18} />}
-        />
-
-        <StatCard
-          title="Clocked In"
-          value={activeUsers}
-          icon={<Clock3 size={18} />}
-        />
-
-        <StatCard
-          title="Open Tasks"
-          value={openTasks}
-          icon={<Briefcase size={18} />}
-        />
-
-        <StatCard
-          title="Attendance"
-          value={`${attendance}%`}
-          icon={<TrendingUp size={18} />}
-        />
-
-        <StatCard
-          title="Plan"
-          value={plan}
-          icon={<CreditCard size={18} />}
-        />
-      </div>
-
-      {/* PAYROLL */}
-      <div className="grid md:grid-cols-2 gap-4">
-        <BigCard
-          title="Today's Wages"
-          value={`£${safeToday.toFixed(2)}`}
-          sub="Live labour spend today"
-          icon={<PoundSterling size={18} />}
-        />
-
-        <BigCard
-          title="Weekly Wages"
-          value={`£${safeWeek.toFixed(2)}`}
-          sub="Current week total"
-          icon={<CreditCard size={18} />}
-        />
-      </div>
-
-      {/* CHARTS */}
-      <div className="grid lg:grid-cols-2 gap-4">
-        <Panel title="Wage Trend">
-          <ChartBox>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={wageData}>
-                <CartesianGrid
-                  stroke="#1e293b"
-                  vertical={false}
-                />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar
-                  dataKey="value"
-                  fill="#4f46e5"
-                  radius={[8, 8, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartBox>
-        </Panel>
-
-        <Panel title="Attendance">
-          <ChartBox>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  dataKey="value"
-                  innerRadius={60}
-                  outerRadius={90}
-                >
-                  <Cell fill="#22c55e" />
-                  <Cell fill="#1e293b" />
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-          </ChartBox>
-
-          <p className="text-center text-3xl font-bold">
-            {attendance}%
-          </p>
-        </Panel>
-      </div>
-
-      {/* MAP */}
-      <Panel title="Live Map Tracking">
-        <LiveMap live={live} />
-      </Panel>
-
-      {/* INSIGHTS */}
-      <Panel title="Business Insights">
-        <div className="space-y-3">
-          {insights.length === 0 && (
-            <p className="text-gray-400 text-sm">
-              No critical alerts.
-            </p>
-          )}
-
-          {insights.map((x, i) => (
-            <div
-              key={i}
-              className="rounded-xl bg-amber-500/10 text-amber-300 px-4 py-3 text-sm flex items-center gap-2"
-            >
-              <AlertTriangle size={16} />
-              {x}
+    <div className="flex min-h-screen bg-[#020617] text-white">
+      {/* SIDEBAR */}
+      <aside className="w-[260px] border-r border-white/5 p-5 flex flex-col justify-between">
+        <div>
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-11 h-11 rounded-xl bg-yellow-500 flex items-center justify-center font-bold text-black">
+              F
             </div>
-          ))}
-        </div>
-      </Panel>
 
-      {/* QUICK LINKS */}
-      <QuickActions
-        items={[
-          ["/employees", "Employees"],
-          ["/schedule", "Schedule"],
-          ["/timesheet", "Timesheets"],
-          ["/reports", "Reports"],
-        ]}
-      />
+            <div>
+              <h1 className="font-bold text-xl">
+                FieldSync
+              </h1>
+              <p className="text-xs text-gray-400">
+                Workforce Management
+              </p>
+            </div>
+          </div>
 
-      {/* UPDATE */}
-      <Panel title="Live Updates">
-        <div className="text-sm text-gray-400 flex gap-2 items-center">
-          <RefreshCw size={14} />
-          Last refresh {updated}
+          <Nav />
+
         </div>
-      </Panel>
+
+        <div className="space-y-3">
+          <div className="rounded-2xl bg-white/5 p-4">
+            <p className="font-medium">
+              {user.name}
+            </p>
+            <p className="text-sm text-gray-400">
+              {user.role}
+            </p>
+          </div>
+
+          <button className="w-full py-3 rounded-2xl bg-red-600 hover:bg-red-500">
+            Sign Out
+          </button>
+        </div>
+      </aside>
+
+      {/* MAIN */}
+      <main className="flex-1 p-8 space-y-6 overflow-auto">
+        {/* TOPBAR */}
+        <div className="flex justify-between items-center">
+          <div>
+            <p className="text-sm text-gray-400">
+              Dashboard
+            </p>
+
+            <h1 className="text-3xl font-bold mt-2">
+              Good morning, {user.name}
+            </h1>
+
+            <p className="text-gray-400 mt-1">
+              Here's what's happening with your workforce today.
+            </p>
+          </div>
+
+          <div className="flex gap-3 items-center">
+            <div className="px-4 py-3 rounded-2xl bg-white/5 flex items-center gap-2 min-w-[220px]">
+              <Search size={16} />
+              <span className="text-gray-400 text-sm">
+                Search...
+              </span>
+            </div>
+
+            <button className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center">
+              <Bell size={18} />
+            </button>
+
+            <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center font-bold">
+              {user.name?.charAt(0)}
+            </div>
+          </div>
+        </div>
+
+        {/* KPI */}
+        <div className="grid grid-cols-5 gap-4">
+          <Stat
+            title="Employees"
+            value={employees}
+            sub="Active"
+          />
+          <Stat
+            title="Clocked In"
+            value={clockedIn}
+            sub="Now"
+          />
+          <Stat
+            title="On Leave"
+            value={onLeave}
+            sub="Today"
+          />
+          <Stat
+            title="Locations"
+            value={locations}
+            sub="Active"
+          />
+          <Stat
+            title="Plan"
+            value={plan}
+            sub="Subscription"
+          />
+        </div>
+
+        {/* MID */}
+        <div className="grid grid-cols-2 gap-4">
+          {/* GRAPH */}
+          <Panel title="Today's Attendance">
+            <div className="h-[320px]">
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+              >
+                <PieChart>
+                  <Pie
+                    data={attendanceData}
+                    innerRadius={75}
+                    outerRadius={105}
+                    dataKey="value"
+                  >
+                    <Cell fill="#22c55e" />
+                    <Cell fill="#ef4444" />
+                    <Cell fill="#facc15" />
+                  </Pie>
+
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-sm">
+              <Mini
+                color="bg-green-500"
+                label="Present"
+                value={clockedIn}
+              />
+              <Mini
+                color="bg-red-500"
+                label="Absent"
+                value={absent}
+              />
+              <Mini
+                color="bg-yellow-400"
+                label="Leave"
+                value={onLeave}
+              />
+            </div>
+          </Panel>
+
+          {/* MAP */}
+          <Panel title="Live Map Tracking">
+            <LiveMap live={live} />
+          </Panel>
+        </div>
+
+        {/* LOWER */}
+        <div className="grid grid-cols-3 gap-4">
+          <MoneyCard
+            title="Today's Wages"
+            value={todayWages}
+          />
+
+          <MoneyCard
+            title="Weekly Wages"
+            value={weeklyWages}
+          />
+
+          <Panel title="Upcoming Schedule">
+            <div className="space-y-4">
+              {upcoming.map((x) => (
+                <div key={x.id}>
+                  <p className="font-medium">
+                    {x.title || "Shift"}
+                  </p>
+
+                  <p className="text-sm text-gray-400">
+                    {x.date}
+                  </p>
+                </div>
+              ))}
+
+              {!upcoming.length && (
+                <p className="text-gray-500">
+                  No upcoming shifts
+                </p>
+              )}
+            </div>
+          </Panel>
+        </div>
+      </main>
     </div>
   );
 }
 
 /* ================================================= */
-/* MAP */
+
+function calcTodayWages(live, staff) {
+  let total = 0;
+
+  live.forEach((x) => {
+    const user = staff.find(
+      (u) => u.id === x.user_id
+    );
+
+    const rate = Number(
+      user?.hourly_rate || 0
+    );
+
+    if (!rate) return;
+
+    const start = new Date(
+      x.clock_in_time
+    );
+
+    const hours =
+      (Date.now() - start) / 3600000;
+
+    total += rate * hours;
+  });
+
+  return total.toFixed(2);
+}
+
+function calcWeekWages(staff) {
+  return staff
+    .reduce(
+      (sum, x) =>
+        sum +
+        Number(
+          x.week_hours || 0
+        ) *
+          Number(
+            x.hourly_rate || 0
+          ),
+      0
+    )
+    .toFixed(2);
+}
+
 /* ================================================= */
 
 function LiveMap({ live }) {
-  const points = useMemo(
-    () =>
-      (live || []).filter(
-        (x) =>
-          x.latitude &&
-          x.longitude &&
-          !isNaN(Number(x.latitude)) &&
-          !isNaN(Number(x.longitude))
-      ),
-    [live]
+  const points = live.filter(
+    (x) =>
+      x.latitude &&
+      x.longitude
   );
 
   const center = points.length
@@ -439,13 +407,13 @@ function LiveMap({ live }) {
         Number(points[0].latitude),
         Number(points[0].longitude),
       ]
-    : [51.509, -0.12];
+    : [51.5072, -0.1276];
 
   return (
-    <div className="relative h-[420px] rounded-2xl overflow-hidden">
+    <div className="h-[380px] rounded-2xl overflow-hidden">
       <MapContainer
         center={center}
-        zoom={10}
+        zoom={11}
         style={{
           height: "100%",
           width: "100%",
@@ -462,125 +430,128 @@ function LiveMap({ live }) {
             ]}
           >
             <Popup>
-              {x.users?.name || "Staff"}
+              {x.users?.name ||
+                "Staff"}
             </Popup>
           </Marker>
         ))}
       </MapContainer>
-
-      {!points.length && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[999] bg-black/70 px-4 py-2 rounded-xl text-sm">
-          No staff currently clocked in
-        </div>
-      )}
     </div>
   );
 }
 
 /* ================================================= */
-/* UI */
-/* ================================================= */
 
-function Hero({ title, subtitle }) {
-  return (
-    <div className="rounded-3xl p-8 bg-gradient-to-r from-indigo-600/20 to-slate-800 border border-white/10">
-      <h1 className="text-4xl font-bold">
-        {title}
-      </h1>
-      <p className="text-gray-300 mt-2">
-        {subtitle}
-      </p>
-    </div>
-  );
-}
+function Nav() {
+  const items = [
+    "Dashboard",
+    "Employees",
+    "Schedule",
+    "Locations",
+    "Holiday Requests",
+    "Timesheet",
+    "Profile",
+    "Reports",
+    "Billing",
+  ];
 
-function StatCard({ title, value, icon }) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-[#020617] p-5 hover:border-indigo-500/40 transition">
-      <div className="flex justify-between">
-        <p className="text-sm text-gray-400">
-          {title}
-        </p>
-        <div className="text-indigo-400">
-          {icon}
+    <div className="space-y-2">
+      {items.map((x, i) => (
+        <div
+          key={x}
+          className={`px-4 py-3 rounded-2xl ${
+            i === 0
+              ? "bg-indigo-600"
+              : "hover:bg-white/5"
+          }`}
+        >
+          {x}
         </div>
-      </div>
-
-      <h2 className="text-3xl font-bold mt-4">
-        {value}
-      </h2>
+      ))}
     </div>
   );
 }
 
-function BigCard({
+function Stat({
   title,
   value,
   sub,
-  icon,
 }) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-[#020617] p-6">
-      <div className="flex justify-between">
-        <p className="text-sm text-gray-400">
-          {title}
-        </p>
-        <div className="text-indigo-400">
-          {icon}
-        </div>
-      </div>
-
-      <h2 className="text-5xl font-bold mt-4">
+    <div className="rounded-3xl bg-white/5 p-5">
+      <p className="text-sm text-gray-400">
+        {title}
+      </p>
+      <h2 className="text-4xl font-bold mt-3">
         {value}
       </h2>
-
-      <p className="text-xs text-gray-500 mt-3">
+      <p className="text-sm text-gray-500 mt-2">
         {sub}
       </p>
     </div>
   );
 }
 
-function QuickActions({ items }) {
+function MoneyCard({
+  title,
+  value,
+}) {
   return (
-    <Panel title="Quick Actions">
-      <div className="grid md:grid-cols-4 gap-3">
-        {items.map(([to, label]) => (
-          <Link
-            key={to}
-            to={to}
-            className="rounded-2xl bg-white/5 hover:bg-white/10 p-4 text-center"
-          >
-            {label}
-          </Link>
-        ))}
-      </div>
-    </Panel>
+    <div className="rounded-3xl bg-white/5 p-6">
+      <p className="text-sm text-gray-400">
+        {title}
+      </p>
+
+      <h2 className="text-4xl font-bold mt-4">
+        £{value}
+      </h2>
+
+      <p className="text-sm text-gray-500 mt-2">
+        Estimated payroll cost
+      </p>
+    </div>
   );
 }
 
-function Panel({ title, children }) {
+function Panel({
+  title,
+  children,
+}) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-[#020617] p-6">
+    <div className="rounded-3xl bg-white/5 p-6">
       <h2 className="font-semibold text-lg mb-5">
         {title}
       </h2>
+
       {children}
     </div>
   );
 }
 
-function ChartBox({ children }) {
+function Mini({
+  color,
+  label,
+  value,
+}) {
   return (
-    <div className="h-[260px] w-full min-w-0">
-      {children}
+    <div className="flex items-center gap-2">
+      <div
+        className={`w-3 h-3 rounded-full ${color}`}
+      />
+      <span className="text-gray-400">
+        {label}
+      </span>
+      <span className="ml-auto">
+        {value}
+      </span>
     </div>
   );
 }
 
 function Loading() {
   return (
-    <div className="text-gray-400 flex gap-2 items-center">
+    <div className="p-10 text-gray-400 flex gap-2 items-center">
       <Loader2
         size={16}
         className="animate-spin"
