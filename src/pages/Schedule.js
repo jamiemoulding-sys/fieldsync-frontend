@@ -1,34 +1,10 @@
-// src/pages/Schedule.jsx
-// COMPLETE MASTER VERSION
-// Copy / Paste Ready
-// Includes:
-// ✅ Modern clean calendar
-// ✅ Month / Week / Day / Agenda
-// ✅ Drag & Drop shifts
-// ✅ Resize shifts
-// ✅ Delete shifts
-// ✅ Bulk schedule restored
-// ✅ Real locations from API
-// ✅ Open shifts
-// ✅ Holiday overlay with employee names
-// ✅ Monthly wages auto changes with viewed month
-// ✅ Better week/day layouts
-// ✅ Better dark styling
-// ✅ No fake data
-
-import React, {
-  useEffect,
-  useState,
-  useMemo,
-} from "react";
-
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Calendar,
   momentLocalizer,
+  Views,
 } from "react-big-calendar";
-
 import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
-
 import moment from "moment";
 
 import "react-big-calendar/lib/css/react-big-calendar.css";
@@ -42,99 +18,162 @@ import {
 } from "../services/api";
 
 import {
-  Users,
-  PoundSterling,
   CalendarDays,
+  Users,
   Plus,
-  Trash2,
   RefreshCw,
+  Trash2,
+  PoundSterling,
 } from "lucide-react";
 
-const localizer =
-  momentLocalizer(moment);
-
-const DnDCalendar =
-  withDragAndDrop(Calendar);
+const localizer = momentLocalizer(moment);
+const DnDCalendar = withDragAndDrop(Calendar);
 
 export default function Schedule() {
-  const [users, setUsers] =
-    useState([]);
+  const [events, setEvents] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [locations, setLocations] = useState([]);
 
-  const [locations, setLocations] =
-    useState([]);
+  const [loading, setLoading] = useState(true);
+  const [view, setView] = useState("month");
+  const [date, setDate] = useState(new Date());
 
-  const [schedules, setSchedules] =
-    useState([]);
-
-  const [holidays, setHolidays] =
-    useState([]);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [view, setView] =
-    useState("month");
-
-  const [date, setDate] =
-    useState(new Date());
-
-  const [locationFilter, setLocationFilter] =
-    useState("");
-
-  const [showModal, setShowModal] =
-    useState(false);
-
-  const [showBulk, setShowBulk] =
-    useState(true);
+  const [showCreate, setShowCreate] = useState(false);
 
   const [form, setForm] = useState({
     user_id: "",
+    location_id: "",
     start: "",
     end: "",
-    location_id: "",
-    open_shift: false,
-  });
-
-  const [bulk, setBulk] = useState({
-    from: "",
-    to: "",
-    start: "09:00",
-    end: "17:00",
-    location_id: "",
-    user_ids: [],
-    open_shift: false,
+    is_open: false,
+    overtime: false,
   });
 
   useEffect(() => {
-    loadData();
+    loadData(true);
   }, []);
 
-  async function loadData() {
+  async function loadData(show = false) {
     try {
-      setLoading(true);
+      if (show) setLoading(true);
 
       const [
-        usersRes,
         schedRes,
         holRes,
+        usersRes,
         locRes,
       ] = await Promise.all([
-        userAPI.getAll(),
         scheduleAPI.getAll(),
         holidayAPI.getAll(),
+        userAPI.getAll(),
         locationAPI.getAll(),
       ]);
 
-      setUsers(usersRes || []);
-      setSchedules(
-        schedRes || []
-      );
-      setHolidays(
-        holRes || []
-      );
-      setLocations(
-        locRes || []
-      );
+      const safeUsers = Array.isArray(usersRes)
+        ? usersRes
+        : [];
+
+      const safeLocs = Array.isArray(locRes)
+        ? locRes
+        : [];
+
+      setUsers(safeUsers);
+      setLocations(safeLocs);
+
+      const userMap = {};
+      const rateMap = {};
+
+      safeUsers.forEach((u) => {
+        userMap[u.id] =
+          u.name || u.email || "Employee";
+
+        rateMap[u.id] = Number(
+          u.hourly_rate || 0
+        );
+      });
+
+      const locMap = {};
+
+      safeLocs.forEach((l) => {
+        locMap[l.id] = l.name;
+      });
+
+      const shifts = (
+        Array.isArray(schedRes)
+          ? schedRes
+          : []
+      ).map((s) => {
+        const isOpen =
+          s.is_open ||
+          !s.user_id;
+
+        const title = isOpen
+          ? `OPEN SHIFT • ${
+              locMap[s.location_id] ||
+              "Location"
+            }`
+          : `${userMap[s.user_id]} • ${
+              moment(
+                s.start_time
+              ).format("HH:mm")
+            }-${moment(
+              s.end_time
+            ).format("HH:mm")} • ${
+              locMap[s.location_id] ||
+              "Location"
+            }`;
+
+        return {
+          id: s.id,
+          type: isOpen
+            ? "open"
+            : "shift",
+          user_id: s.user_id,
+          title,
+          start: new Date(
+            s.start_time
+          ),
+          end: new Date(
+            s.end_time
+          ),
+          overtime:
+            s.overtime || false,
+          hourly_rate:
+            rateMap[s.user_id] || 0,
+        };
+      });
+
+      const holidays = (
+        Array.isArray(holRes)
+          ? holRes
+          : []
+      )
+        .filter(
+          (h) =>
+            h.status === "approved"
+        )
+        .map((h) => ({
+          id: `h-${h.id}`,
+          type: "holiday",
+          title: `${
+            h.name ||
+            userMap[h.user_id] ||
+            "Employee"
+          } • HOLIDAY`,
+          start: new Date(
+            h.start_date +
+              "T00:00:00"
+          ),
+          end: new Date(
+            h.end_date +
+              "T23:59:59"
+          ),
+        }));
+
+      setEvents([
+        ...shifts,
+        ...holidays,
+      ]);
     } catch (err) {
       console.error(err);
     } finally {
@@ -142,371 +181,81 @@ export default function Schedule() {
     }
   }
 
-  const userMap = useMemo(() => {
-    const map = {};
-    users.forEach((u) => {
-      map[u.id] =
-        u.name || u.email;
-    });
-    return map;
-  }, [users]);
-
-  const locationMap =
-    useMemo(() => {
-      const map = {};
-      locations.forEach(
-        (l) => {
-          map[l.id] = l.name;
-        }
-      );
-      return map;
-    }, [locations]);
-
-  function buildEvents() {
-    const shiftRows =
-      schedules.map((s) => {
-        const employee =
-          s.open_shift
-            ? "OPEN SHIFT"
-            : userMap[
-                s.user_id
-              ] ||
-              "Employee";
-
-        const location =
-          locationMap[
-            s.location_id
-          ] ||
-          "No Location";
-
-        return {
-          id: s.id,
-          type:
-            s.open_shift
-              ? "open"
-              : "shift",
-          title: `${employee} • ${location}`,
-          start:
-            new Date(
-              s.start_time
-            ),
-          end: new Date(
-            s.end_time
-          ),
-          raw: s,
-        };
-      });
-
-    const holidayRows =
-      holidays
-        .filter(
-          (h) =>
-            h.status ===
-            "approved"
-        )
-        .map((h) => ({
-          id:
-            "h_" +
-            h.id,
-          type:
-            "holiday",
-          title: `${
-            userMap[
-              h.user_id
-            ] ||
-            h.name ||
-            "Employee"
-          } • HOLIDAY`,
-          start:
-            new Date(
-              h.start_date +
-                "T00:00:00"
-            ),
-          end:
-            new Date(
-              moment(
-                h.end_date
-              )
-                .add(
-                  1,
-                  "day"
-                )
-                .format()
-            ),
-          allDay: true,
-        }));
-
-    let rows = [
-      ...shiftRows,
-      ...holidayRows,
-    ];
-
-    if (
-      locationFilter
-    ) {
-      rows =
-        rows.filter(
-          (x) =>
-            x.type ===
-              "holiday" ||
-            String(
-              x.raw
-                ?.location_id
-            ) ===
-              String(
-                locationFilter
-              )
-        );
+  function styleEvent(event) {
+    if (event.type === "holiday") {
+      return {
+        style: {
+          background:
+            "#16a34a",
+          border: "none",
+          borderRadius: "8px",
+        },
+      };
     }
 
-    return rows;
+    if (event.type === "open") {
+      return {
+        style: {
+          background:
+            "#f59e0b",
+          border: "none",
+          borderRadius: "8px",
+          color: "#111",
+          fontWeight: 700,
+        },
+      };
+    }
+
+    return {
+      style: {
+        background:
+          event.overtime
+            ? "#dc2626"
+            : "#6366f1",
+        border: "none",
+        borderRadius: "8px",
+      },
+    };
   }
 
-  const events =
-    buildEvents();
-
-  const viewedMonth =
-    moment(date).month();
-
-  const viewedYear =
-    moment(date).year();
-
-  const monthShifts =
-    schedules.filter(
-      (s) =>
-        moment(
-          s.start_time
-        ).month() ===
-          viewedMonth &&
-        moment(
-          s.start_time
-        ).year() ===
-          viewedYear
-    );
-
-  const wageTotal =
-    monthShifts.reduce(
-      (
-        sum,
-        s
-      ) => {
-        if (
-          s.open_shift
-        )
-          return sum;
-
-        const user =
-          users.find(
-            (
-              u
-            ) =>
-              String(
-                u.id
-              ) ===
-              String(
-                s.user_id
-              )
-          ) || {};
-
-        const hrs =
-          moment(
-            s.end_time
-          ).diff(
-            moment(
-              s.start_time
-            ),
-            "minutes"
-          ) / 60;
-
-        return (
-          sum +
-          hrs *
-            Number(
-              user.hourly_rate ||
-                0
-            )
-        );
-      },
-      0
-    );
-
-  const openShifts =
-    monthShifts.filter(
-      (x) =>
-        x.open_shift
-    ).length;
-
-  async function createShift(
-    e
-  ) {
+  async function createShift(e) {
     e.preventDefault();
 
-    await scheduleAPI.create(
-      {
-        user_id:
-          form.open_shift
-            ? null
-            : form.user_id,
+    try {
+      await scheduleAPI.create({
+        user_id: form.is_open
+          ? null
+          : form.user_id,
         location_id:
           form.location_id,
-        date:
-          moment(
-            form.start
-          ).format(
-            "YYYY-MM-DD"
-          ),
-        start_time:
-          form.start,
-        end_time:
-          form.end,
-        open_shift:
-          form.open_shift,
-      }
-    );
+        date: moment(
+          form.start
+        ).format("YYYY-MM-DD"),
+        start_time: form.start,
+        end_time: form.end,
+        is_open:
+          form.is_open,
+        overtime:
+          form.overtime,
+      });
 
-    setShowModal(
-      false
-    );
+      setShowCreate(false);
 
-    loadData();
-  }
+      setForm({
+        user_id: "",
+        location_id: "",
+        start: "",
+        end: "",
+        is_open: false,
+        overtime: false,
+      });
 
-  async function createBulk() {
-    let d = moment(
-      bulk.from
-    );
-
-    while (
-      d.isSameOrBefore(
-        moment(
-          bulk.to
-        ),
-        "day"
-      )
-    ) {
-      if (
-        bulk.open_shift
-      ) {
-        await scheduleAPI.create(
-          {
-            user_id:
-              null,
-            location_id:
-              bulk.location_id,
-            date:
-              d.format(
-                "YYYY-MM-DD"
-              ),
-            start_time: `${d.format(
-              "YYYY-MM-DD"
-            )}T${
-              bulk.start
-            }`,
-            end_time: `${d.format(
-              "YYYY-MM-DD"
-            )}T${
-              bulk.end
-            }`,
-            open_shift:
-              true,
-          }
-        );
-      } else {
-        for (const uid of bulk.user_ids) {
-          await scheduleAPI.create(
-            {
-              user_id:
-                uid,
-              location_id:
-                bulk.location_id,
-              date:
-                d.format(
-                  "YYYY-MM-DD"
-                ),
-              start_time: `${d.format(
-                "YYYY-MM-DD"
-              )}T${
-                bulk.start
-              }`,
-              end_time: `${d.format(
-                "YYYY-MM-DD"
-              )}T${
-                bulk.end
-              }`,
-              open_shift:
-                false,
-            }
-          );
-        }
-      }
-
-      d.add(
-        1,
-        "day"
+      loadData(false);
+    } catch {
+      alert(
+        "Failed to create shift"
       );
     }
-
-    loadData();
-  }
-
-  async function onDrop({
-    event,
-    start,
-    end,
-  }) {
-    if (
-      event.type ===
-      "holiday"
-    )
-      return;
-
-    await scheduleAPI.update(
-      event.id,
-      {
-        start_time:
-          start,
-        end_time:
-          end,
-        date:
-          moment(
-            start
-          ).format(
-            "YYYY-MM-DD"
-          ),
-      }
-    );
-
-    loadData();
-  }
-
-  async function onResize({
-    event,
-    start,
-    end,
-  }) {
-    if (
-      event.type ===
-      "holiday"
-    )
-      return;
-
-    await scheduleAPI.update(
-      event.id,
-      {
-        start_time:
-          start,
-        end_time:
-          end,
-        date:
-          moment(
-            start
-          ).format(
-            "YYYY-MM-DD"
-          ),
-      }
-    );
-
-    loadData();
   }
 
   async function deleteShift(
@@ -529,432 +278,181 @@ export default function Schedule() {
       event.id
     );
 
-    loadData();
+    loadData(false);
   }
 
-  function styleEvent(
-    event
-  ) {
+  async function onDrop({
+    event,
+    start,
+    end,
+  }) {
     if (
       event.type ===
       "holiday"
-    ) {
-      return {
-        style: {
-          background:
-            "#16a34a",
-          border:
-            "none",
-          borderRadius:
-            "8px",
-          color:
-            "white",
-        },
-      };
-    }
+    )
+      return;
 
-    if (
-      event.type ===
-      "open"
-    ) {
-      return {
-        style: {
-          background:
-            "#f59e0b",
-          border:
-            "none",
-          borderRadius:
-            "8px",
-          color:
-            "#111",
-        },
-      };
-    }
+    await scheduleAPI.update(
+      event.id,
+      {
+        start_time: start,
+        end_time: end,
+      }
+    );
 
-    return {
-      style: {
-        background:
-          "#4f46e5",
-        border:
-          "none",
-        borderRadius:
-          "8px",
-        color:
-          "white",
-      },
-    };
+    loadData(false);
   }
 
-  if (loading)
+  async function onResize({
+    event,
+    start,
+    end,
+  }) {
+    if (
+      event.type ===
+      "holiday"
+    )
+      return;
+
+    await scheduleAPI.update(
+      event.id,
+      {
+        start_time: start,
+        end_time: end,
+      }
+    );
+
+    loadData(false);
+  }
+
+  const visibleEvents =
+    useMemo(
+      () =>
+        events.filter((e) =>
+          moment(e.start).isSame(
+            date,
+            "month"
+          )
+        ),
+      [events, date]
+    );
+
+  const monthWage =
+    visibleEvents
+      .filter(
+        (x) =>
+          x.type ===
+          "shift"
+      )
+      .reduce(
+        (sum, x) => {
+          const hrs =
+            moment(
+              x.end
+            ).diff(
+              moment(
+                x.start
+              ),
+              "minutes"
+            ) / 60;
+
+          return (
+            sum +
+            hrs *
+              x.hourly_rate
+          );
+        },
+        0
+      );
+
+  if (loading) {
     return (
       <div className="text-gray-400">
         Loading...
       </div>
     );
+  }
 
   return (
     <div className="space-y-6">
 
-      <style>{`
-.rbc-calendar{
-background:#020617;
-color:white;
-font-family:inherit;
-}
-
-.rbc-month-view,
-.rbc-time-view,
-.rbc-agenda-view{
-border:1px solid rgba(255,255,255,.08);
-border-radius:18px;
-overflow:hidden;
-}
-
-.rbc-header{
-padding:14px;
-font-weight:600;
-background:#0f172a;
-border-color:rgba(255,255,255,.08)!important;
-}
-
-.rbc-toolbar{
-margin-bottom:18px;
-gap:10px;
-flex-wrap:wrap;
-}
-
-.rbc-toolbar button{
-background:#0f172a;
-color:white;
-border:1px solid rgba(255,255,255,.08);
-padding:8px 14px;
-}
-
-.rbc-toolbar button:hover{
-background:#1e293b;
-}
-
-.rbc-toolbar button.rbc-active{
-background:#4f46e5;
-}
-
-.rbc-off-range-bg{
-background:#111827!important;
-}
-
-.rbc-today{
-background:rgba(79,70,229,.08)!important;
-}
-
-.rbc-timeslot-group,
-.rbc-time-content,
-.rbc-day-slot,
-.rbc-time-header-content,
-.rbc-time-view,
-.rbc-month-row{
-border-color:rgba(255,255,255,.08)!important;
-}
-
-.rbc-day-bg{
-background:#020617;
-}
-
-.rbc-event{
-font-size:12px;
-padding:3px 6px;
-}
-
-input,select{
-color:white;
-}
-option{
-color:black;
-}
-      `}</style>
-
-      {/* HEADER */}
-
       <div className="flex justify-between items-center flex-wrap gap-4">
-
         <div>
           <h1 className="text-3xl font-semibold">
             Schedule
           </h1>
 
-          <p className="text-gray-400 text-sm">
-            Live rota planner
+          <p className="text-sm text-gray-400">
+            Full planner
           </p>
         </div>
 
-        <div className="flex gap-2">
-
-          <select
-            value={
-              locationFilter
-            }
-            onChange={(e)=>
-              setLocationFilter(
-                e.target.value
-              )
-            }
-            className="bg-[#0f172a] rounded-xl px-4 py-3"
-          >
-            <option value="">
-              All Locations
-            </option>
-
-            {locations.map(
-              (l)=>(
-                <option
-                  key={l.id}
-                  value={l.id}
-                >
-                  {l.name}
-                </option>
-              )
-            )}
-          </select>
+        <div className="flex gap-2 flex-wrap">
 
           <button
-            onClick={
-              loadData
+            onClick={() =>
+              loadData(false)
             }
-            className="px-4 py-3 rounded-xl bg-[#0f172a]"
+            className="px-4 py-2 rounded-xl bg-white/5"
           >
-            <RefreshCw size={16}/>
+            <RefreshCw
+              size={16}
+            />
           </button>
 
           <button
-            onClick={()=>
-              setShowModal(
+            onClick={() =>
+              setShowCreate(
                 true
               )
             }
-            className="px-4 py-3 rounded-xl bg-indigo-600"
+            className="px-4 py-2 rounded-xl bg-indigo-600"
           >
-            <Plus size={16}/>
+            <Plus
+              size={16}
+            />
           </button>
 
         </div>
-
       </div>
 
-      {/* KPI */}
-
-      <div className="grid md:grid-cols-4 gap-4">
+      <div className="grid md:grid-cols-3 gap-4">
 
         <Card
           title="Staff"
-          value={
-            users.length
+          value={users.length}
+          icon={
+            <Users
+              size={16}
+            />
           }
-          icon={<Users size={16}/>}
         />
 
         <Card
-          title="Month Shifts"
-          value={
-            monthShifts.length
+          title="Events"
+          value={events.length}
+          icon={
+            <CalendarDays
+              size={16}
+            />
           }
-          icon={<CalendarDays size={16}/>}
         />
 
         <Card
-          title="Open"
-          value={
-            openShifts
-          }
-          icon={<CalendarDays size={16}/>}
-        />
-
-        <Card
-          title="Wages"
-          value={`£${wageTotal.toFixed(
+          title="Month Wage"
+          value={`£${monthWage.toFixed(
             2
           )}`}
-          icon={<PoundSterling size={16}/>}
+          icon={
+            <PoundSterling
+              size={16}
+            />
+          }
         />
 
       </div>
 
-      {/* BULK */}
-
-      <div className="rounded-2xl border border-white/10 bg-[#020617] p-5 space-y-4">
-
-        <h2 className="text-xl font-semibold">
-          Bulk Schedule
-        </h2>
-
-        <div className="grid md:grid-cols-5 gap-3">
-
-          <input
-            type="date"
-            value={
-              bulk.from
-            }
-            onChange={(e)=>
-              setBulk({
-                ...bulk,
-                from:
-                  e.target.value,
-              })
-            }
-            className="bg-[#0f172a] rounded-xl px-4 py-3"
-          />
-
-          <input
-            type="date"
-            value={
-              bulk.to
-            }
-            onChange={(e)=>
-              setBulk({
-                ...bulk,
-                to:
-                  e.target.value,
-              })
-            }
-            className="bg-[#0f172a] rounded-xl px-4 py-3"
-          />
-
-          <input
-            type="time"
-            value={
-              bulk.start
-            }
-            onChange={(e)=>
-              setBulk({
-                ...bulk,
-                start:
-                  e.target.value,
-              })
-            }
-            className="bg-[#0f172a] rounded-xl px-4 py-3"
-          />
-
-          <input
-            type="time"
-            value={
-              bulk.end
-            }
-            onChange={(e)=>
-              setBulk({
-                ...bulk,
-                end:
-                  e.target.value,
-              })
-            }
-            className="bg-[#0f172a] rounded-xl px-4 py-3"
-          />
-
-          <select
-            value={
-              bulk.location_id
-            }
-            onChange={(e)=>
-              setBulk({
-                ...bulk,
-                location_id:
-                  e.target.value,
-              })
-            }
-            className="bg-[#0f172a] rounded-xl px-4 py-3"
-          >
-            <option value="">
-              Location
-            </option>
-
-            {locations.map(
-              (l)=>(
-                <option
-                  key={l.id}
-                  value={l.id}
-                >
-                  {l.name}
-                </option>
-              )
-            )}
-          </select>
-
-        </div>
-
-        <label className="flex gap-2 items-center text-sm">
-          <input
-            type="checkbox"
-            checked={
-              bulk.open_shift
-            }
-            onChange={(e)=>
-              setBulk({
-                ...bulk,
-                open_shift:
-                  e.target.checked,
-              })
-            }
-          />
-          Create Open Shifts
-        </label>
-
-        {!bulk.open_shift && (
-          <div className="grid md:grid-cols-4 gap-2">
-
-            {users.map(
-              (u)=>(
-                <label
-                  key={u.id}
-                  className="bg-[#0f172a] rounded-xl px-3 py-2 flex gap-2"
-                >
-                  <input
-                    type="checkbox"
-                    checked={bulk.user_ids.includes(
-                      u.id
-                    )}
-                    onChange={()=>{
-                      if(
-                        bulk.user_ids.includes(
-                          u.id
-                        )
-                      ){
-                        setBulk({
-                          ...bulk,
-                          user_ids:
-                            bulk.user_ids.filter(
-                              x=>x!==u.id
-                            ),
-                        });
-                      }else{
-                        setBulk({
-                          ...bulk,
-                          user_ids:[
-                            ...bulk.user_ids,
-                            u.id,
-                          ],
-                        });
-                      }
-                    }}
-                  />
-                  {u.name}
-                </label>
-              )
-            )}
-
-          </div>
-        )}
-
-        <button
-          onClick={
-            createBulk
-          }
-          className="w-full py-3 rounded-xl bg-indigo-600"
-        >
-          Create Bulk Shifts
-        </button>
-
-      </div>
-
-      {/* CALENDAR */}
-
-      <div className="rounded-2xl border border-white/10 bg-[#020617] p-4">
+      <div className="rounded-2xl border border-white/10 bg-[#020617] p-4 overflow-hidden">
 
         <DnDCalendar
           localizer={
@@ -963,21 +461,22 @@ color:black;
           events={events}
           startAccessor="start"
           endAccessor="end"
+          date={date}
+          onNavigate={
+            setDate
+          }
           view={view}
           onView={setView}
-          date={date}
-          onNavigate={setDate}
-          views={[
-            "month",
-            "week",
-            "day",
-            "agenda",
-          ]}
           selectable
-          popup
           resizable
-          step={30}
-          timeslots={2}
+          popup
+          views={[
+            Views.MONTH,
+            Views.WEEK,
+            Views.DAY,
+            Views.AGENDA,
+          ]}
+          defaultView="month"
           style={{
             height:
               "82vh",
@@ -994,11 +493,15 @@ color:black;
           onDoubleClickEvent={
             deleteShift
           }
-          draggableAccessor={(e)=>
+          draggableAccessor={(
+            e
+          ) =>
             e.type !==
             "holiday"
           }
-          resizableAccessor={(e)=>
+          resizableAccessor={(
+            e
+          ) =>
             e.type !==
             "holiday"
           }
@@ -1006,14 +509,12 @@ color:black;
 
       </div>
 
-      {/* ADD SHIFT */}
-
-      {showModal && (
+      {showCreate && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
 
-          <div className="w-full max-w-md bg-[#020617] border border-white/10 rounded-2xl p-6">
+          <div className="w-full max-w-lg bg-[#020617] border border-white/10 rounded-2xl p-6">
 
-            <h2 className="text-xl font-semibold mb-4">
+            <h2 className="text-lg font-semibold mb-4">
               Add Shift
             </h2>
 
@@ -1024,136 +525,186 @@ color:black;
               className="space-y-4"
             >
 
-              <label className="flex gap-2 items-center text-sm">
+              <select
+                value={
+                  form.location_id
+                }
+                required
+                onChange={(
+                  e
+                ) =>
+                  setForm({
+                    ...form,
+                    location_id:
+                      e.target
+                        .value,
+                  })
+                }
+                className="w-full bg-[#0f172a] text-white rounded-xl px-4 py-3"
+              >
+                <option value="">
+                  Select Location
+                </option>
+
+                {locations.map(
+                  (
+                    l
+                  ) => (
+                    <option
+                      key={
+                        l.id
+                      }
+                      value={
+                        l.id
+                      }
+                    >
+                      {
+                        l.name
+                      }
+                    </option>
+                  )
+                )}
+              </select>
+
+              {!form.is_open && (
+                <select
+                  value={
+                    form.user_id
+                  }
+                  onChange={(
+                    e
+                  ) =>
+                    setForm({
+                      ...form,
+                      user_id:
+                        e.target
+                          .value,
+                    })
+                  }
+                  className="w-full bg-[#0f172a] text-white rounded-xl px-4 py-3"
+                >
+                  <option value="">
+                    Select Employee
+                  </option>
+
+                  {users.map(
+                    (
+                      u
+                    ) => (
+                      <option
+                        key={
+                          u.id
+                        }
+                        value={
+                          u.id
+                        }
+                      >
+                        {u.name}
+                      </option>
+                    )
+                  )}
+                </select>
+              )}
+
+              <input
+                type="datetime-local"
+                value={
+                  form.start
+                }
+                required
+                onChange={(
+                  e
+                ) =>
+                  setForm({
+                    ...form,
+                    start:
+                      e.target
+                        .value,
+                  })
+                }
+                className="w-full bg-[#0f172a] text-white rounded-xl px-4 py-3"
+              />
+
+              <input
+                type="datetime-local"
+                value={
+                  form.end
+                }
+                required
+                onChange={(
+                  e
+                ) =>
+                  setForm({
+                    ...form,
+                    end:
+                      e.target
+                        .value,
+                  })
+                }
+                className="w-full bg-[#0f172a] text-white rounded-xl px-4 py-3"
+              />
+
+              <label className="flex gap-2 text-sm">
                 <input
                   type="checkbox"
                   checked={
-                    form.open_shift
+                    form.is_open
                   }
-                  onChange={(e)=>
+                  onChange={(
+                    e
+                  ) =>
                     setForm({
                       ...form,
-                      open_shift:
-                        e.target.checked,
+                      is_open:
+                        e.target
+                          .checked,
                     })
                   }
                 />
                 Open Shift
               </label>
 
-              {!form.open_shift && (
-                <select
-                  required
-                  value={
-                    form.user_id
+              <label className="flex gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={
+                    form.overtime
                   }
-                  onChange={(e)=>
+                  onChange={(
+                    e
+                  ) =>
                     setForm({
                       ...form,
-                      user_id:
-                        e.target.value,
+                      overtime:
+                        e.target
+                          .checked,
                     })
                   }
-                  className="w-full bg-[#0f172a] rounded-xl px-4 py-3"
-                >
-                  <option value="">
-                    Employee
-                  </option>
-
-                  {users.map(
-                    (u)=>(
-                      <option
-                        key={u.id}
-                        value={u.id}
-                      >
-                        {u.name}
-                      </option>
-                    )
-                  )}
-
-                </select>
-              )}
-
-              <select
-                required
-                value={
-                  form.location_id
-                }
-                onChange={(e)=>
-                  setForm({
-                    ...form,
-                    location_id:
-                      e.target.value,
-                  })
-                }
-                className="w-full bg-[#0f172a] rounded-xl px-4 py-3"
-              >
-                <option value="">
-                  Location
-                </option>
-
-                {locations.map(
-                  (l)=>(
-                    <option
-                      key={l.id}
-                      value={l.id}
-                    >
-                      {l.name}
-                    </option>
-                  )
-                )}
-
-              </select>
-
-              <input
-                type="datetime-local"
-                required
-                value={
-                  form.start
-                }
-                onChange={(e)=>
-                  setForm({
-                    ...form,
-                    start:
-                      e.target.value,
-                  })
-                }
-                className="w-full bg-[#0f172a] rounded-xl px-4 py-3"
-              />
-
-              <input
-                type="datetime-local"
-                required
-                value={
-                  form.end
-                }
-                onChange={(e)=>
-                  setForm({
-                    ...form,
-                    end:
-                      e.target.value,
-                  })
-                }
-                className="w-full bg-[#0f172a] rounded-xl px-4 py-3"
-              />
+                />
+                Overtime
+              </label>
 
               <button className="w-full py-3 rounded-xl bg-indigo-600">
-                Save Shift
+                Save
               </button>
 
               <button
                 type="button"
-                onClick={()=>
-                  setShowModal(
+                onClick={() =>
+                  setShowCreate(
                     false
                   )
                 }
-                className="w-full py-3 rounded-xl bg-[#0f172a]"
+                className="w-full py-3 rounded-xl bg-white/5"
               >
                 Cancel
               </button>
 
             </form>
+
+            <p className="text-xs text-gray-500 mt-4">
+              Double click shift to delete.
+            </p>
 
           </div>
 
@@ -1171,16 +722,17 @@ function Card({
 }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-[#020617] p-4">
-      <div className="flex justify-between">
-        <p className="text-sm text-gray-400">
+      <div className="flex justify-between items-center">
+        <p className="text-xs text-gray-400">
           {title}
         </p>
+
         <div className="text-indigo-400">
           {icon}
         </div>
       </div>
 
-      <h2 className="text-3xl font-semibold mt-3">
+      <h2 className="text-2xl font-semibold mt-2">
         {value}
       </h2>
     </div>
