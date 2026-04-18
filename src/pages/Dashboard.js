@@ -407,35 +407,37 @@ function MainDashboard({ user, admin }) {
 /* MAP */
 /* ================================================= */
 
+/* =============================================== */
+/* REPLACE ONLY YOUR LiveMap() FUNCTION */
+/* Keeps everything else unchanged */
+/* Shows map ALWAYS even when nobody clocked in */
+/* =============================================== */
+
 function LiveMap({ live }) {
-  const points = useMemo(
-    () =>
-      (live || []).filter(
-        (x) =>
-          x.latitude &&
-          x.longitude &&
-          !isNaN(Number(x.latitude)) &&
-          !isNaN(Number(x.longitude))
-      ),
-    [live]
+  const points = (live || []).filter(
+    (x) =>
+      x.latitude &&
+      x.longitude &&
+      !isNaN(Number(x.latitude)) &&
+      !isNaN(Number(x.longitude))
   );
 
-  if (!points.length) {
-    return (
-      <div className="text-sm text-gray-500">
-        No live location data.
-      </div>
-    );
-  }
+  /* DEFAULT UK CENTER */
+  const defaultCenter = [51.8892, 0.9042]; // Colchester area
+
+  const mapCenter = points.length
+    ? [
+        Number(points[0].latitude),
+        Number(points[0].longitude),
+      ]
+    : defaultCenter;
 
   return (
-    <div className="h-[420px] rounded-2xl overflow-hidden">
+    <div className="h-[420px] w-full rounded-2xl overflow-hidden border border-white/10">
       <MapContainer
-        center={[
-          Number(points[0].latitude),
-          Number(points[0].longitude),
-        ]}
-        zoom={10}
+        center={mapCenter}
+        zoom={points.length ? 11 : 8}
+        scrollWheelZoom={true}
         style={{
           height: "100%",
           width: "100%",
@@ -459,6 +461,12 @@ function LiveMap({ live }) {
             </Popup>
           </Marker>
         ))}
+
+        {!points.length && (
+          <Marker position={defaultCenter}>
+            <Popup>No staff clocked in</Popup>
+          </Marker>
+        )}
       </MapContainer>
     </div>
   );
