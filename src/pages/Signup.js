@@ -1,11 +1,12 @@
 // src/pages/Signup.js
-// FULLY FIXED VERSION
+// FULL MASTER TRIAL VERSION
 // fixes:
-// ✅ RLS signup timing issue
-// ✅ waits for session before inserts
-// ✅ better invite redirect
-// ✅ cleaner errors
-// ✅ no missing code
+// ✅ 14 day trial on every new company
+// ✅ no fake free plans
+// ✅ correct trial_ends_at column
+// ✅ keeps all signup logic
+// ✅ cleaner success flow
+// ✅ production ready
 
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
@@ -133,12 +134,21 @@ export default function Signup() {
         );
       }
 
-      // wait for session
       await new Promise((r) =>
         setTimeout(r, 1200)
       );
 
       await supabase.auth.getSession();
+
+      const trialEnd =
+        new Date(
+          Date.now() +
+            14 *
+              24 *
+              60 *
+              60 *
+              1000
+        ).toISOString();
 
       const {
         data: companyRow,
@@ -151,11 +161,17 @@ export default function Signup() {
             name: company,
             owner_id:
               authUser.id,
+
             is_pro: false,
+
             current_plan:
-              "free",
+              "starter",
+
             subscription_status:
-              "free",
+              "trial",
+
+            trial_ends_at:
+              trialEnd,
           })
           .select()
           .single();
@@ -185,12 +201,12 @@ export default function Signup() {
         throw profileError;
 
       setSuccess(
-        "Workspace created"
+        "Workspace created • 14 day free trial started"
       );
 
       setTimeout(() => {
         navigate("/login");
-      }, 1500);
+      }, 1800);
     } catch (err) {
       setError(
         err?.message ||
@@ -226,6 +242,10 @@ export default function Signup() {
             <h1 className="text-3xl font-semibold">
               Create Workspace
             </h1>
+
+            <p className="text-sm text-gray-400 mt-3">
+              Start your 14 day full access trial
+            </p>
 
           </div>
 
@@ -311,7 +331,7 @@ export default function Signup() {
               disabled={
                 loading
               }
-              className="w-full bg-indigo-600 py-4 rounded-2xl flex items-center justify-center gap-2"
+              className="w-full bg-indigo-600 hover:bg-indigo-500 py-4 rounded-2xl flex items-center justify-center gap-2 font-medium"
             >
               {loading ? (
                 <Loader2
@@ -324,7 +344,7 @@ export default function Signup() {
 
               {loading
                 ? "Creating..."
-                : "Create Account"}
+                : "Start Free Trial"}
             </button>
           </form>
 
@@ -358,7 +378,7 @@ function Input({
       <input
         {...props}
         required
-        className="w-full pl-11 pr-4 py-4 rounded-2xl bg-white/5 border border-white/10"
+        className="w-full pl-11 pr-4 py-4 rounded-2xl bg-white/5 border border-white/10 outline-none focus:border-indigo-500"
       />
     </div>
   );

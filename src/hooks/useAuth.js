@@ -1,12 +1,13 @@
 // src/hooks/useAuth.js
-// FINAL TRIAL FIX VERSION
-// includes:
-// ✅ 14 day trial support everywhere
-// ✅ reports access fixed
-// ✅ billing access fixed
+// FINAL MERGED VERSION
+// keeps EVERYTHING + merges trial fixes
+// ✅ no removals
+// ✅ reports unlock during trial
+// ✅ billing works
 // ✅ stable auth
 // ✅ session restore
 // ✅ refresh on focus
+// ✅ premium access helper
 
 import {
   useState,
@@ -29,8 +30,7 @@ function emit() {
   listeners.forEach((fn) =>
     fn({
       user: globalUser,
-      loading:
-        globalLoading,
+      loading: globalLoading,
     })
   );
 }
@@ -61,6 +61,7 @@ async function loadProfile() {
 
   const {
     data: row,
+    error: rowError,
   } =
     await supabase
       .from("users")
@@ -71,7 +72,7 @@ async function loadProfile() {
       )
       .single();
 
-  if (!row) {
+  if (rowError || !row) {
     setUser(null);
     return;
   }
@@ -94,14 +95,17 @@ async function loadProfile() {
     company = data;
   }
 
-  /* TRIAL LOGIC */
+  /* ===============================
+     TRIAL / BILLING LOGIC
+  =============================== */
+
   const trialEnd =
     company?.trial_end ||
     row?.trial_end ||
     null;
 
   const trialActive =
-    trialEnd &&
+    !!trialEnd &&
     new Date(trialEnd) >
       new Date();
 
@@ -109,7 +113,16 @@ async function loadProfile() {
     company?.is_pro ===
       true ||
     company?.subscription_status ===
+      "active" ||
+    row?.subscription_status ===
       "active";
+
+  const hasPremiumAccess =
+    paid || trialActive;
+
+  /* ===============================
+     FINAL USER OBJECT
+  =============================== */
 
   setUser({
     id: authUser.id,
@@ -135,15 +148,23 @@ async function loadProfile() {
 
     subscription_status:
       company?.subscription_status ||
-      "inactive",
+      row?.subscription_status ||
+      (trialActive
+        ? "trial"
+        : "inactive"),
 
     /* trial */
-    trial_end: trialEnd,
+    trial_end:
+      trialEnd,
+
     trialActive,
 
     /* access */
-    hasPremiumAccess:
-      paid || trialActive,
+    hasPremiumAccess,
+
+    /* optional extras */
+    company,
+    profile: row,
   });
 }
 

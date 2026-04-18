@@ -3,6 +3,7 @@ import {
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 
 import {
@@ -58,7 +59,7 @@ function ScreenLoader() {
 }
 
 /* =====================================================
-AUTO TAB REFRESH FIX
+AUTO REFRESH
 ===================================================== */
 
 function VisibilityRefresh() {
@@ -128,7 +129,7 @@ function ProtectedRoute({
 }
 
 /* =====================================================
-ROLE ROUTE
+PAID ACCESS CHECK
 ===================================================== */
 
 function RoleRoute({
@@ -138,7 +139,11 @@ function RoleRoute({
   const {
     user,
     loading,
+    hasPremiumAccess,
   } = useAuth();
+
+  const location =
+    useLocation();
 
   if (loading)
     return <ScreenLoader />;
@@ -165,11 +170,44 @@ function RoleRoute({
     );
   }
 
+  const paidOnlyRoutes = [
+    "/reports",
+    "/timesheet",
+    "/performance",
+    "/employees",
+    "/locations",
+    "/schedule",
+    "/calendar",
+    "/holiday-requests",
+    "/announcements",
+  ];
+
+  const currentPath =
+    location.pathname;
+
+  const needsPremium =
+    paidOnlyRoutes.includes(
+      currentPath
+    );
+
+  if (
+    needsPremium &&
+    !hasPremiumAccess &&
+    currentPath !== "/billing"
+  ) {
+    return (
+      <Navigate
+        to="/billing"
+        replace
+      />
+    );
+  }
+
   return children;
 }
 
 /* =====================================================
-PUBLIC BLOCK
+PUBLIC ONLY
 ===================================================== */
 
 function PublicOnly({
@@ -274,11 +312,13 @@ export default function App() {
         />
 
         {/* PRIVATE */}
-        
+
         <Route
           path="/notifications"
-          element={<Notifications />}
-         />
+          element={
+            <Notifications />
+          }
+        />
 
         <Route
           element={
@@ -309,7 +349,14 @@ export default function App() {
           <Route
             path="/timesheet"
             element={
-              <TimeSheet />
+              <RoleRoute
+                roles={[
+                  "admin",
+                  "manager",
+                ]}
+              >
+                <TimeSheet />
+              </RoleRoute>
             }
           />
 
