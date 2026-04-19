@@ -1,9 +1,15 @@
+// src/App.js
+// FINAL PAID PLATFORM VERSION
+// 14 day trial -> auto lock after expiry
+// Admin forced to billing
+// Staff shown expired page
+// Central protection for whole app
+
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
-  useLocation,
 } from "react-router-dom";
 
 import {
@@ -46,21 +52,34 @@ import Profile from "./pages/Profile";
 import Success from "./pages/Success";
 import AppLayout from "./layout/AppLayout";
 
-/* =====================================================
-SCREEN LOADER
-===================================================== */
+/* ===================================================== */
 
 function ScreenLoader() {
   return (
-    <div className="min-h-screen bg-[#020617] text-white flex items-center justify-center text-lg">
+    <div className="min-h-screen bg-[#020617] text-white flex items-center justify-center">
       Loading...
     </div>
   );
 }
 
-/* =====================================================
-AUTO REFRESH
-===================================================== */
+function ExpiredPage() {
+  return (
+    <div className="min-h-screen bg-[#020617] text-white flex items-center justify-center px-6">
+      <div className="max-w-md w-full rounded-3xl border border-white/10 bg-[#020617] p-8 text-center">
+        <h1 className="text-2xl font-semibold mb-4">
+          Subscription Expired
+        </h1>
+
+        <p className="text-gray-400 text-sm">
+          Your company trial has ended.
+          Please contact your admin.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ===================================================== */
 
 function VisibilityRefresh() {
   const { reloadUser } = useAuth();
@@ -101,9 +120,7 @@ function VisibilityRefresh() {
   return null;
 }
 
-/* =====================================================
-AUTH ROUTE
-===================================================== */
+/* ===================================================== */
 
 function ProtectedRoute({
   children,
@@ -125,12 +142,28 @@ function ProtectedRoute({
     );
   }
 
+  /* FULL PLATFORM LOCK */
+  if (
+    !user.hasPremiumAccess
+  ) {
+    if (
+      user.role === "admin"
+    ) {
+      return (
+        <Navigate
+          to="/billing"
+          replace
+        />
+      );
+    }
+
+    return <ExpiredPage />;
+  }
+
   return children;
 }
 
-/* =====================================================
-PAID ACCESS CHECK
-===================================================== */
+/* ===================================================== */
 
 function RoleRoute({
   roles,
@@ -139,11 +172,7 @@ function RoleRoute({
   const {
     user,
     loading,
-    hasPremiumAccess,
   } = useAuth();
-
-  const location =
-    useLocation();
 
   if (loading)
     return <ScreenLoader />;
@@ -155,6 +184,23 @@ function RoleRoute({
         replace
       />
     );
+  }
+
+  if (
+    !user.hasPremiumAccess
+  ) {
+    if (
+      user.role === "admin"
+    ) {
+      return (
+        <Navigate
+          to="/billing"
+          replace
+        />
+      );
+    }
+
+    return <ExpiredPage />;
   }
 
   if (
@@ -170,45 +216,10 @@ function RoleRoute({
     );
   }
 
-  const paidOnlyRoutes = [
-    "/reports",
-    "/timesheet",
-    "/performance",
-    "/employees",
-    "/locations",
-    "/schedule",
-    "/calendar",
-    "/holiday-requests",
-    "/announcements",
-  ];
-
-  const currentPath =
-    location.pathname;
-
-  const needsPremium =
-    paidOnlyRoutes.includes(
-      currentPath
-    );
-
-  if (
-    needsPremium &&
-    !hasPremiumAccess &&
-    currentPath !== "/billing"
-  ) {
-    return (
-      <Navigate
-        to="/billing"
-        replace
-      />
-    );
-  }
-
   return children;
 }
 
-/* =====================================================
-PUBLIC ONLY
-===================================================== */
+/* ===================================================== */
 
 function PublicOnly({
   children,
@@ -233,9 +244,7 @@ function PublicOnly({
   return children;
 }
 
-/* =====================================================
-APP
-===================================================== */
+/* ===================================================== */
 
 export default function App() {
   const [ready, setReady] =
@@ -311,14 +320,19 @@ export default function App() {
           }
         />
 
-        {/* PRIVATE */}
+        {/* BILLING ALWAYS ACCESSIBLE TO ADMIN */}
 
         <Route
-          path="/notifications"
-          element={
-            <Notifications />
-          }
+          path="/billing"
+          element={<Billing />}
         />
+
+        <Route
+          path="/billing-success"
+          element={<Success />}
+        />
+
+        {/* PRIVATE */}
 
         <Route
           element={
@@ -329,9 +343,7 @@ export default function App() {
         >
           <Route
             path="/dashboard"
-            element={
-              <Dashboard />
-            }
+            element={<Dashboard />}
           />
 
           <Route
@@ -349,18 +361,16 @@ export default function App() {
           <Route
             path="/timesheet"
             element={
-              <RoleRoute
-                roles={[
-                  "admin",
-                  "manager",
-                ]}
-              >
-                <TimeSheet />
-              </RoleRoute>
+              <TimeSheet />
             }
           />
 
-          {/* EMPLOYEE */}
+          <Route
+            path="/notifications"
+            element={
+              <Notifications />
+            }
+          />
 
           <Route
             path="/my-schedule"
@@ -382,8 +392,6 @@ export default function App() {
               <MyLocations />
             }
           />
-
-          {/* MANAGEMENT */}
 
           <Route
             path="/schedule"
@@ -483,8 +491,6 @@ export default function App() {
             }
           />
 
-          {/* ADMIN */}
-
           <Route
             path="/reports"
             element={
@@ -499,42 +505,12 @@ export default function App() {
           />
 
           <Route
-            path="/billing"
-            element={
-              <RoleRoute
-                roles={[
-                  "admin",
-                ]}
-              >
-                <Billing />
-              </RoleRoute>
-            }
-          />
-
-          <Route
-            path="/billing-success"
-            element={
-              <RoleRoute
-                roles={[
-                  "admin",
-                ]}
-              >
-                <Success />
-              </RoleRoute>
-            }
-          />
-
-          {/* COMMON */}
-
-          <Route
             path="/profile"
             element={
               <Profile />
             }
           />
         </Route>
-
-        {/* FALLBACK */}
 
         <Route
           path="*"

@@ -87,6 +87,15 @@ function MainDashboard({ user }) {
     }
   }
 
+const { user } = useAuth();
+
+{user?.trialActive && (
+  <div className="bg-yellow-500/10 border border-yellow-500/30 p-4 rounded-xl text-yellow-300">
+    Trial ends on {new Date(user.trial_end).toLocaleDateString()}
+  </div>
+)}
+
+
   if (loading) return <Loading />;
 
   const today = new Date()

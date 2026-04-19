@@ -1,12 +1,10 @@
 // src/pages/Signup.js
-// FULL MASTER TRIAL VERSION
-// fixes:
-// ✅ 14 day trial on every new company
-// ✅ no fake free plans
-// ✅ correct trial_ends_at column
-// ✅ keeps all signup logic
-// ✅ cleaner success flow
+// FULL FIXED MASTER TRIAL VERSION
+// ✅ 14 day trial on every signup
+// ✅ correct billing values
 // ✅ production ready
+// ✅ no fake free plan
+// ✅ ready for App.js lock system
 
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
@@ -165,10 +163,10 @@ export default function Signup() {
             is_pro: false,
 
             current_plan:
-              "starter",
+              "trial",
 
             subscription_status:
-              "trial",
+              "trialing",
 
             trial_ends_at:
               trialEnd,
@@ -201,7 +199,7 @@ export default function Signup() {
         throw profileError;
 
       setSuccess(
-        "Workspace created • 14 day free trial started"
+        "Workspace created • 14 day trial started"
       );
 
       setTimeout(() => {
