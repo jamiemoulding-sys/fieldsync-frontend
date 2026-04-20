@@ -1,6 +1,14 @@
 // src/pages/Profile.js
-// FINAL 100% PRODUCTION VERSION
-// safer / faster / polished / copy-paste ready
+// FINAL SIMPLE PRICING VERSION
+// ✅ Nothing removed
+// ✅ Keeps save profile logic
+// ✅ Keeps logout
+// ✅ Fixes wrong PRO badge
+// ✅ Shows real current plan
+// ✅ Shows trial correctly
+// ✅ Cleaner subscription status
+// ✅ Matches new all-features pricing model
+// ✅ Full copy / paste ready
 
 import {
   useMemo,
@@ -26,6 +34,8 @@ import {
   Camera,
   Clock3,
   Loader2,
+  CreditCard,
+  Sparkles,
 } from "lucide-react";
 
 export default function Profile() {
@@ -33,6 +43,8 @@ export default function Profile() {
     user,
     reloadUser,
     logout,
+    plan,
+    trialActive,
   } = useAuth();
 
   const [name, setName] =
@@ -121,6 +133,7 @@ export default function Profile() {
       );
     } catch (err) {
       console.error(err);
+
       setError(
         "Failed to load profile"
       );
@@ -183,9 +196,7 @@ export default function Profile() {
           );
       }
 
-      if (reloadUser) {
-        await reloadUser();
-      }
+      await reloadUser?.();
 
       setSuccess(
         "Profile updated successfully"
@@ -231,6 +242,21 @@ export default function Profile() {
     .charAt(0)
     .toUpperCase();
 
+  const planName =
+    (
+      plan ||
+      user?.currentPlan ||
+      "starter"
+    ).toUpperCase();
+
+  const statusText =
+    user?.subscription_status ===
+    "active"
+      ? "ACTIVE"
+      : trialActive
+      ? "TRIAL"
+      : "INACTIVE";
+
   if (loading) {
     return (
       <div className="text-gray-400 flex items-center gap-2">
@@ -245,8 +271,10 @@ export default function Profile() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
+
       {/* HERO */}
       <div className="rounded-3xl p-[1px] bg-gradient-to-r from-indigo-500/30 via-purple-500/20 to-transparent">
+
         <div className="bg-[#020617] border border-white/10 rounded-3xl p-6 md:p-8">
 
           <div className="flex justify-between gap-6 flex-wrap items-center">
@@ -291,19 +319,24 @@ export default function Profile() {
                     icon={
                       <Crown size={13} />
                     }
-                    text={
-                      user?.isPro
-                        ? "PRO"
-                        : "FREE"
-                    }
+                    text={`${planName} PLAN`}
                   />
+
+                  {trialActive && (
+                    <Badge
+                      icon={
+                        <Sparkles size={13} />
+                      }
+                      text="TRIAL ACTIVE"
+                    />
+                  )}
 
                 </div>
               </div>
 
             </div>
 
-            <div className="min-w-[240px]">
+            <div className="min-w-[260px]">
 
               <p className="text-sm text-gray-400">
                 Profile Strength
@@ -334,6 +367,7 @@ export default function Profile() {
           </div>
 
         </div>
+
       </div>
 
       {success && (
@@ -349,6 +383,35 @@ export default function Profile() {
           text={error}
         />
       )}
+
+      {/* SUBSCRIPTION */}
+      <div className="grid md:grid-cols-3 gap-4">
+
+        <ReadOnly
+          icon={
+            <CreditCard size={16} />
+          }
+          label="Current Plan"
+          value={planName}
+        />
+
+        <ReadOnly
+          icon={
+            <Crown size={16} />
+          }
+          label="Status"
+          value={statusText}
+        />
+
+        <ReadOnly
+          icon={
+            <Sparkles size={16} />
+          }
+          label="Features"
+          value="All Features Included"
+        />
+
+      </div>
 
       {/* FORM */}
       <div className="grid md:grid-cols-2 gap-4">
@@ -396,12 +459,14 @@ export default function Profile() {
         />
 
         <ReadOnly
-          icon={<Crown size={16} />}
-          label="Plan"
+          icon={
+            <Crown size={16} />
+          }
+          label="Access"
           value={
-            user?.isPro
-              ? "Pro"
-              : "Free"
+            trialActive
+              ? "Trial Full Access"
+              : "Paid Access"
           }
         />
 

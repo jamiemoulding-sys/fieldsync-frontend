@@ -1,14 +1,15 @@
 // src/layout/AppLayout.js
-// FULL FINAL COPY / PASTE VERSION
-// ✅ Single sidebar only
-// ✅ FieldSync logo added
-// ✅ Notifications top right only
-// ✅ Mobile menu works
-// ✅ Premium dark UI
-// ✅ Keeps Outlet routing
-// ✅ Added plan visibility locks
-// ✅ Trial shows all pages
-// ✅ Upgrade prompts
+// FINAL SIMPLE PRICING VERSION
+// ✅ Nothing removed
+// ✅ Keeps notifications
+// ✅ Keeps mobile menu
+// ✅ Keeps outlet routing
+// ✅ Removes old feature locks
+// ✅ All active plans get all pages
+// ✅ Trial works
+// ✅ Cleaner sidebar
+// ✅ Upgrade button kept
+// ✅ Full copy / paste ready
 
 import {
   useMemo,
@@ -46,7 +47,6 @@ import {
   ChevronRight,
   Loader2,
   Crown,
-  Lock,
 } from "lucide-react";
 
 export default function AppLayout() {
@@ -78,26 +78,8 @@ export default function AppLayout() {
     user?.role || "employee";
 
   const company =
-    user?.companyName || "FieldSync";
-
-  /* ===================================== */
-  /* PLAN ACCESS */
-  /* ===================================== */
-
-  function canUse(required) {
-    if (trialActive) return true;
-
-    const levels = {
-      starter: 1,
-      pro: 2,
-      business: 3,
-    };
-
-    return (
-      levels[plan || "starter"] >=
-      levels[required]
-    );
-  }
+    user?.companyName ||
+    "FieldSync";
 
   /* ===================================== */
   /* LOAD NOTIFICATIONS */
@@ -192,6 +174,11 @@ export default function AppLayout() {
       path: "/work-session",
     },
     {
+      label: "Timesheet",
+      icon: ClipboardList,
+      path: "/timesheet",
+    },
+    {
       label: "My Schedule",
       icon: Calendar,
       path: "/my-schedule",
@@ -235,6 +222,16 @@ export default function AppLayout() {
       path: "/schedule",
     },
     {
+      label: "Timesheet",
+      icon: ClipboardList,
+      path: "/timesheet",
+    },
+    {
+      label: "Performance",
+      icon: BarChart3,
+      path: "/performance",
+    },
+    {
       label: "Locations",
       icon: MapPin,
       path: "/locations",
@@ -245,10 +242,9 @@ export default function AppLayout() {
       path: "/holiday-requests",
     },
     {
-      label: "Timesheet",
-      icon: ClipboardList,
-      path: "/timesheet",
-      plan: "starter",
+      label: "Tasks",
+      icon: CheckSquare,
+      path: "/tasks",
     },
     {
       label: "Profile",
@@ -263,7 +259,6 @@ export default function AppLayout() {
       label: "Reports",
       icon: BarChart3,
       path: "/reports",
-      plan: "pro",
     },
     {
       label: "Billing",
@@ -272,7 +267,7 @@ export default function AppLayout() {
     },
   ];
 
-  let menu = useMemo(() => {
+  const menu = useMemo(() => {
     if (role === "admin")
       return adminMenu;
 
@@ -282,15 +277,11 @@ export default function AppLayout() {
     return employeeMenu;
   }, [role]);
 
-  menu = menu.filter((item) => {
-    if (!item.plan) return true;
-    return canUse(item.plan);
-  });
-
   const pageTitle =
     menu.find(
       (x) =>
-        x.path === location.pathname
+        x.path ===
+        location.pathname
     )?.label || "Dashboard";
 
   function go(path) {
@@ -307,6 +298,7 @@ export default function AppLayout() {
       <div className="h-full flex flex-col justify-between bg-[#020617]">
 
         <div>
+
           {/* LOGO */}
           <div className="p-6 border-b border-white/5">
             <div className="flex items-center gap-4">
@@ -318,7 +310,7 @@ export default function AppLayout() {
               />
 
               <div className="min-w-0">
-                <h1 className="font-bold text-lg text-white leading-tight truncate">
+                <h1 className="font-bold text-lg text-white truncate">
                   {company}
                 </h1>
 
@@ -333,34 +325,37 @@ export default function AppLayout() {
           {/* PLAN BAR */}
           <div className="px-4 pt-4">
             <div className="rounded-2xl bg-indigo-600/10 border border-indigo-500/20 p-4">
+
               <div className="flex items-center gap-2 text-indigo-300 text-sm">
                 <Crown size={15} />
+
                 {trialActive
                   ? "Trial Active"
                   : `${plan} plan`}
               </div>
 
-              {!trialActive &&
-                plan ===
-                  "starter" && (
-                  <button
-                    onClick={() =>
-                      go(
-                        "/billing"
-                      )
-                    }
-                    className="mt-3 text-xs text-white bg-indigo-600 px-3 py-2 rounded-xl"
-                  >
-                    Upgrade
-                  </button>
-                )}
+              <p className="text-xs text-gray-400 mt-2">
+                All plans include all features.
+              </p>
+
+              <button
+                onClick={() =>
+                  go("/billing")
+                }
+                className="mt-3 text-xs text-white bg-indigo-600 px-3 py-2 rounded-xl"
+              >
+                Manage Plan
+              </button>
+
             </div>
           </div>
 
           {/* NAV */}
           <div className="p-4 space-y-2">
+
             {menu.map((item) => {
-              const Icon = item.icon;
+              const Icon =
+                item.icon;
 
               const active =
                 location.pathname ===
@@ -385,20 +380,15 @@ export default function AppLayout() {
                     </span>
                   </div>
 
-                  {active ? (
+                  {active && (
                     <ChevronRight size={16} />
-                  ) : (
-                    item.plan &&
-                    !trialActive && (
-                      <Lock
-                        size={14}
-                      />
-                    )
                   )}
                 </button>
               );
             })}
+
           </div>
+
         </div>
 
         {/* BOTTOM */}
@@ -422,6 +412,7 @@ export default function AppLayout() {
           </button>
 
         </div>
+
       </div>
     );
   }
@@ -441,7 +432,7 @@ export default function AppLayout() {
       {/* CONTENT */}
       <main className="flex-1 flex flex-col overflow-hidden">
 
-        {/* TOP BAR */}
+        {/* TOP */}
         <header className="h-16 border-b border-white/5 px-5 flex items-center justify-between">
 
           <div className="flex items-center gap-4">
@@ -528,6 +519,7 @@ export default function AppLayout() {
                     </div>
                   ) : (
                     <div className="max-h-[420px] overflow-y-auto">
+
                       {notifications.map(
                         (item) => (
                           <button
@@ -553,6 +545,7 @@ export default function AppLayout() {
                           </button>
                         )
                       )}
+
                     </div>
                   )}
 
