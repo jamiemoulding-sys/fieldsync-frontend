@@ -1,11 +1,13 @@
 // src/pages/Performance.js
-// FULL UPGRADED VERSION
+// FULL FIX FINAL
 // ✅ Nothing removed
-// ✅ Existing UI kept
+// ✅ Only lock screen if no access
 // ✅ Existing analytics kept
+// ✅ Existing layout kept
 // ✅ Trial users allowed
-// ✅ Business plan required after trial
-// ✅ Billing upgrade redirect added
+// ✅ Business plan unlock
+// ✅ Cleaner access logic
+// ✅ Production ready
 
 import {
   useEffect,
@@ -23,7 +25,6 @@ import {
   Trophy,
   Clock3,
   Briefcase,
-  TrendingUp,
   AlertTriangle,
   Medal,
   Search,
@@ -37,9 +38,7 @@ export default function Performance() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [data, setData] =
-    useState([]);
-
+  const [data, setData] = useState([]);
   const [loading, setLoading] =
     useState(true);
 
@@ -72,28 +71,29 @@ export default function Performance() {
     }
   }
 
-  /* ===================================== */
-  /* ACCESS CONTROL */
-  /* ===================================== */
+  /* ACCESS */
+
+  const trialEnd =
+    user?.trial_end ||
+    user?.company?.trial_end ||
+    user?.company?.trial_ends_at;
 
   const trialActive =
-    user?.trial_end &&
-    new Date(user.trial_end) >
+    trialEnd &&
+    new Date(trialEnd) >
       new Date();
 
-  const currentPlan =
+  const plan =
     user?.company?.current_plan ||
     user?.company?.plan ||
+    user?.current_plan ||
     "";
 
   const hasAccess =
     trialActive ||
-    currentPlan ===
-      "business";
+    plan === "business";
 
-  /* ===================================== */
-  /* FILTER / SORT */
-  /* ===================================== */
+  /* FILTER */
 
   const processed = useMemo(() => {
     let rows = [...data];
@@ -160,20 +160,13 @@ export default function Performance() {
     data.length > 0
       ? Math.round(
           data.reduce(
-            (
-              sum,
-              item
-            ) =>
+            (sum, item) =>
               sum +
               calcScore(item),
             0
           ) / data.length
         )
       : 0;
-
-  /* ===================================== */
-  /* LOADING */
-  /* ===================================== */
 
   if (loading) {
     return (
@@ -187,9 +180,7 @@ export default function Performance() {
     );
   }
 
-  /* ===================================== */
-  /* BLOCKED */
-  /* ===================================== */
+  /* LOCK ONLY */
 
   if (!hasAccess) {
     return (
@@ -225,10 +216,6 @@ export default function Performance() {
       </div>
     );
   }
-
-  /* ===================================== */
-  /* MAIN PAGE */
-  /* ===================================== */
 
   return (
     <div className="space-y-6">
@@ -292,7 +279,8 @@ export default function Performance() {
                   <p className="text-sm text-gray-400 mt-1">
                     {
                       topPerformer.total_shifts
-                    } shifts •{" "}
+                    }{" "}
+                    shifts •{" "}
                     {Number(
                       topPerformer.hours_worked ||
                         0
@@ -330,14 +318,18 @@ export default function Performance() {
           title="Employees"
           value={data.length}
           icon={
-            <Briefcase size={16} />
+            <Briefcase
+              size={16}
+            />
           }
         />
 
         <KPI
           title="Average Score"
           value={`${avgScore}%`}
-          icon={<Star size={16} />}
+          icon={
+            <Star size={16} />
+          }
         />
 
         <KPI
@@ -346,7 +338,11 @@ export default function Performance() {
             topPerformer?.hours_worked ||
               0
           ).toFixed(1)}
-          icon={<Clock3 size={16} />}
+          icon={
+            <Clock3
+              size={16}
+            />
+          }
         />
 
         <KPI
@@ -471,6 +467,7 @@ export default function Performance() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 mt-4">
+
                     <Stat
                       label="Shifts"
                       value={shifts}
@@ -482,9 +479,11 @@ export default function Performance() {
                         1
                       )}
                     />
+
                   </div>
 
                   <div className="mt-4">
+
                     <div className="flex justify-between text-xs mb-2">
                       <span className="text-gray-400">
                         Productivity
@@ -509,6 +508,7 @@ export default function Performance() {
                       />
 
                     </div>
+
                   </div>
 
                 </div>
