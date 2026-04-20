@@ -1,77 +1,74 @@
 // src/pages/WorkSession.js
-// FULL PATCHED VERSION
-// Your original file preserved + added:
-// ✅ Live GPS tracking while clocked in
-// ✅ Stops tracking on break
-// ✅ Resumes after break
-// ✅ Stops on clock out
-// ✅ Existing UI untouched
-// ✅ Same structure preserved
+// ELITE FIELD OPS VERSION
+// FULL COPY / PASTE READY
+
+// ✅ Normal site clock in
+// ✅ Open shift clock in (road workers)
+// ✅ Auto detects saved job sites
+// ✅ Auto check in / out jobs
+// ✅ Live GPS tracking
+// ✅ Break pauses tracking
+// ✅ Resume after break
+// ✅ Current status panel
+// ✅ Premium UI
 
 import { useEffect, useState, useRef } from "react";
-import {
-  shiftAPI,
-  locationAPI,
-} from "../services/api";
+import { shiftAPI, locationAPI } from "../services/api";
 
 import {
   Play,
   Square,
   Coffee,
   MapPin,
-  Loader2,
-  AlertTriangle,
-  CheckCircle2,
   Navigation,
+  Loader2,
+  CheckCircle2,
+  Truck,
+  Building2,
 } from "lucide-react";
 
 export default function WorkSession() {
-  const [activeShift, setActiveShift] =
-    useState(null);
+  const [activeShift, setActiveShift] = useState(null);
+  const [locations, setLocations] = useState([]);
+  const [selectedLocation, setSelectedLocation] = useState("");
+  const [openShift, setOpenShift] = useState(false);
 
-  const [locations, setLocations] =
-    useState([]);
+  const [worked, setWorked] = useState(0);
+  const [breakSec, setBreakSec] = useState(0);
 
-  const [selectedLocation, setSelectedLocation] =
-    useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const [worked, setWorked] =
-    useState(0);
+  const [statusText, setStatusText] = useState("");
+  const [currentJob, setCurrentJob] = useState(null);
 
-  const [breakSec, setBreakSec] =
-    useState(0);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [saving, setSaving] =
-    useState(false);
-
-  const [warning, setWarning] =
-    useState("");
-
-  const [gpsText, setGpsText] =
-    useState("");
-
-  const [distanceAway, setDistanceAway] =
-    useState(null);
-
-  /* NEW */
   const watchRef = useRef(null);
 
   useEffect(() => {
     load();
 
-    const timer =
-      setInterval(load, 20000);
+    const t = setInterval(load, 20000);
 
-    return () =>
-      clearInterval(timer);
+    return () => clearInterval(t);
   }, []);
 
-  /* ===============================
-     LIVE TRACKING PATCH
-  =============================== */
+  async function load() {
+    try {
+      const [shift, locs] = await Promise.all([
+        shiftAPI.getActive(),
+        locationAPI.getLocations(),
+      ]);
+
+      setActiveShift(shift || null);
+      setLocations(Array.isArray(locs) ? locs : []);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /* =====================================
+     LIVE TRACKING
+  ===================================== */
 
   useEffect(() => {
     if (!activeShift) {
@@ -79,9 +76,7 @@ export default function WorkSession() {
       return;
     }
 
-    if (
-      activeShift.break_started_at
-    ) {
+    if (activeShift.break_started_at) {
       stopTracking();
       return;
     }
@@ -92,9 +87,7 @@ export default function WorkSession() {
   }, [activeShift]);
 
   function stopTracking() {
-    if (
-      watchRef.current !== null
-    ) {
+    if (watchRef.current !== null) {
       navigator.geolocation.clearWatch(
         watchRef.current
       );
@@ -104,27 +97,26 @@ export default function WorkSession() {
   }
 
   function startTracking() {
-    if (!activeShift) return;
-
-    if (
-      watchRef.current !== null
-    )
-      return;
-
-    if (
-      !navigator.geolocation
-    )
-      return;
+    if (!navigator.geolocation) return;
+    if (watchRef.current !== null) return;
 
     watchRef.current =
       navigator.geolocation.watchPosition(
         async (pos) => {
+          const lat =
+            pos.coords.latitude;
+
+          const lng =
+            pos.coords.longitude;
+
           try {
             await shiftAPI.updateLiveLocation(
               activeShift.id,
-              pos.coords.latitude,
-              pos.coords.longitude
+              lat,
+              lng
             );
+
+            detectJobs(lat, lng);
           } catch (err) {
             console.error(err);
           }
@@ -139,78 +131,9 @@ export default function WorkSession() {
       );
   }
 
-  /* =============================== */
-
-  useEffect(() => {
-    let timer;
-
-    if (activeShift?.clock_in_time) {
-      timer = setInterval(() => {
-        const now = Date.now();
-
-        const start = new Date(
-          activeShift.clock_in_time
-        ).getTime();
-
-        const savedBreak =
-          activeShift.total_break_seconds ||
-          0;
-
-        const liveBreak =
-          activeShift.break_started_at
-            ? Math.floor(
-                (now -
-                  new Date(
-                    activeShift.break_started_at
-                  ).getTime()) / 1000
-              )
-            : 0;
-
-        const total =
-          Math.floor(
-            (now - start) / 1000
-          ) -
-          savedBreak -
-          liveBreak;
-
-        setWorked(
-          total > 0 ? total : 0
-        );
-
-        setBreakSec(liveBreak);
-      }, 1000);
-    } else {
-      setWorked(0);
-      setBreakSec(0);
-    }
-
-    return () =>
-      clearInterval(timer);
-  }, [activeShift]);
-
-  async function load() {
-    try {
-      const [shift, locs] =
-        await Promise.all([
-          shiftAPI.getActive(),
-          locationAPI.getLocations(),
-        ]);
-
-      setActiveShift(
-        shift || null
-      );
-
-      setLocations(
-        Array.isArray(locs)
-          ? locs
-          : []
-      );
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }
+  /* =====================================
+     AUTO JOB DETECTION
+  ===================================== */
 
   function distanceMeters(
     lat1,
@@ -242,153 +165,209 @@ export default function WorkSession() {
         Math.sin(dLon / 2) *
         Math.sin(dLon / 2);
 
-    const c =
-      2 *
-      Math.atan2(
-        Math.sqrt(a),
-        Math.sqrt(1 - a)
-      );
-
-    return R * c;
+    return (
+      R *
+      (2 *
+        Math.atan2(
+          Math.sqrt(a),
+          Math.sqrt(1 - a)
+        ))
+    );
   }
 
-  async function clockIn() {
-    if (
-      saving ||
-      activeShift
-    )
-      return;
+  async function detectJobs(
+    lat,
+    lng
+  ) {
+    let nearest = null;
 
-    if (!selectedLocation) {
-      alert("Select a location");
-      return;
+    for (const loc of locations) {
+      const dist =
+        distanceMeters(
+          lat,
+          lng,
+          Number(loc.latitude),
+          Number(loc.longitude)
+        );
+
+      const radius =
+        Number(loc.radius) ||
+        150;
+
+      if (dist <= radius) {
+        nearest = loc;
+        break;
+      }
     }
 
-    const site =
-      locations.find(
-        (x) =>
-          String(x.id) ===
-          String(
-            selectedLocation
-          )
+    if (nearest) {
+      if (
+        !currentJob ||
+        currentJob.id !== nearest.id
+      ) {
+        setCurrentJob(nearest);
+
+        setStatusText(
+          `Arrived at ${nearest.name}`
+        );
+
+        await shiftAPI.checkIntoJob?.(
+          activeShift.id,
+          nearest.id
+        );
+      }
+    } else {
+      if (currentJob) {
+        setStatusText(
+          `Left ${currentJob.name}`
+        );
+
+        await shiftAPI.leaveJob?.(
+          activeShift.id,
+          currentJob.id
+        );
+
+        setCurrentJob(null);
+      } else {
+        setStatusText(
+          "Travelling"
+        );
+      }
+    }
+  }
+
+  /* =====================================
+     TIMER
+  ===================================== */
+
+  useEffect(() => {
+    let timer;
+
+    if (activeShift?.clock_in_time) {
+      timer = setInterval(() => {
+        const now = Date.now();
+
+        const start = new Date(
+          activeShift.clock_in_time
+        ).getTime();
+
+        const savedBreak =
+          activeShift.total_break_seconds ||
+          0;
+
+        const liveBreak =
+          activeShift.break_started_at
+            ? Math.floor(
+                (now -
+                  new Date(
+                    activeShift.break_started_at
+                  ).getTime()) /
+                  1000
+              )
+            : 0;
+
+        const total =
+          Math.floor(
+            (now - start) / 1000
+          ) -
+          savedBreak -
+          liveBreak;
+
+        setWorked(
+          total > 0 ? total : 0
+        );
+
+        setBreakSec(liveBreak);
+      }, 1000);
+    }
+
+    return () =>
+      clearInterval(timer);
+  }, [activeShift]);
+
+  /* =====================================
+     ACTIONS
+  ===================================== */
+
+  async function clockInSite() {
+    if (!selectedLocation)
+      return alert(
+        "Select location"
       );
 
-    if (!site) {
-      alert("Location missing");
-      return;
-    }
-
     setSaving(true);
-    setWarning("");
-    setGpsText(
-      "Checking location..."
-    );
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        try {
-          const lat =
-            pos.coords.latitude;
+        await shiftAPI.clockIn({
+          location_id:
+            selectedLocation,
+          latitude:
+            pos.coords.latitude,
+          longitude:
+            pos.coords.longitude,
+          shift_type: "site",
+        });
 
-          const lng =
-            pos.coords.longitude;
-
-          const distance =
-            distanceMeters(
-              lat,
-              lng,
-              Number(
-                site.latitude
-              ),
-              Number(
-                site.longitude
-              )
-            );
-
-          const radius =
-            Number(
-              site.radius
-            ) || 100;
-
-          setDistanceAway(
-            Math.round(
-              distance
-            )
-          );
-
-          if (
-            distance >
-            radius
-          ) {
-            setWarning(
-              `Outside site radius (${Math.round(
-                distance
-              )}m / ${radius}m)`
-            );
-
-            setSaving(false);
-            setGpsText("");
-            return;
-          }
-
-          await shiftAPI.clockIn({
-            location_id:
-              selectedLocation,
-            latitude: lat,
-            longitude: lng,
-          });
-
-          setGpsText(
-            "Clocked in"
-          );
-
-          await load();
-        } finally {
-          setSaving(false);
-        }
-      },
-      () => {
+        await load();
         setSaving(false);
-        setGpsText("");
-        alert(
-          "Allow location access"
+      }
+    );
+  }
+
+  async function clockInOpen() {
+    setSaving(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        await shiftAPI.clockIn({
+          latitude:
+            pos.coords.latitude,
+          longitude:
+            pos.coords.longitude,
+          shift_type: "open",
+        });
+
+        setStatusText(
+          "Travelling"
         );
-      },
-      {
-        enableHighAccuracy: true,
+
+        await load();
+        setSaving(false);
       }
     );
   }
 
   async function clockOut() {
-    try {
-      stopTracking();
+    stopTracking();
 
-      setSaving(true);
-      await shiftAPI.clockOut();
-      await load();
-    } finally {
-      setSaving(false);
-    }
+    setSaving(true);
+
+    await shiftAPI.clockOut();
+
+    await load();
+
+    setCurrentJob(null);
+    setStatusText("");
+
+    setSaving(false);
   }
 
   async function toggleBreak() {
-    try {
-      setSaving(true);
+    setSaving(true);
 
-      if (
-        activeShift?.break_started_at
-      ) {
-        await shiftAPI.endBreak();
-      } else {
-        stopTracking();
-        await shiftAPI.startBreak();
-      }
-
-      await load();
-    } finally {
-      setSaving(false);
+    if (
+      activeShift.break_started_at
+    ) {
+      await shiftAPI.endBreak();
+    } else {
+      stopTracking();
+      await shiftAPI.startBreak();
     }
+
+    await load();
+
+    setSaving(false);
   }
 
   function format(sec) {
@@ -416,7 +395,11 @@ export default function WorkSession() {
 
   if (loading) {
     return (
-      <div className="text-gray-400">
+      <div className="text-gray-400 flex gap-2">
+        <Loader2
+          size={16}
+          className="animate-spin"
+        />
         Loading...
       </div>
     );
@@ -424,62 +407,58 @@ export default function WorkSession() {
 
   return (
     <div className="space-y-6">
+
       <div>
         <h1 className="text-2xl font-semibold">
           Work Session
         </h1>
 
         <p className="text-sm text-gray-400">
-          Clock in and manage shift
+          Smart field tracking
         </p>
       </div>
 
-      {warning && (
-        <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-300 text-sm">
-          {warning}
-        </div>
-      )}
-
-      {gpsText && (
-        <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-4 text-indigo-300 text-sm">
-          {gpsText}
-        </div>
-      )}
-
       {activeShift ? (
-        <div className="rounded-3xl border border-white/10 bg-[#020617] p-8 text-center">
-          <div className="w-20 h-20 mx-auto rounded-full bg-green-500/15 text-green-400 flex items-center justify-center">
-            <CheckCircle2
-              size={34}
-            />
+        <div className="rounded-3xl bg-[#020617] border border-white/10 p-8 text-center">
+
+          <div className="w-20 h-20 mx-auto rounded-full bg-green-500/15 flex items-center justify-center text-green-400">
+            <CheckCircle2 size={34} />
           </div>
 
-          <p className="mt-5 text-green-400 text-sm">
-            Currently Clocked In
+          <p className="mt-4 text-green-400">
+            Clocked In
           </p>
 
           <h2 className="text-5xl font-bold mt-3">
             {format(worked)}
           </h2>
 
+          <div className="mt-6 rounded-2xl bg-white/5 p-4">
+
+            <p className="text-sm text-gray-400">
+              Status
+            </p>
+
+            <p className="font-semibold mt-1">
+              {currentJob
+                ? currentJob.name
+                : statusText ||
+                  "Travelling"}
+            </p>
+
+          </div>
+
           {activeShift.break_started_at && (
-            <p className="text-amber-400 mt-3">
-              Break{" "}
-              {format(
-                breakSec
-              )}
+            <p className="mt-4 text-amber-400">
+              Break {format(breakSec)}
             </p>
           )}
 
-          <div className="grid md:grid-cols-2 gap-3 mt-8">
+          <div className="grid md:grid-cols-2 gap-3 mt-6">
+
             <button
-              onClick={
-                toggleBreak
-              }
-              disabled={
-                saving
-              }
-              className="py-4 rounded-2xl bg-amber-500 hover:bg-amber-600"
+              onClick={toggleBreak}
+              className="py-4 rounded-2xl bg-amber-500"
             >
               {activeShift.break_started_at
                 ? "End Break"
@@ -487,80 +466,96 @@ export default function WorkSession() {
             </button>
 
             <button
-              onClick={
-                clockOut
-              }
-              disabled={
-                saving
-              }
-              className="py-4 rounded-2xl bg-red-600 hover:bg-red-500"
+              onClick={clockOut}
+              className="py-4 rounded-2xl bg-red-600"
             >
-              Clock Out
+              End Shift
             </button>
+
           </div>
+
         </div>
       ) : (
-        <div className="rounded-3xl border border-white/10 bg-[#020617] p-8">
-          <h2 className="text-xl font-semibold">
-            Start Shift
-          </h2>
-
-          <div className="relative mt-5">
-            <MapPin
-              size={16}
-              className="absolute left-4 top-4 text-gray-500"
-            />
-
-            <select
-              value={
-                selectedLocation
-              }
-              onChange={(e) =>
-                setSelectedLocation(
-                  e.target.value
-                )
-              }
-              className="w-full bg-white text-black border border-white/20 rounded-2xl pl-11 pr-4 py-4"
-            >
-              <option value="">
-                Select Location
-              </option>
-
-              {locations.map(
-                (loc) => (
-                  <option
-                    key={
-                      loc.id
-                    }
-                    value={
-                      loc.id
-                    }
-                  >
-                    {loc.name}
-                  </option>
-                )
-              )}
-            </select>
-          </div>
-
-          {distanceAway && (
-            <p className="mt-4 text-sm text-gray-400">
-              Last distance{" "}
-              {distanceAway}m
-            </p>
-          )}
+        <div className="rounded-3xl bg-[#020617] border border-white/10 p-8 space-y-5">
 
           <button
-            onClick={clockIn}
-            disabled={saving}
-            className="w-full mt-5 py-4 rounded-2xl bg-green-600 hover:bg-green-500"
+            onClick={() =>
+              setOpenShift(false)
+            }
+            className={`w-full py-3 rounded-2xl ${
+              !openShift
+                ? "bg-indigo-600"
+                : "bg-white/5"
+            }`}
           >
-            {saving
-              ? "Loading..."
-              : "Clock In"}
+            Site Shift
           </button>
+
+          <button
+            onClick={() =>
+              setOpenShift(true)
+            }
+            className={`w-full py-3 rounded-2xl ${
+              openShift
+                ? "bg-indigo-600"
+                : "bg-white/5"
+            }`}
+          >
+            Open Road Shift
+          </button>
+
+          {!openShift ? (
+            <>
+              <select
+                value={
+                  selectedLocation
+                }
+                onChange={(e) =>
+                  setSelectedLocation(
+                    e.target.value
+                  )
+                }
+                className="w-full px-4 py-4 rounded-2xl bg-white text-black"
+              >
+                <option value="">
+                  Select Site
+                </option>
+
+                {locations.map(
+                  (loc) => (
+                    <option
+                      key={loc.id}
+                      value={loc.id}
+                    >
+                      {loc.name}
+                    </option>
+                  )
+                )}
+              </select>
+
+              <button
+                onClick={
+                  clockInSite
+                }
+                className="w-full py-4 rounded-2xl bg-green-600"
+              >
+                Clock In At Site
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={
+                clockInOpen
+              }
+              className="w-full py-4 rounded-2xl bg-blue-600"
+            >
+              Start Open Shift
+            </button>
+          )}
+
         </div>
       )}
+
     </div>
   );
 }

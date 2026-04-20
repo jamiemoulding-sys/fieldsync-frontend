@@ -314,28 +314,13 @@ export const shiftAPI = {
 
     const { data, error } = await supabase
       .from("shifts")
-      .select("*")
+      .select("*, users(name,email)")
       .eq("company_id", companyId)
       .order("clock_in_time", {
         ascending: false,
       });
 
     if (error) throw error;
-
-    return data || [];
-  },
-
-  getActiveAll: async () => {
-    const companyId = await getCompanyId();
-
-    const { data, error } = await supabase
-      .from("shifts")
-      .select("*")
-      .eq("company_id", companyId)
-      .is("clock_out_time", null);
-
-    if (error) throw error;
-
     return data || [];
   },
 
@@ -346,10 +331,40 @@ export const shiftAPI = {
       .from("shifts")
       .select("*")
       .eq("user_id", user.id)
-      .eq("company_id", user.company_id);
+      .eq("company_id", user.company_id)
+      .order("clock_in_time", {
+        ascending: false,
+      });
 
     if (error) throw error;
+    return data || [];
+  },
 
+  getActive: async () => {
+    const user = await getCurrentUser();
+
+    const { data, error } = await supabase
+      .from("shifts")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("company_id", user.company_id)
+      .is("clock_out_time", null)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  },
+
+  getActiveAll: async () => {
+    const companyId = await getCompanyId();
+
+    const { data, error } = await supabase
+      .from("shifts")
+      .select("*, users(name,email)")
+      .eq("company_id", companyId)
+      .is("clock_out_time", null);
+
+    if (error) throw error;
     return data || [];
   },
 
@@ -366,7 +381,6 @@ export const shiftAPI = {
       });
 
     if (error) throw error;
-
     return true;
   },
 
@@ -376,14 +390,127 @@ export const shiftAPI = {
     const { error } = await supabase
       .from("shifts")
       .update({
+        clock_out_time: new Date().toISOString(),
+      })
+      .eq("user_id", user.id)
+      .is("clock_out_time", null);
+
+    if (error) throw error;
+    return true;
+  },
+
+  managerClockOut: async (shiftId, time = null) => {
+    const { error } = await supabase
+      .from("shifts")
+      .update({
         clock_out_time:
+          time || new Date().toISOString(),
+      })
+      .eq("id", shiftId);
+
+    if (error) throw error;
+    return true;
+  },
+
+  startBreak: async () => {
+    const user = await getCurrentUser();
+
+    const { error } = await supabase
+      .from("shifts")
+      .update({
+        break_started_at:
           new Date().toISOString(),
       })
       .eq("user_id", user.id)
       .is("clock_out_time", null);
 
     if (error) throw error;
+    return true;
+  },
 
+  endBreak: async () => {
+    const user = await getCurrentUser();
+
+    const active =
+      await shiftAPI.getActive();
+
+    if (!active?.break_started_at)
+      return true;
+
+    const secs = Math.floor(
+      (Date.now() -
+        new Date(
+          active.break_started_at
+        ).getTime()) /
+        1000
+    );
+
+    const current =
+      active.total_break_seconds || 0;
+
+    const { error } = await supabase
+      .from("shifts")
+      .update({
+        break_started_at: null,
+        total_break_seconds:
+          current + secs,
+      })
+      .eq("id", active.id);
+
+    if (error) throw error;
+    return true;
+  },
+
+  updateLiveLocation: async (
+    shiftId,
+    lat,
+    lng
+  ) => {
+    const { error } = await supabase
+      .from("shifts")
+      .update({
+        live_latitude: lat,
+        live_longitude: lng,
+        last_ping_at:
+          new Date().toISOString(),
+      })
+      .eq("id", shiftId);
+
+    if (error) throw error;
+    return true;
+  },
+
+  checkIntoJob: async (
+    shiftId,
+    locationId
+  ) => {
+    const { error } = await supabase
+      .from("shifts")
+      .update({
+        active_job_id: locationId,
+        arrived_at:
+          new Date().toISOString(),
+      })
+      .eq("id", shiftId);
+
+    if (error) throw error;
+    return true;
+  },
+
+  leaveJob: async (
+    shiftId,
+    locationId
+  ) => {
+    const { error } = await supabase
+      .from("shifts")
+      .update({
+        active_job_id: null,
+        left_job_at:
+          new Date().toISOString(),
+      })
+      .eq("id", shiftId);
+
+    if (error) throw error;
     return true;
   },
 };
