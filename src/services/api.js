@@ -53,19 +53,29 @@ async function getAuthUser() {
 async function getCurrentUser() {
   const authUser = await getAuthUser();
 
+  console.log("AUTH USER ID:", authUser.id);
+
   const { data, error } = await supabase
     .from("users")
     .select("*")
     .eq("id", authUser.id)
-    .single();
+    .maybeSingle();
 
-  if (error) throw error;
+  if (!data) {
+    throw new Error(
+      "No matching row in users table for auth user: " +
+        authUser.id
+    );
+  }
 
   return data;
 }
 
 async function getCompanyId() {
   const user = await getCurrentUser();
+
+  console.log("CURRENT USER:", user);
+  console.log("COMPANY ID:", user.company_id);
 
   if (!user.company_id) {
     throw new Error("No company assigned");
