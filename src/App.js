@@ -7,6 +7,7 @@
 // ✅ Trial = full access
 // ✅ Expired = billing redirect
 // ✅ Full copy/paste ready
+// ✅ TRUE MERGE VERSION (original preserved)
 
 import {
   BrowserRouter as Router,
@@ -54,6 +55,11 @@ import Billing from "./pages/Billing";
 import Profile from "./pages/Profile";
 import Success from "./pages/Success";
 import AppLayout from "./layout/AppLayout";
+
+/* ✅ NEW PAGES */
+import RouteReplay from "./pages/RouteReplay";
+import PayrollExport from "./pages/PayrollExport";
+import Alerts from "./pages/Alerts";
 
 /* ===================================================== */
 
@@ -512,6 +518,49 @@ export default function App() {
                 ]}
               >
                 <Reports />
+              </RoleRoute>
+            }
+          />
+
+          {/* ✅ ADDED ONLY */}
+
+          <Route
+            path="/route-replay"
+            element={
+              <RoleRoute
+                roles={[
+                  "manager",
+                  "admin",
+                ]}
+              >
+                <RouteReplay />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="/payroll-export"
+            element={
+              <RoleRoute
+                roles={[
+                  "admin",
+                ]}
+              >
+                <PayrollExport />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="/alerts"
+            element={
+              <RoleRoute
+                roles={[
+                  "manager",
+                  "admin",
+                ]}
+              >
+                <Alerts />
               </RoleRoute>
             }
           />
