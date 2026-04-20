@@ -1,8 +1,11 @@
 /* src/pages/Employees.js */
-/* FULL FILE FIX ONLY
-✅ Modal scroll fixed
-✅ Save button always visible
-✅ No other changes
+/* FULL FIX FILE ONLY
+✅ Save numeric fields fixed
+✅ Empty numeric values become null
+✅ Delete employee restored
+✅ 2 step delete confirm
+✅ Better save handling
+✅ Modal scroll kept
 */
 
 import { useState, useEffect, useMemo } from "react";
@@ -93,23 +96,56 @@ export default function Employees() {
       payroll_id: emp.payroll_id || "",
       emergency_contact: emp.emergency_contact || "",
       start_date: emp.start_date || "",
-      hourly_rate: emp.hourly_rate || "",
-      overtime_rate: emp.overtime_rate || "",
-      night_rate: emp.night_rate || "",
-      contracted_hours: emp.contracted_hours || "",
-      holiday_allowance: emp.holiday_allowance || "",
+      hourly_rate: emp.hourly_rate ?? "",
+      overtime_rate: emp.overtime_rate ?? "",
+      night_rate: emp.night_rate ?? "",
+      contracted_hours: emp.contracted_hours ?? "",
+      holiday_allowance: emp.holiday_allowance ?? "",
+      role: emp.role || "employee",
+      status: emp.status || "active",
     });
+  }
+
+  function num(v) {
+    if (v === "" || v === null || v === undefined) return null;
+    return Number(v);
   }
 
   async function saveEditor() {
     try {
       setSaving(true);
-      await userAPI.update(editor.id, form);
+
+      await userAPI.update(editor.id, {
+        ...form,
+        hourly_rate: num(form.hourly_rate),
+        overtime_rate: num(form.overtime_rate),
+        night_rate: num(form.night_rate),
+        contracted_hours: num(form.contracted_hours),
+        holiday_allowance: num(form.holiday_allowance),
+      });
+
       setEditor(null);
-      load();
+      await load();
     } finally {
       setSaving(false);
     }
+  }
+
+  async function removeUser(id, name) {
+    const first = window.confirm(
+      `Delete ${name}?`
+    );
+
+    if (!first) return;
+
+    const second = window.confirm(
+      "FINAL WARNING:\n\nAll employee data will be permanently deleted.\nThis cannot be undone."
+    );
+
+    if (!second) return;
+
+    await userAPI.delete(id);
+    load();
   }
 
   async function sendInvite() {
@@ -150,6 +186,7 @@ export default function Employees() {
         </div>
 
         <div className="flex gap-2">
+
           <button
             onClick={load}
             className="px-4 py-2 rounded-xl bg-white/5"
@@ -163,6 +200,7 @@ export default function Employees() {
           >
             <UserPlus size={16} />
           </button>
+
         </div>
 
       </div>
@@ -170,7 +208,11 @@ export default function Employees() {
       {/* KPI */}
       <div className="grid md:grid-cols-3 gap-4">
 
-        <Card title="Total Staff" value={rows.length} icon={<Users size={16} />} />
+        <Card
+          title="Total Staff"
+          value={rows.length}
+          icon={<Users size={16} />}
+        />
 
         <Card
           title="Missing Rates"
@@ -197,7 +239,9 @@ export default function Employees() {
         />
 
         <button
-          onClick={() => setSort(sort === "name" ? "rate" : "name")}
+          onClick={() =>
+            setSort(sort === "name" ? "rate" : "name")
+          }
           className="rounded-xl bg-white/5"
         >
           <ArrowUpDown size={16} className="mx-auto" />
@@ -222,12 +266,29 @@ export default function Employees() {
       {view === "table" && (
         <div className="rounded-2xl overflow-hidden border border-white/10 bg-[#020617]">
           <table className="w-full text-sm">
+
+            <thead className="bg-white/5 text-gray-400">
+              <tr>
+                <th className="p-4 text-left">Employee</th>
+                <th className="p-4 text-left">Role</th>
+                <th className="p-4 text-left">Rate</th>
+                <th className="p-4 text-left">Actions</th>
+              </tr>
+            </thead>
+
             <tbody>
               {filtered.map((emp) => (
-                <tr key={emp.id} className="border-t border-white/5">
+                <tr
+                  key={emp.id}
+                  className="border-t border-white/5"
+                >
 
                   <td className="p-4">
                     <UserRow emp={emp} />
+                  </td>
+
+                  <td className="p-4 capitalize">
+                    {emp.role}
                   </td>
 
                   <td className="p-4">
@@ -236,15 +297,29 @@ export default function Employees() {
                       : "-"}
                   </td>
 
-                  <td className="p-4">
-                    <button onClick={() => openEditor(emp)}>
+                  <td className="p-4 flex gap-3">
+
+                    <button
+                      onClick={() => openEditor(emp)}
+                    >
                       <Pencil size={16} />
                     </button>
+
+                    <button
+                      onClick={() =>
+                        removeUser(emp.id, emp.name)
+                      }
+                      className="text-red-400"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+
                   </td>
 
                 </tr>
               ))}
             </tbody>
+
           </table>
         </div>
       )}
@@ -252,6 +327,7 @@ export default function Employees() {
       {/* GRID */}
       {view === "grid" && (
         <div className="grid md:grid-cols-3 gap-4">
+
           {filtered.map((emp) => (
             <motion.div
               key={emp.id}
@@ -259,25 +335,50 @@ export default function Employees() {
               animate={{ opacity: 1, y: 0 }}
               className="rounded-2xl border border-white/10 bg-[#020617] p-5"
             >
+
               <UserRow emp={emp} />
 
-              <button
-                onClick={() => openEditor(emp)}
-                className="mt-4 w-full py-2 rounded-xl bg-indigo-600"
-              >
-                Edit
-              </button>
+              <p className="mt-3 text-sm text-gray-400">
+                Role: {emp.role}
+              </p>
+
+              <p className="text-sm text-gray-400">
+                Rate: {emp.hourly_rate ? `£${emp.hourly_rate}` : "-"}
+              </p>
+
+              <div className="grid grid-cols-2 gap-2 mt-4">
+
+                <button
+                  onClick={() => openEditor(emp)}
+                  className="py-2 rounded-xl bg-indigo-600"
+                >
+                  Edit
+                </button>
+
+                <button
+                  onClick={() =>
+                    removeUser(emp.id, emp.name)
+                  }
+                  className="py-2 rounded-xl bg-red-600"
+                >
+                  Delete
+                </button>
+
+              </div>
+
             </motion.div>
           ))}
+
         </div>
       )}
 
-      {/* EDIT MODAL */}
+      {/* EDITOR */}
       {editor && (
         <Modal
           title={`Edit ${editor.name}`}
           close={() => setEditor(null)}
         >
+
           <div className="grid md:grid-cols-2 gap-3">
 
             {Object.keys(form).map((key) => (
@@ -297,8 +398,8 @@ export default function Employees() {
 
           </div>
 
-          {/* FIXED SAVE */}
           <div className="sticky bottom-0 pt-4 mt-4 bg-[#020617]">
+
             <button
               onClick={saveEditor}
               disabled={saving}
@@ -307,6 +408,7 @@ export default function Employees() {
               <Save size={16} />
               {saving ? "Saving..." : "Save Changes"}
             </button>
+
           </div>
 
         </Modal>
@@ -318,6 +420,7 @@ export default function Employees() {
           title="Invite Employee"
           close={() => setInviteOpen(false)}
         >
+
           <input
             value={inviteEmail}
             onChange={(e) =>
@@ -346,6 +449,7 @@ export default function Employees() {
           >
             Send Invite
           </button>
+
         </Modal>
       )}
 
@@ -358,6 +462,7 @@ export default function Employees() {
 function UserRow({ emp }) {
   return (
     <div className="flex gap-3 items-center">
+
       <div className="w-11 h-11 rounded-full bg-indigo-600 flex items-center justify-center">
         {(emp.name || emp.email || "?")
           .charAt(0)
@@ -370,6 +475,7 @@ function UserRow({ emp }) {
           {emp.email}
         </p>
       </div>
+
     </div>
   );
 }
@@ -377,14 +483,21 @@ function UserRow({ emp }) {
 function Card({ title, value, icon }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-[#020617] p-5">
+
       <div className="flex justify-between">
-        <p className="text-xs text-gray-400">{title}</p>
-        <div className="text-indigo-400">{icon}</div>
+        <p className="text-xs text-gray-400">
+          {title}
+        </p>
+
+        <div className="text-indigo-400">
+          {icon}
+        </div>
       </div>
 
       <h2 className="text-2xl font-semibold mt-2">
         {value}
       </h2>
+
     </div>
   );
 }
@@ -396,16 +509,21 @@ function Modal({ title, close, children }) {
       <div className="w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-2xl bg-[#020617] border border-white/10 p-6">
 
         <div className="flex justify-between mb-4">
-          <h2 className="font-semibold">{title}</h2>
+
+          <h2 className="font-semibold">
+            {title}
+          </h2>
 
           <button onClick={close}>
             <X size={18} />
           </button>
+
         </div>
 
         {children}
 
       </div>
+
     </div>
   );
 }
