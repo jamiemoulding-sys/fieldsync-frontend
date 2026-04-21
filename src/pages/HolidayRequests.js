@@ -716,6 +716,106 @@ function Card({
       <h2 className="text-2xl font-semibold mt-2">
         {value}
       </h2>
+    {/* ADD LEAVE MODAL */}
+{openModal && (
+  <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+    <div className="w-full max-w-lg rounded-2xl bg-[#020617] border border-white/10 p-6 space-y-4">
+
+      <h2 className="text-xl font-semibold">
+        Add Leave Request
+      </h2>
+
+      <select
+        value={form.user_id}
+        onChange={(e) =>
+          setForm({
+            ...form,
+            user_id: e.target.value,
+          })
+        }
+        className="w-full px-4 py-3 rounded-xl bg-[#0f172a] border border-white/10"
+      >
+        <option value="">
+          Select Employee
+        </option>
+
+        {users.map((u) => (
+          <option
+            key={u.id}
+            value={u.id}
+          >
+            {u.name}
+          </option>
+        ))}
+      </select>
+
+      <select
+        value={form.type}
+        onChange={(e) =>
+          setForm({
+            ...form,
+            type: e.target.value,
+          })
+        }
+        className="w-full px-4 py-3 rounded-xl bg-[#0f172a] border border-white/10"
+      >
+        <option value="holiday">
+          Holiday
+        </option>
+        <option value="sick">
+          Sick Leave
+        </option>
+        <option value="unpaid">
+          Unpaid Leave
+        </option>
+      </select>
+
+      <input
+        type="date"
+        value={form.start_date}
+        onChange={(e) =>
+          setForm({
+            ...form,
+            start_date: e.target.value,
+          })
+        }
+        className="w-full px-4 py-3 rounded-xl bg-[#0f172a] border border-white/10"
+      />
+
+      <input
+        type="date"
+        value={form.end_date}
+        onChange={(e) =>
+          setForm({
+            ...form,
+            end_date: e.target.value,
+          })
+        }
+        className="w-full px-4 py-3 rounded-xl bg-[#0f172a] border border-white/10"
+      />
+
+      <div className="grid grid-cols-2 gap-3 pt-2">
+        <button
+          onClick={() =>
+            setOpenModal(false)
+          }
+          className="py-3 rounded-xl bg-white/5"
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={createLeave}
+          className="py-3 rounded-xl bg-emerald-600"
+        >
+          Save Leave
+        </button>
+      </div>
+
+    </div>
+  </div>
+)}
+    
     </div>
   );
 }

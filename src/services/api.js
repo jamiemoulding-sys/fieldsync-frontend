@@ -770,6 +770,17 @@ export const notificationAPI = {
     return data?.length || 0;
   },
 
+    delete: async (id) => {
+  const { error } = await supabase
+    .from("notifications")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
+
+  return true;
+},
+
   markRead: async (id) => {
     const { error } = await supabase
       .from("notifications")

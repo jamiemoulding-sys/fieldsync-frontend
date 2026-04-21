@@ -250,7 +250,7 @@ export default function AppLayout() {
     {
       label: "Locations",
       icon: MapPin,
-      path: "/my-locations",
+      path: "/locations",
     },
     {
       label: "Route Replay",
@@ -338,7 +338,7 @@ export default function AppLayout() {
     {
       label: "Locations",
       icon: MapPin,
-      path: "/my-locations",
+      path: "/locations",
     },
     {
       label: "Route Replay",
