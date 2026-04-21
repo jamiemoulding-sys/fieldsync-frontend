@@ -1,684 +1,630 @@
-// src/layout/AppLayout.js
-// FULL COPY / PASTE FIXED VERSION
-// ✅ Restores correct admin sidebar
-// ✅ Admin management pages moved to top
-// ✅ My Schedule + My Holidays moved to bottom
-// ✅ Employee sidebar unchanged
-// ✅ Manager sidebar improved
-// ✅ Logout button kept
-// ✅ Nothing removed
-// ✅ All routes preserved
+// src/pages/Dashboard.js
+// CLEAN COPY / PASTE VERSION
+// ✅ Removed any sidebar / layout duplication
+// ✅ Dashboard content only
+// ✅ Uses AppLayout sidebar only
+// ✅ Employee dashboard preserved
+// ✅ Admin dashboard preserved
+// ✅ Nothing else changed
 
-import {
-  useMemo,
-  useState,
-  useRef,
-  useEffect,
-} from "react";
-
-import {
-  Outlet,
-  useNavigate,
-  useLocation,
-} from "react-router-dom";
-
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import { notificationAPI } from "../services/api";
 
 import {
-  LayoutDashboard,
-  Clock,
-  ClipboardList,
-  CheckSquare,
-  Users,
-  Calendar,
-  MapPin,
-  FileText,
-  BarChart3,
-  User,
-  CreditCard,
-  Plane,
-  Bell,
-  Menu,
-  X,
-  ChevronRight,
+  userAPI,
+  shiftAPI,
+  holidayAPI,
+  billingAPI,
+  taskAPI,
+  scheduleAPI,
+} from "../services/api";
+
+import {
   Loader2,
-  Crown,
-  Route as RouteIcon,
-  BellRing,
-  Wallet,
+  Clock3,
+  CalendarDays,
+  CheckSquare,
+  AlertTriangle,
 } from "lucide-react";
 
-export default function AppLayout() {
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+} from "react-leaflet";
+
+import "leaflet/dist/leaflet.css";
+
+/* ================================================= */
+
+export default function Dashboard() {
+  const { user, loading } = useAuth();
+
+  if (loading || !user) return <Loading />;
+
+  if (user.role === "employee") {
+    return <EmployeeDashboard user={user} />;
+  }
+
+  return <AdminDashboard user={user} />;
+}
+
+/* ================================================= */
+/* EMPLOYEE DASHBOARD */
+/* ================================================= */
+
+function EmployeeDashboard({ user }) {
   const navigate = useNavigate();
-  const location = useLocation();
 
-  const {
-    user,
-    logout,
-    plan,
-    trialActive,
-  } = useAuth();
-
-  const [mobileOpen, setMobileOpen] =
-    useState(false);
-
-  const [notifOpen, setNotifOpen] =
-    useState(false);
-
-  const [notifications, setNotifications] =
-    useState([]);
-
-  const [loadingNotif, setLoadingNotif] =
+  const [loading, setLoading] =
     useState(true);
 
-  const notifRef = useRef(null);
+  const [shifts, setShifts] =
+    useState([]);
 
-  const role =
-    user?.role || "employee";
+  const [holidays, setHolidays] =
+    useState([]);
 
-  const company =
-    user?.companyName ||
-    "FieldSync";
+  const [tasks, setTasks] =
+    useState([]);
+
+  const [activeShift, setActiveShift] =
+    useState(null);
 
   useEffect(() => {
-    if (!user) return;
+    load();
 
-    loadNotifications();
-
-    const t = setInterval(
-      loadNotifications,
-      15000
-    );
+    const t = setInterval(load, 15000);
 
     return () => clearInterval(t);
-  }, [user]);
-
-  async function loadNotifications() {
-    try {
-      setLoadingNotif(true);
-
-      const rows =
-        await notificationAPI.getAll();
-
-      setNotifications(
-        (rows || []).slice(0, 8)
-      );
-    } finally {
-      setLoadingNotif(false);
-    }
-  }
-
-  async function markRead(id) {
-    await notificationAPI.markRead(id);
-    loadNotifications();
-  }
-
-  async function markAllRead() {
-    await notificationAPI.markAllRead();
-    loadNotifications();
-  }
-
-  const unread =
-    notifications.filter(
-      (x) => !x.read
-    ).length;
-
-  useEffect(() => {
-    function close(e) {
-      if (
-        notifRef.current &&
-        !notifRef.current.contains(
-          e.target
-        )
-      ) {
-        setNotifOpen(false);
-      }
-    }
-
-    document.addEventListener(
-      "mousedown",
-      close
-    );
-
-    return () =>
-      document.removeEventListener(
-        "mousedown",
-        close
-      );
   }, []);
 
-  /* ===================================== */
-  /* MENUS */
-  /* ===================================== */
+  async function load() {
+    try {
+      const [
+        allShifts,
+        allHolidays,
+        allTasks,
+      ] = await Promise.all([
+        shiftAPI.getAll(),
+        holidayAPI.getAll(),
+        taskAPI.getAll(),
+      ]);
 
-  const employeeTop = [
-    {
-      label: "Dashboard",
-      icon: LayoutDashboard,
-      path: "/dashboard",
-    },
-    {
-      label: "Clock In / Out",
-      icon: Clock,
-      path: "/work-session",
-    },
-    {
-      label: "Timesheet",
-      icon: ClipboardList,
-      path: "/timesheet",
-    },
-    {
-      label: "Tasks",
-      icon: CheckSquare,
-      path: "/tasks",
-    },
-    {
-      label: "Locations",
-      icon: MapPin,
-      path: "/my-locations",
-    },
-    {
-      label: "Route Replay",
-      icon: RouteIcon,
-      path: "/route-replay",
-    },
-    {
-      label: "Notifications",
-      icon: BellRing,
-      path: "/notifications",
-    },
-    {
-      label: "Profile",
-      icon: User,
-      path: "/profile",
-    },
-  ];
+      const mine =
+        allShifts.filter(
+          (x) =>
+            String(x.user_id) ===
+            String(user.id)
+        ) || [];
 
-  const employeeBottom = [
-    {
-      label: "My Schedule",
-      icon: Calendar,
-      path: "/my-schedule",
-    },
-    {
-      label: "My Holidays",
-      icon: Plane,
-      path: "/my-holidays",
-    },
-  ];
+      const myHolidays =
+        allHolidays.filter(
+          (x) =>
+            String(x.user_id) ===
+            String(user.id)
+        ) || [];
 
-  const managerTop = [
-    {
-      label: "Dashboard",
-      icon: LayoutDashboard,
-      path: "/dashboard",
-    },
-    {
-      label: "Employees",
-      icon: Users,
-      path: "/employees",
-    },
-    {
-      label: "Schedules",
-      icon: Calendar,
-      path: "/schedule",
-    },
-    {
-      label: "Holiday Requests",
-      icon: FileText,
-      path: "/holiday-requests",
-    },
-    {
-      label: "Tasks",
-      icon: CheckSquare,
-      path: "/tasks",
-    },
-    {
-      label: "Performance",
-      icon: BarChart3,
-      path: "/performance",
-    },
-    {
-      label: "Clock In / Out",
-      icon: Clock,
-      path: "/work-session",
-    },
-    {
-      label: "Notifications",
-      icon: BellRing,
-      path: "/notifications",
-    },
-    {
-      label: "Profile",
-      icon: User,
-      path: "/profile",
-    },
-  ];
+      const myTasks =
+        allTasks.filter((x) =>
+          x.assigned_users?.includes(
+            user.id
+          )
+        ) || [];
 
-  const managerBottom = [
-    {
-      label: "My Schedule",
-      icon: Calendar,
-      path: "/my-schedule",
-    },
-    {
-      label: "My Holidays",
-      icon: Plane,
-      path: "/my-holidays",
-    },
-  ];
+      const live = mine.find(
+        (x) =>
+          x.clock_in_time &&
+          !x.clock_out_time
+      );
 
-  const adminTop = [
-    {
-      label: "Dashboard",
-      icon: LayoutDashboard,
-      path: "/dashboard",
-    },
-    {
-      label: "Employees",
-      icon: Users,
-      path: "/employees",
-    },
-    {
-      label: "Schedules",
-      icon: Calendar,
-      path: "/schedule",
-    },
-    {
-      label: "Holiday Requests",
-      icon: FileText,
-      path: "/holiday-requests",
-    },
-    {
-      label: "Tasks",
-      icon: CheckSquare,
-      path: "/tasks",
-    },
-    {
-      label: "Reports",
-      icon: BarChart3,
-      path: "/reports",
-    },
-    {
-      label: "Performance",
-      icon: BarChart3,
-      path: "/performance",
-    },
-    {
-      label: "Payroll Export",
-      icon: Wallet,
-      path: "/payroll-export",
-    },
-    {
-      label: "Billing",
-      icon: CreditCard,
-      path: "/billing",
-    },
-    {
-      label: "Clock In / Out",
-      icon: Clock,
-      path: "/work-session",
-    },
-    {
-      label: "Notifications",
-      icon: BellRing,
-      path: "/notifications",
-    },
-    {
-      label: "Profile",
-      icon: User,
-      path: "/profile",
-    },
-  ];
-
-  const adminBottom = [
-    {
-      label: "My Schedule",
-      icon: Calendar,
-      path: "/my-schedule",
-    },
-    {
-      label: "My Holidays",
-      icon: Plane,
-      path: "/my-holidays",
-    },
-  ];
-
-  const { topMenu, bottomMenu } =
-    useMemo(() => {
-      if (role === "admin") {
-        return {
-          topMenu: adminTop,
-          bottomMenu: adminBottom,
-        };
-      }
-
-      if (role === "manager") {
-        return {
-          topMenu: managerTop,
-          bottomMenu: managerBottom,
-        };
-      }
-
-      return {
-        topMenu: employeeTop,
-        bottomMenu: employeeBottom,
-      };
-    }, [role]);
-
-  const allMenu = [
-    ...topMenu,
-    ...bottomMenu,
-  ];
-
-  const pageTitle =
-    allMenu.find(
-      (x) =>
-        x.path ===
-        location.pathname
-    )?.label || "Dashboard";
-
-  function go(path) {
-    navigate(path);
-    setMobileOpen(false);
+      setShifts(mine);
+      setHolidays(myHolidays);
+      setTasks(myTasks);
+      setActiveShift(live || null);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function MenuButton(item) {
-    const Icon = item.icon;
+  if (loading) return <Loading />;
 
-    const active =
-      location.pathname ===
-      item.path;
+  const weekHours = shifts
+    .slice(0, 7)
+    .reduce((sum, row) => {
+      if (!row.clock_in_time)
+        return sum;
 
-    return (
-      <button
-        key={item.path}
-        onClick={() =>
-          go(item.path)
-        }
-        className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl transition ${
-          active
-            ? "bg-indigo-600 text-white"
-            : "text-gray-400 hover:bg-white/5 hover:text-white"
-        }`}
-      >
-        <div className="flex items-center gap-3">
-          <Icon size={18} />
-          <span>
-            {item.label}
-          </span>
-        </div>
+      const start = new Date(
+        row.clock_in_time
+      );
 
-        {active && (
-          <ChevronRight size={16} />
-        )}
-      </button>
-    );
-  }
+      const end = row.clock_out_time
+        ? new Date(
+            row.clock_out_time
+          )
+        : new Date();
 
-  function Sidebar() {
-    return (
-      <div className="h-full flex flex-col bg-[#030712]">
+      return (
+        sum +
+        (end - start) / 3600000
+      );
+    }, 0)
+    .toFixed(1);
 
-        {/* TOP */}
-        <div className="shrink-0">
+  const approved =
+    holidays.filter(
+      (x) => x.status === "approved"
+    ).length;
 
-          <div className="p-6 border-b border-white/5">
-            <div className="flex items-center gap-4">
-
-              <img
-                src="/fieldsync-logo.png"
-                alt="FieldSync"
-                className="h-14 w-auto"
-              />
-
-              <div>
-                <h1 className="font-bold text-white">
-                  {company}
-                </h1>
-
-                <p className="text-xs text-gray-400 capitalize">
-                  {role} portal
-                </p>
-              </div>
-
-            </div>
-          </div>
-
-          <div className="px-4 pt-4">
-            <div className="rounded-2xl bg-indigo-600/10 border border-indigo-500/20 p-4">
-
-              <div className="flex items-center gap-2 text-indigo-300 text-sm">
-                <Crown size={15} />
-
-                {trialActive
-                  ? "Trial Active"
-                  : `${plan} plan`}
-              </div>
-
-              <p className="text-xs text-gray-400 mt-2">
-                All plans include all features
-              </p>
-
-              <button
-                onClick={() =>
-                  go("/billing")
-                }
-                className="mt-3 text-xs bg-indigo-600 px-3 py-2 rounded-xl"
-              >
-                Manage Plan
-              </button>
-
-            </div>
-          </div>
-
-        </div>
-
-        {/* MAIN MENU */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
-
-          {topMenu.map((item) =>
-            MenuButton(item)
-          )}
-
-          <div className="pt-6 pb-2 text-xs text-gray-500 uppercase px-2">
-            Personal
-          </div>
-
-          {bottomMenu.map((item) =>
-            MenuButton(item)
-          )}
-
-        </div>
-
-        {/* FOOTER */}
-        <div className="shrink-0 p-4 border-t border-white/5">
-
-          <div className="rounded-2xl bg-white/5 p-4 mb-4">
-            <p className="font-medium text-sm">
-              {user?.name || "User"}
-            </p>
-
-            <p className="text-xs text-gray-400 capitalize">
-              {role}
-            </p>
-          </div>
-
-          <button
-            onClick={logout}
-            className="w-full py-3 rounded-2xl bg-red-500/20 text-red-300"
-          >
-            Sign Out
-          </button>
-
-        </div>
-
-      </div>
-    );
-  }
+  const pending =
+    tasks.filter(
+      (x) => !x.completed
+    ).length;
 
   return (
-    <div className="h-screen bg-[#020617] text-white flex overflow-hidden">
+    <div className="space-y-5">
 
-      <aside className="hidden lg:block w-80 border-r border-white/5 h-screen">
-        <Sidebar />
-      </aside>
+      <div>
+        <p className="text-sm text-gray-400">
+          Dashboard
+        </p>
 
-      <div className="flex-1 flex flex-col min-w-0 h-screen">
+        <h1 className="text-3xl font-bold mt-1">
+          Good morning, {user.name}
+        </h1>
+      </div>
 
-        {/* HEADER */}
-        <header className="h-16 shrink-0 border-b border-white/5 px-5 flex items-center justify-between bg-[#020617]">
+      <button
+        onClick={() =>
+          navigate("/work-session")
+        }
+        className="w-full py-5 rounded-3xl bg-indigo-600 text-lg font-semibold"
+      >
+        {activeShift
+          ? "Resume Shift"
+          : "Clock In"}
+      </button>
 
-          <div className="flex items-center gap-4">
+      <div className="grid md:grid-cols-3 gap-4">
 
-            <button
-              className="lg:hidden"
-              onClick={() =>
-                setMobileOpen(true)
-              }
-            >
-              <Menu size={18} />
-            </button>
+        <SmallCard
+          title="Hours This Week"
+          value={`${weekHours} hrs`}
+          icon={<Clock3 size={18} />}
+        />
 
-            <div>
-              <h1 className="font-semibold">
-                {pageTitle}
-              </h1>
+        <SmallCard
+          title="Approved Leave"
+          value={approved}
+          icon={
+            <CalendarDays size={18} />
+          }
+        />
 
-              <p className="text-xs text-gray-500">
-                {company}
-              </p>
-            </div>
-
-          </div>
-
-          <div className="flex items-center gap-3">
-
-            <div
-              className="relative"
-              ref={notifRef}
-            >
-              <button
-                onClick={() =>
-                  setNotifOpen(
-                    !notifOpen
-                  )
-                }
-                className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center relative"
-              >
-                <Bell size={17} />
-
-                {unread > 0 && (
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
-                )}
-              </button>
-
-              {notifOpen && (
-                <div className="absolute right-0 mt-3 w-[360px] bg-[#0f172a] border border-white/10 rounded-2xl overflow-hidden z-50">
-
-                  <div className="p-4 border-b border-white/5 flex justify-between">
-                    <h3 className="font-semibold">
-                      Notifications
-                    </h3>
-
-                    <button
-                      onClick={
-                        markAllRead
-                      }
-                      className="text-xs text-indigo-400"
-                    >
-                      Mark all read
-                    </button>
-                  </div>
-
-                  {loadingNotif ? (
-                    <div className="p-6 flex justify-center">
-                      <Loader2
-                        size={18}
-                        className="animate-spin"
-                      />
-                    </div>
-                  ) : (
-                    <div className="max-h-[420px] overflow-y-auto">
-                      {notifications.map(
-                        (item) => (
-                          <button
-                            key={item.id}
-                            onClick={() =>
-                              markRead(
-                                item.id
-                              )
-                            }
-                            className="w-full text-left p-4 border-b border-white/5 hover:bg-white/5"
-                          >
-                            <p className="text-sm font-medium">
-                              {item.title}
-                            </p>
-
-                            <p className="text-xs text-gray-400 mt-1">
-                              {item.message}
-                            </p>
-                          </button>
-                        )
-                      )}
-                    </div>
-                  )}
-
-                </div>
-              )}
-            </div>
-
-            <button
-              onClick={() =>
-                navigate(
-                  "/profile"
-                )
-              }
-              className="w-11 h-11 rounded-xl bg-indigo-600 font-semibold"
-            >
-              {(
-                user?.name || "U"
-              )
-                .charAt(0)
-                .toUpperCase()}
-            </button>
-
-          </div>
-
-        </header>
-
-        {/* MOBILE */}
-        {mobileOpen && (
-          <div className="lg:hidden fixed inset-0 z-50 bg-black/70">
-
-            <div className="w-80 h-full bg-[#030712] relative">
-
-              <button
-                onClick={() =>
-                  setMobileOpen(
-                    false
-                  )
-                }
-                className="absolute top-4 right-4"
-              >
-                <X size={18} />
-              </button>
-
-              <Sidebar />
-
-            </div>
-
-          </div>
-        )}
-
-        {/* PAGE */}
-        <main className="flex-1 overflow-y-auto p-5 min-h-0">
-          <Outlet />
-        </main>
+        <SmallCard
+          title="Pending Tasks"
+          value={pending}
+          icon={
+            <CheckSquare size={18} />
+          }
+        />
 
       </div>
 
+    </div>
+  );
+}
+
+/* ================================================= */
+/* ADMIN DASHBOARD */
+/* ================================================= */
+
+function AdminDashboard({ user }) {
+  const [loading, setLoading] =
+    useState(true);
+
+  const [staff, setStaff] =
+    useState([]);
+
+  const [live, setLive] =
+    useState([]);
+
+  const [leave, setLeave] =
+    useState([]);
+
+  const [plan, setPlan] =
+    useState("starter");
+
+  const [shifts, setShifts] =
+    useState([]);
+
+  const [schedules, setSchedules] =
+    useState([]);
+
+  useEffect(() => {
+    load();
+
+    const t = setInterval(load, 15000);
+
+    return () => clearInterval(t);
+  }, []);
+
+  async function load() {
+    try {
+      const [
+        users,
+        active,
+        holidays,
+        billing,
+        allShifts,
+        roster,
+      ] = await Promise.all([
+        userAPI.getAll(),
+        shiftAPI.getActiveAll(),
+        holidayAPI.getAll(),
+        billingAPI.getStatus(),
+        shiftAPI.getAll(),
+        scheduleAPI.getAll(),
+      ]);
+
+      setStaff(users || []);
+      setLive(active || []);
+      setLeave(holidays || []);
+      setPlan(
+        billing?.plan || "starter"
+      );
+      setShifts(allShifts || []);
+      setSchedules(roster || []);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading) return <Loading />;
+
+  const aiAlerts =
+    buildAIAlerts(shifts, staff);
+
+  const todayWages =
+    estimateWages(shifts, staff, 1);
+
+  const weekWages =
+    estimateWages(shifts, staff, 7);
+
+  return (
+    <div className="space-y-6">
+
+      <div>
+        <p className="text-sm text-gray-400">
+          Dashboard
+        </p>
+
+        <h1 className="text-4xl font-bold mt-1">
+          Good morning, {user.name}
+        </h1>
+      </div>
+
+      <div className="grid md:grid-cols-5 gap-4">
+
+        <Card
+          title="Employees"
+          value={staff.length}
+          sub="Total"
+        />
+
+        <Card
+          title="Clocked In"
+          value={live.length}
+          sub="Now"
+        />
+
+        <Card
+          title="Leave"
+          value={
+            leave.filter(
+              (x) =>
+                x.status ===
+                "approved"
+            ).length
+          }
+          sub="Approved"
+        />
+
+        <Card
+          title="Plan"
+          value={plan}
+          sub="Subscription"
+        />
+
+        <Card
+          title="AI Alerts"
+          value={aiAlerts.length}
+          sub="Detected"
+        />
+
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+
+        <Panel title="Live Attendance">
+          <AttendanceTable
+            staff={staff}
+            live={live}
+            schedules={schedules}
+          />
+        </Panel>
+
+        <Panel title="Live Staff Map">
+          <LiveMap live={live} />
+        </Panel>
+
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+
+        <MoneyCard
+          title="Today's Wages"
+          value={todayWages}
+        />
+
+        <MoneyCard
+          title="Weekly Wages"
+          value={weekWages}
+        />
+
+      </div>
+
+    </div>
+  );
+}
+
+/* ================================================= */
+
+function AttendanceTable({
+  staff,
+  live,
+  schedules,
+}) {
+  return (
+    <div className="space-y-2">
+      {staff.slice(0, 8).map((emp) => {
+        const active = live.find(
+          (x) =>
+            String(x.user_id) ===
+            String(emp.id)
+        );
+
+        const sched =
+          schedules.find(
+            (x) =>
+              String(x.user_id) ===
+              String(emp.id)
+          );
+
+        let status = "Off";
+
+        if (active && sched)
+          status = "On Shift";
+
+        if (active && !sched)
+          status = "Unscheduled";
+
+        if (!active && sched)
+          status = "Absent";
+
+        return (
+          <div
+            key={emp.id}
+            className="grid grid-cols-4 gap-2 text-sm bg-white/5 rounded-xl p-3"
+          >
+            <span>{emp.name}</span>
+            <span>
+              {active?.clock_in_time
+                ?.split("T")[1]
+                ?.slice(0, 5) ||
+                "--"}
+            </span>
+            <span>
+              {sched?.start_time ||
+                "--"}
+            </span>
+            <span className="text-indigo-300">
+              {status}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function estimateWages(
+  shifts,
+  staff,
+  days
+) {
+  let total = 0;
+
+  shifts.forEach((row) => {
+    if (!row.clock_in_time)
+      return;
+
+    const start = new Date(
+      row.clock_in_time
+    );
+
+    const end =
+      row.clock_out_time
+        ? new Date(
+            row.clock_out_time
+          )
+        : new Date();
+
+    const emp = staff.find(
+      (x) =>
+        String(x.id) ===
+        String(row.user_id)
+    );
+
+    const rate = Number(
+      emp?.hourly_rate || 0
+    );
+
+    total +=
+      ((end - start) /
+        3600000) *
+      rate;
+  });
+
+  return total.toFixed(2);
+}
+
+function buildAIAlerts(
+  shifts,
+  staff
+) {
+  const alerts = [];
+
+  if (
+    shifts.filter(
+      (x) => !x.clock_out_time
+    ).length > 5
+  ) {
+    alerts.push(
+      "Multiple open shifts detected."
+    );
+  }
+
+  if (
+    staff.filter(
+      (x) => !x.hourly_rate
+    ).length
+  ) {
+    alerts.push(
+      "Some staff missing wage rates."
+    );
+  }
+
+  return alerts;
+}
+
+function LiveMap({ live }) {
+  const points = live.filter(
+    (x) =>
+      x.latitude &&
+      x.longitude
+  );
+
+  const center = points.length
+    ? [
+        Number(points[0].latitude),
+        Number(points[0].longitude),
+      ]
+    : [51.5072, -0.1276];
+
+  return (
+    <div className="h-[390px] rounded-2xl overflow-hidden">
+      <MapContainer
+        center={center}
+        zoom={11}
+        style={{
+          height: "100%",
+          width: "100%",
+        }}
+      >
+        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+
+        {points.map((row) => (
+          <Marker
+            key={row.id}
+            position={[
+              Number(row.latitude),
+              Number(row.longitude),
+            ]}
+          >
+            <Popup>
+              {row.users?.name ||
+                "Staff"}
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
+    </div>
+  );
+}
+
+/* ================================================= */
+
+function SmallCard({
+  title,
+  value,
+  icon,
+}) {
+  return (
+    <div className="rounded-2xl bg-white/5 p-5">
+      <p>{title}</p>
+      <h2 className="text-2xl font-bold mt-3">
+        {value}
+      </h2>
+    </div>
+  );
+}
+
+function Card({
+  title,
+  value,
+  sub,
+}) {
+  return (
+    <div className="rounded-3xl bg-white/5 p-5">
+      <p>{title}</p>
+      <h2 className="text-4xl font-bold mt-3">
+        {value}
+      </h2>
+      <p>{sub}</p>
+    </div>
+  );
+}
+
+function MoneyCard({
+  title,
+  value,
+}) {
+  return (
+    <div className="rounded-3xl bg-white/5 p-6">
+      <p>{title}</p>
+      <h2 className="text-4xl font-bold mt-4">
+        £{value}
+      </h2>
+    </div>
+  );
+}
+
+function Panel({
+  title,
+  children,
+}) {
+  return (
+    <div className="rounded-3xl bg-white/5 p-6">
+      <h2 className="font-semibold text-xl mb-5">
+        {title}
+      </h2>
+      {children}
+    </div>
+  );
+}
+
+function Loading() {
+  return (
+    <div className="p-10 flex gap-2 text-gray-400">
+      <Loader2
+        size={16}
+        className="animate-spin"
+      />
+      Loading dashboard...
     </div>
   );
 }
