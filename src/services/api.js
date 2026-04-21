@@ -476,6 +476,28 @@ clockIn: async (payload = {}) => {
     payload.location_id ||
     locations?.[0]?.id;
 
+  const position =
+    await new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) =>
+          resolve({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          }),
+        () =>
+          resolve({
+            lat: null,
+            lng: null,
+          }),
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+        }
+      );
+    });
+
+  const now = new Date();
+
   const { error } = await supabase
     .from("shifts")
     .insert({
@@ -483,7 +505,17 @@ clockIn: async (payload = {}) => {
       user_id: user.id,
       company_id: user.company_id,
       location_id: defaultLocationId,
-      clock_in_time: new Date().toISOString(),
+
+      /* FIXED TIME */
+      clock_in_time: now.toLocaleString(
+        "sv-SE"
+      ).replace(" ", "T"),
+
+      /* FIXED MAP PIN */
+      live_latitude: position.lat,
+      live_longitude: position.lng,
+      last_ping_at:
+        now.toISOString(),
     });
 
   if (error) throw error;
