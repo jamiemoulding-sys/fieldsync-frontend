@@ -365,27 +365,18 @@ export function useAuth() {
       [navigate]
     );
 
-  const logout =
-    useCallback(
-      async () => {
-        await supabase.auth.signOut();
+const logout =
+  useCallback(async () => {
+    try {
+      await supabase.auth.signOut({
+        scope: "global",
+      });
+    } catch (e) {}
 
-        setUser(null);
+    setUser(null);
 
-        navigate(
-          "/login"
-        );
-      },
-      [navigate]
-    );
-
-  const reloadUser =
-    useCallback(
-      async () => {
-        await loadProfile();
-      },
-      []
-    );
+    window.location.href = "/login";
+  }, []);
 
   /* ===================================================== */
 

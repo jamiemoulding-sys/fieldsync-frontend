@@ -506,16 +506,15 @@ clockIn: async (payload = {}) => {
       company_id: user.company_id,
       location_id: defaultLocationId,
 
-      /* FIXED TIME */
-      clock_in_time: now.toLocaleString(
-        "sv-SE"
-      ).replace(" ", "T"),
+      /* FIXED */
+      clock_in_time: now.toISOString(),
 
-      /* FIXED MAP PIN */
+      /* write BOTH old + new fields */
+      latitude: position.lat,
+      longitude: position.lng,
       live_latitude: position.lat,
       live_longitude: position.lng,
-      last_ping_at:
-        now.toISOString(),
+      last_ping_at: now.toISOString(),
     });
 
   if (error) throw error;
