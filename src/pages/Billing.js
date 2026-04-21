@@ -193,59 +193,66 @@ export default function Billing() {
         )
       : 0;
 
-  const plans = [
-    {
-      key: "starter",
-      title: "Starter",
-      price: "£49",
-      staff: "Up to 5 staff",
-      extra:
-        "+£7 per extra staff",
-      icon: <Users size={18} />,
-      features: [
-        "Scheduling",
-        "Clock in/out",
-        "Holiday requests",
-        "Timesheets",
-        "Basic reports",
-      ],
-    },
-    {
-      key: "pro",
-      title: "Pro",
-      price: "£89",
-      staff: "Up to 15 staff",
-      extra:
-        "+£6 per extra staff",
-      icon: <Crown size={18} />,
-      featured: true,
-      features: [
-        "Everything in Starter",
-        "Performance tools",
-        "Advanced reports",
-        "No-show visibility",
-        "Priority support",
-      ],
-    },
-    {
-      key: "business",
-      title: "Business",
-      price: "£149",
-      staff: "Up to 30 staff",
-      extra:
-        "+£5 per extra staff",
-      icon: (
-        <Building2 size={18} />
-      ),
-      features: [
-        "Everything in Pro",
-        "Multi-location",
-        "Best value scale",
-        "Premium support",
-        "Deep analytics",
-      ],
-    },
-  ];
+// src/pages/Billing.js
+// ONLY PLAN CONTENT UPDATED
+// ✅ All accounts now get full access
+// ✅ Only difference = included employee count
+// ✅ Extra staff charged per head
+// ✅ Everything else untouched
+
+const plans = [
+  {
+    key: "starter",
+    title: "Starter",
+    price: "£49",
+    staff: "Up to 5 staff",
+    extra: "+£7 per extra staff",
+    icon: <Users size={18} />,
+    features: [
+      "Full platform access",
+      "Unlimited scheduling",
+      "Clock in/out + GPS",
+      "Holiday requests",
+      "Reports + analytics",
+      "All premium tools included",
+    ],
+  },
+
+  {
+    key: "pro",
+    title: "Pro",
+    price: "£89",
+    staff: "Up to 15 staff",
+    extra: "+£6 per extra staff",
+    icon: <Crown size={18} />,
+    featured: true,
+    features: [
+      "Full platform access",
+      "Unlimited scheduling",
+      "Clock in/out + GPS",
+      "Holiday requests",
+      "Reports + analytics",
+      "Lower extra staff rate",
+    ],
+  },
+
+  {
+    key: "business",
+    title: "Business",
+    price: "£149",
+    staff: "Up to 30 staff",
+    extra: "+£5 per extra staff",
+    icon: <Building2 size={18} />,
+    features: [
+      "Full platform access",
+      "Unlimited scheduling",
+      "Clock in/out + GPS",
+      "Holiday requests",
+      "Reports + analytics",
+      "Best value extra staff rate",
+    ],
+  },
+];
 
   if (loading) {
     return (
