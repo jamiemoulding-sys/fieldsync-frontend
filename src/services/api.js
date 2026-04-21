@@ -503,7 +503,10 @@ clockIn: async (payload = {}) => {
       user_id: user.id,
       company_id: user.company_id,
       location_id: defaultLocationId,
-      clock_in_time: new Date().toISOString(),
+      clock_in_time: new Date(
+      Date.now() -
+      new Date().getTimezoneOffset() * 60000
+      ).toISOString(),
       latitude: position.lat,
       longitude: position.lng,
     });
@@ -532,8 +535,10 @@ clockIn: async (payload = {}) => {
     const { error } = await supabase
       .from("shifts")
       .update({
-        clock_out_time:
-          time || new Date().toISOString(),
+        clock_out_time: new Date(
+        Date.now() -
+        new Date().getTimezoneOffset() * 60000
+        ).toISOString(),
       })
       .eq("id", shiftId);
 

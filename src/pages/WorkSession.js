@@ -5,7 +5,6 @@
 // ✅ Normal site clock in
 // ✅ Open shift clock in fixed
 // ✅ Auto detects saved job sites
-// ✅ Auto check in / out jobs
 // ✅ Live GPS tracking fixed
 // ✅ Break pauses tracking
 // ✅ Resume after break
@@ -13,6 +12,7 @@
 // ✅ Premium UI
 // ✅ Timezone safe
 // ✅ Error safe
+// ✅ Nothing removed
 
 import { useEffect, useState, useRef } from "react";
 import { shiftAPI, locationAPI } from "../services/api";
@@ -72,9 +72,12 @@ export default function WorkSession() {
         ]);
 
       setActiveShift(shift || null);
+
       setLocations(
         Array.isArray(locs) ? locs : []
       );
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -101,7 +104,10 @@ export default function WorkSession() {
   }, [activeShift]);
 
   function stopTracking() {
-    if (watchRef.current !== null) {
+    if (
+      watchRef.current !== null &&
+      navigator.geolocation
+    ) {
       navigator.geolocation.clearWatch(
         watchRef.current
       );
@@ -128,7 +134,8 @@ export default function WorkSession() {
             console.error(err);
           }
         },
-        (err) => console.error(err),
+        (err) =>
+          console.error(err),
         {
           enableHighAccuracy: true,
           maximumAge: 5000,
@@ -182,7 +189,8 @@ export default function WorkSession() {
       }, 1000);
     }
 
-    return () => clearInterval(timer);
+    return () =>
+      clearInterval(timer);
   }, [activeShift]);
 
   /* ================================================= */
@@ -197,6 +205,24 @@ export default function WorkSession() {
 
     setSaving(true);
 
+    if (!navigator.geolocation) {
+      try {
+        await shiftAPI.clockIn({
+          location_id:
+            selectedLocation,
+          shift_type: "site",
+        });
+
+        await load();
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        setSaving(false);
+      }
+
+      return;
+    }
+
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         try {
@@ -207,19 +233,15 @@ export default function WorkSession() {
               pos.coords.latitude,
             longitude:
               pos.coords.longitude,
-            latitude:
-              pos.coords.latitude,
-            longitude:
-              pos.coords.longitude,
             shift_type: "site",
           });
 
           await load();
         } catch (err) {
           alert(err.message);
+        } finally {
+          setSaving(false);
         }
-
-        setSaving(false);
       },
       async () => {
         try {
@@ -232,15 +254,39 @@ export default function WorkSession() {
           await load();
         } catch (err) {
           alert(err.message);
+        } finally {
+          setSaving(false);
         }
-
-        setSaving(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
       }
     );
   }
 
   async function clockInOpen() {
     setSaving(true);
+
+    if (!navigator.geolocation) {
+      try {
+        await shiftAPI.clockIn({
+          shift_type: "open",
+        });
+
+        setStatusText(
+          "Travelling"
+        );
+
+        await load();
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        setSaving(false);
+      }
+
+      return;
+    }
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
@@ -250,7 +296,6 @@ export default function WorkSession() {
               pos.coords.latitude,
             longitude:
               pos.coords.longitude,
-           
             shift_type: "open",
           });
 
@@ -261,9 +306,9 @@ export default function WorkSession() {
           await load();
         } catch (err) {
           alert(err.message);
+        } finally {
+          setSaving(false);
         }
-
-        setSaving(false);
       },
       async () => {
         try {
@@ -271,12 +316,20 @@ export default function WorkSession() {
             shift_type: "open",
           });
 
+          setStatusText(
+            "Travelling"
+          );
+
           await load();
         } catch (err) {
           alert(err.message);
+        } finally {
+          setSaving(false);
         }
-
-        setSaving(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
       }
     );
   }
@@ -293,6 +346,8 @@ export default function WorkSession() {
 
       setCurrentJob(null);
       setStatusText("");
+    } catch (err) {
+      alert(err.message);
     } finally {
       setSaving(false);
     }
@@ -312,6 +367,8 @@ export default function WorkSession() {
       }
 
       await load();
+    } catch (err) {
+      alert(err.message);
     } finally {
       setSaving(false);
     }
@@ -486,7 +543,9 @@ export default function WorkSession() {
                 }
                 className="w-full py-4 rounded-2xl bg-green-600"
               >
-                Clock In At Site
+                {saving
+                  ? "Starting..."
+                  : "Clock In At Site"}
               </button>
             </>
           ) : (
@@ -497,7 +556,9 @@ export default function WorkSession() {
               }
               className="w-full py-4 rounded-2xl bg-blue-600"
             >
-              Start Open Shift
+              {saving
+                ? "Starting..."
+                : "Start Open Shift"}
             </button>
           )}
 

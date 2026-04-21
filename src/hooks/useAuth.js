@@ -365,24 +365,30 @@ export function useAuth() {
       [navigate]
     );
 
-const logout = useCallback(async () => {
-  try {
-    await supabase.auth.signOut({
-      scope: "global",
-    });
-  } catch (err) {
-    console.error(err);
-  }
+const logout = useCallback(
+  async () => {
+    try {
+      setLoading(true);
 
-  globalUser = null;
-  globalLoading = false;
-  emit();
+      await supabase.auth.signOut();
 
-  localStorage.clear();
-  sessionStorage.clear();
+      setUser(null);
 
-  window.location.replace("/login");
-}, []);
+      globalUser = null;
+      globalLoading = false;
+      emit();
+
+      navigate("/login", {
+        replace: true,
+      });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  },
+  [navigate]
+);
 
   /* ===================================================== */
 
