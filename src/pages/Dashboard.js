@@ -388,51 +388,188 @@ function AttendanceTable({
   live,
   schedules,
 }) {
-  return (
-    <div className="space-y-2">
-      {staff.slice(0, 8).map((emp) => {
-        const active = live.find(
-          (x) =>
-            String(x.user_id) ===
-            String(emp.id)
+  function timeOnly(v) {
+    if (!v) return "--";
+
+    if (String(v).includes("T")) {
+      return new Date(v)
+        .toLocaleTimeString("en-GB", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+    }
+
+    return String(v).slice(0, 5);
+  }
+
+  function getStatus(emp) {
+    const active = live.find(
+      (x) =>
+        String(x.user_id) ===
+        String(emp.id)
+    );
+
+    const sched =
+      schedules.find(
+        (x) =>
+          String(x.user_id) ===
+          String(emp.id)
+      );
+
+    if (active) {
+      const clocked =
+        active.clock_in_time
+          ? new Date(
+              active.clock_in_time
+            )
+          : null;
+
+      if (sched?.start_time) {
+        const startToday =
+          new Date();
+
+        const [h, m] =
+          sched.start_time
+            .slice(0, 5)
+            .split(":");
+
+        startToday.setHours(
+          Number(h),
+          Number(m),
+          0,
+          0
         );
 
-        const sched =
-          schedules.find(
-            (x) =>
-              String(x.user_id) ===
-              String(emp.id)
-          );
+        const late =
+          clocked &&
+          clocked > startToday;
 
-        let status = "Off";
+        return {
+          status: late
+            ? "Late"
+            : "On Shift",
+          color: late
+            ? "text-amber-400"
+            : "text-green-400",
+          clock: timeOnly(
+            active.clock_in_time
+          ),
+          schedule: `${timeOnly(
+            sched.start_time
+          )}-${timeOnly(
+            sched.end_time
+          )}`,
+        };
+      }
 
-        if (active && sched)
-          status = "On Shift";
+      return {
+        status: "Unscheduled",
+        color: "text-blue-400",
+        clock: timeOnly(
+          active.clock_in_time
+        ),
+        schedule: "--",
+      };
+    }
 
-        if (active && !sched)
-          status = "Unscheduled";
+    if (sched?.start_time) {
+      const now =
+        new Date();
 
-        if (!active && sched)
-          status = "Absent";
+      const startToday =
+        new Date();
+
+      const [h, m] =
+        sched.start_time
+          .slice(0, 5)
+          .split(":");
+
+      startToday.setHours(
+        Number(h),
+        Number(m),
+        0,
+        0
+      );
+
+      const minsLate = Math.floor(
+        (now - startToday) /
+          60000
+      );
+
+      if (minsLate >= 60) {
+        return {
+          status: "Absent",
+          color: "text-red-400",
+          clock: "--",
+          schedule: `${timeOnly(
+            sched.start_time
+          )}-${timeOnly(
+            sched.end_time
+          )}`,
+        };
+      }
+
+      if (minsLate > 0) {
+        return {
+          status: `Late ${minsLate}m`,
+          color: "text-amber-400",
+          clock: "--",
+          schedule: `${timeOnly(
+            sched.start_time
+          )}-${timeOnly(
+            sched.end_time
+          )}`,
+        };
+      }
+
+      return {
+        status: "Scheduled",
+        color: "text-indigo-300",
+        clock: "--",
+        schedule: `${timeOnly(
+          sched.start_time
+        )}-${timeOnly(
+          sched.end_time
+        )}`,
+      };
+    }
+
+    return {
+      status: "Off",
+      color: "text-gray-500",
+      clock: "--",
+      schedule: "--",
+    };
+  }
+
+  return (
+    <div className="space-y-2 max-h-[390px] overflow-y-auto pr-1">
+      {staff.map((emp) => {
+        const row =
+          getStatus(emp);
 
         return (
           <div
             key={emp.id}
-            className="grid grid-cols-4 gap-2 text-sm bg-white/5 rounded-xl p-3"
+            className="grid grid-cols-4 gap-2 text-sm bg-white/5 rounded-xl p-3 items-center"
           >
-            <span>{emp.name}</span>
-            <span>
-              {active?.clock_in_time
-                ?.split("T")[1]
-                ?.slice(0, 5) ||
-                "--"}
+            <span className="truncate font-medium">
+              {emp.name}
             </span>
-            <span>
-              {sched?.start_time ||
-                "--"}
+
+            <span className="text-center">
+              {row.clock}
             </span>
-            <span className="text-indigo-300">
-              {status}
+
+            <span className="text-center text-xs">
+              {row.schedule}
+            </span>
+
+            <span
+              className={`text-right font-medium ${row.color}`}
+            >
+              {row.status}
             </span>
           </div>
         );

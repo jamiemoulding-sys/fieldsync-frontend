@@ -1,11 +1,14 @@
 // src/layout/AppLayout.js
-// FULL ADMIN SIDEBAR FIXED VERSION
-// ✅ Admin management tools moved to top
-// ✅ My Schedule + My Holidays moved to bottom
-// ✅ No duplicate sidebar
+// FULL APPLAYOUT CLEAN FIX
+// ✅ Correct admin sidebar order
+// ✅ Schedules fixed (/schedule)
+// ✅ Management tools at top
+// ✅ My Schedule + My Holidays lower section
+// ✅ Notifications restored
+// ✅ Mobile menu fixed
 // ✅ Logout kept
-// ✅ Notifications kept
-// ✅ Mobile kept
+// ✅ No duplicate sidebar
+// ✅ No dead links
 // ✅ Nothing removed
 
 import {
@@ -79,6 +82,10 @@ export default function AppLayout() {
   const company =
     user?.companyName ||
     "FieldSync";
+
+  /* ================================================= */
+  /* NOTIFICATIONS */
+  /* ================================================= */
 
   useEffect(() => {
     if (!user) return;
@@ -168,14 +175,14 @@ export default function AppLayout() {
       path: "/timesheet",
     },
     {
-      label: "Locations",
-      icon: MapPin,
-      path: "/my-locations",
-    },
-    {
       label: "Tasks",
       icon: CheckSquare,
       path: "/tasks",
+    },
+    {
+      label: "Locations",
+      icon: MapPin,
+      path: "/my-locations",
     },
     {
       label: "Route Replay",
@@ -186,6 +193,16 @@ export default function AppLayout() {
       label: "Notifications",
       icon: BellRing,
       path: "/notifications",
+    },
+    {
+      label: "My Schedule",
+      icon: Calendar,
+      path: "/my-schedule",
+    },
+    {
+      label: "My Holidays",
+      icon: Plane,
+      path: "/my-holidays",
     },
     {
       label: "Profile",
@@ -208,7 +225,7 @@ export default function AppLayout() {
     {
       label: "Schedules",
       icon: Calendar,
-      path: "/schedules",
+      path: "/schedule",
     },
     {
       label: "Holiday Requests",
@@ -241,6 +258,16 @@ export default function AppLayout() {
       path: "/my-locations",
     },
     {
+      label: "Route Replay",
+      icon: RouteIcon,
+      path: "/route-replay",
+    },
+    {
+      label: "Notifications",
+      icon: BellRing,
+      path: "/notifications",
+    },
+    {
       label: "My Schedule",
       icon: Calendar,
       path: "/my-schedule",
@@ -271,7 +298,7 @@ export default function AppLayout() {
     {
       label: "Schedules",
       icon: Calendar,
-      path: "/schedules",
+      path: "/schedule",
     },
     {
       label: "Holiday Requests",
@@ -319,6 +346,16 @@ export default function AppLayout() {
       path: "/my-locations",
     },
     {
+      label: "Route Replay",
+      icon: RouteIcon,
+      path: "/route-replay",
+    },
+    {
+      label: "Notifications",
+      icon: BellRing,
+      path: "/notifications",
+    },
+    {
       label: "My Schedule",
       icon: Calendar,
       path: "/my-schedule",
@@ -357,10 +394,15 @@ export default function AppLayout() {
     setMobileOpen(false);
   }
 
+  /* ================================================= */
+  /* SIDEBAR */
+  /* ================================================= */
+
   function Sidebar() {
     return (
       <div className="h-full flex flex-col bg-[#030712]">
 
+        {/* TOP */}
         <div className="shrink-0">
 
           <div className="p-6 border-b border-white/5">
@@ -390,6 +432,7 @@ export default function AppLayout() {
 
               <div className="flex items-center gap-2 text-indigo-300 text-sm">
                 <Crown size={15} />
+
                 {trialActive
                   ? "Trial Active"
                   : `${plan} plan`}
@@ -409,6 +452,7 @@ export default function AppLayout() {
 
         </div>
 
+        {/* MENU */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
 
           {menu.map((item) => {
@@ -447,6 +491,7 @@ export default function AppLayout() {
 
         </div>
 
+        {/* BOTTOM */}
         <div className="shrink-0 p-4 border-t border-white/5">
 
           <div className="rounded-2xl bg-white/5 p-4 mb-4">
@@ -472,15 +517,22 @@ export default function AppLayout() {
     );
   }
 
+  /* ================================================= */
+  /* MAIN */
+  /* ================================================= */
+
   return (
     <div className="h-screen bg-[#020617] text-white flex overflow-hidden">
 
+      {/* DESKTOP */}
       <aside className="hidden lg:block w-80 border-r border-white/5 h-screen">
         <Sidebar />
       </aside>
 
+      {/* CONTENT */}
       <div className="flex-1 flex flex-col min-w-0 h-screen">
 
+        {/* HEADER */}
         <header className="h-16 shrink-0 border-b border-white/5 px-5 flex items-center justify-between bg-[#020617]">
 
           <div className="flex items-center gap-4">
@@ -506,21 +558,103 @@ export default function AppLayout() {
 
           </div>
 
-          <button
-            onClick={() =>
-              navigate("/profile")
-            }
-            className="w-11 h-11 rounded-xl bg-indigo-600 font-semibold"
-          >
-            {(
-              user?.name || "U"
-            )
-              .charAt(0)
-              .toUpperCase()}
-          </button>
+          <div className="flex items-center gap-3">
+
+            {/* NOTIFICATIONS */}
+            <div
+              className="relative"
+              ref={notifRef}
+            >
+              <button
+                onClick={() =>
+                  setNotifOpen(
+                    !notifOpen
+                  )
+                }
+                className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center relative"
+              >
+                <Bell size={17} />
+
+                {unread > 0 && (
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
+                )}
+              </button>
+
+              {notifOpen && (
+                <div className="absolute right-0 mt-3 w-[360px] bg-[#0f172a] border border-white/10 rounded-2xl overflow-hidden z-50">
+
+                  <div className="p-4 border-b border-white/5 flex justify-between">
+                    <h3 className="font-semibold">
+                      Notifications
+                    </h3>
+
+                    <button
+                      onClick={
+                        markAllRead
+                      }
+                      className="text-xs text-indigo-400"
+                    >
+                      Mark all read
+                    </button>
+                  </div>
+
+                  {loadingNotif ? (
+                    <div className="p-6 flex justify-center">
+                      <Loader2
+                        size={18}
+                        className="animate-spin"
+                      />
+                    </div>
+                  ) : (
+                    <div className="max-h-[420px] overflow-y-auto">
+                      {notifications.map(
+                        (item) => (
+                          <button
+                            key={item.id}
+                            onClick={() =>
+                              markRead(
+                                item.id
+                              )
+                            }
+                            className="w-full text-left p-4 border-b border-white/5 hover:bg-white/5"
+                          >
+                            <p className="text-sm font-medium">
+                              {item.title}
+                            </p>
+
+                            <p className="text-xs text-gray-400 mt-1">
+                              {item.message}
+                            </p>
+                          </button>
+                        )
+                      )}
+                    </div>
+                  )}
+
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={() =>
+                navigate(
+                  "/profile"
+                )
+              }
+              className="w-11 h-11 rounded-xl bg-indigo-600 font-semibold"
+            >
+              {(
+                user?.name || "U"
+              )
+                .charAt(0)
+                .toUpperCase()}
+            </button>
+
+          </div>
 
         </header>
 
+        {/* MOBILE */}
         {mobileOpen && (
           <div className="lg:hidden fixed inset-0 z-50 bg-black/70">
 
@@ -528,7 +662,9 @@ export default function AppLayout() {
 
               <button
                 onClick={() =>
-                  setMobileOpen(false)
+                  setMobileOpen(
+                    false
+                  )
                 }
                 className="absolute top-4 right-4"
               >
@@ -542,6 +678,7 @@ export default function AppLayout() {
           </div>
         )}
 
+        {/* PAGE */}
         <main className="flex-1 overflow-y-auto p-5 min-h-0">
           <Outlet />
         </main>
