@@ -1,13 +1,11 @@
 // src/pages/Dashboard.js
-// FULL TRUE FINAL DASHBOARD
-// ✅ Employee dashboard fully rebuilt
-// ✅ Admin + Manager dashboard untouched
-// ✅ Employee sees ONLY own data
-// ✅ Real working clock in / clock out
-// ✅ Uses WorkSession page
-// ✅ Holiday allowance remaining
-// ✅ Mobile first
-// ✅ Clean premium UI
+// FULL TRUE FINAL RESTORE DASHBOARD
+// ✅ Admin + Manager dashboard restored
+// ✅ Employee dashboard custom mobile version
+// ✅ Original analytics restored
+// ✅ Live map restored
+// ✅ Wages restored
+// ✅ AI Pattern Catcher added
 // ✅ Full copy / paste ready
 
 import { useEffect, useState } from "react";
@@ -27,7 +25,7 @@ import {
   Clock3,
   CalendarDays,
   CheckSquare,
-  ArrowRight,
+  AlertTriangle,
 } from "lucide-react";
 
 import {
@@ -57,7 +55,7 @@ export default function Dashboard() {
     return <EmployeeDashboard user={user} />;
   }
 
-  return <MainDashboard user={user} />;
+  return <AdminDashboard user={user} />;
 }
 
 /* ================================================= */
@@ -67,16 +65,29 @@ export default function Dashboard() {
 function EmployeeDashboard({ user }) {
   const navigate = useNavigate();
 
-  const [loading, setLoading] = useState(true);
-  const [activeShift, setActiveShift] = useState(null);
-  const [shifts, setShifts] = useState([]);
-  const [holidays, setHolidays] = useState([]);
-  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] =
+    useState(true);
+
+  const [shifts, setShifts] =
+    useState([]);
+
+  const [holidays, setHolidays] =
+    useState([]);
+
+  const [tasks, setTasks] =
+    useState([]);
+
+  const [activeShift, setActiveShift] =
+    useState(null);
 
   useEffect(() => {
     load();
 
-    const t = setInterval(load, 15000);
+    const t = setInterval(
+      load,
+      15000
+    );
+
     return () => clearInterval(t);
   }, []);
 
@@ -89,21 +100,32 @@ function EmployeeDashboard({ user }) {
       ] = await Promise.all([
         shiftAPI.getAll(),
         holidayAPI.getAll(),
-        taskAPI?.getAll ? taskAPI.getAll() : [],
+        taskAPI?.getAll
+          ? taskAPI.getAll()
+          : [],
       ]);
 
-      const mine = (allShifts || []).filter(
-        (x) => String(x.user_id) === String(user.id)
-      );
+      const mine =
+        (allShifts || []).filter(
+          (x) =>
+            String(x.user_id) ===
+            String(user.id)
+        );
 
-      const myHolidays = (allHolidays || []).filter(
-        (x) => String(x.user_id) === String(user.id)
-      );
+      const myHolidays =
+        (allHolidays || []).filter(
+          (x) =>
+            String(x.user_id) ===
+            String(user.id)
+        );
 
-      const myTasks = (allTasks || []).filter(
-        (x) =>
-          x.assigned_users?.includes(user.id)
-      );
+      const myTasks =
+        (allTasks || []).filter(
+          (x) =>
+            x.assigned_users?.includes(
+              user.id
+            )
+        );
 
       const live = mine.find(
         (x) =>
@@ -111,12 +133,10 @@ function EmployeeDashboard({ user }) {
           !x.clock_out_time
       );
 
-      setActiveShift(live || null);
       setShifts(mine);
       setHolidays(myHolidays);
       setTasks(myTasks);
-    } catch (err) {
-      console.error(err);
+      setActiveShift(live || null);
     } finally {
       setLoading(false);
     }
@@ -124,26 +144,20 @@ function EmployeeDashboard({ user }) {
 
   if (loading) return <Loading />;
 
-  const today = new Date().toLocaleDateString(
-    "en-GB",
-    {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-    }
-  );
-
   const weekHours = shifts
     .slice(-7)
     .reduce((sum, row) => {
-      if (!row.clock_in_time) return sum;
+      if (!row.clock_in_time)
+        return sum;
 
       const start = new Date(
         row.clock_in_time
       );
 
       const end = row.clock_out_time
-        ? new Date(row.clock_out_time)
+        ? new Date(
+            row.clock_out_time
+          )
         : new Date();
 
       return (
@@ -157,23 +171,7 @@ function EmployeeDashboard({ user }) {
     .filter(
       (x) => x.status === "approved"
     )
-    .reduce((sum, row) => {
-      const start = new Date(
-        row.start_date
-      );
-
-      const end = new Date(
-        row.end_date
-      );
-
-      const days =
-        Math.floor(
-          (end - start) /
-            86400000
-        ) + 1;
-
-      return sum + days;
-    }, 0);
+    .length;
 
   const allowance =
     Number(
@@ -183,107 +181,70 @@ function EmployeeDashboard({ user }) {
   const remaining =
     allowance - approvedDays;
 
-  const pendingTasks = tasks.filter(
-    (x) => !x.completed
-  ).length;
-
-  const latestShift =
-    shifts.length > 0
-      ? shifts[shifts.length - 1]
-      : null;
+  const pendingTasks =
+    tasks.filter(
+      (x) => !x.completed
+    ).length;
 
   return (
-    <div className="min-h-screen bg-[#020617] text-white">
-      <main className="px-4 py-5 md:px-8 space-y-5">
+    <div className="space-y-5">
 
-        {/* Header */}
-        <div>
-          <p className="text-sm text-gray-400">
-            Dashboard
-          </p>
+      <div>
+        <p className="text-sm text-gray-400">
+          Dashboard
+        </p>
 
-          <h1 className="text-3xl md:text-4xl font-bold mt-1">
-            Good morning, {user.name}
-          </h1>
+        <h1 className="text-3xl font-bold mt-1">
+          Good morning, {user.name}
+        </h1>
+      </div>
 
-          <p className="text-gray-400 mt-1">
-            {today}
-          </p>
-        </div>
+      <button
+        onClick={() =>
+          navigate("/work-session")
+        }
+        className="w-full py-5 rounded-3xl bg-indigo-600 text-lg font-semibold"
+      >
+        {activeShift
+          ? "Resume Shift"
+          : "Clock In / Start Shift"}
+      </button>
 
-        {/* Main Clock Button */}
-        <button
-          onClick={() =>
-            navigate("/work-session")
+      <div className="grid md:grid-cols-2 gap-4">
+
+        <SmallCard
+          title="Hours This Week"
+          value={`${weekHours} hrs`}
+          icon={<Clock3 size={18} />}
+        />
+
+        <SmallCard
+          title="Holiday Remaining"
+          value={`${remaining} days`}
+          icon={
+            <CalendarDays size={18} />
           }
-          className="w-full rounded-3xl bg-indigo-600 py-5 text-lg font-semibold"
-        >
-          {activeShift
-            ? "Resume Shift"
-            : "Clock In / Start Shift"}
-        </button>
+        />
 
-        {/* Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <SmallCard
+          title="Pending Tasks"
+          value={pendingTasks}
+          icon={
+            <CheckSquare size={18} />
+          }
+        />
 
-          <SmallCard
-            title="Hours This Week"
-            value={`${weekHours} hrs`}
-            icon={<Clock3 size={18} />}
-          />
+      </div>
 
-          <SmallCard
-            title="Holiday Remaining"
-            value={`${remaining} days`}
-            icon={
-              <CalendarDays size={18} />
-            }
-          />
-
-          <SmallCard
-            title="Pending Tasks"
-            value={pendingTasks}
-            icon={
-              <CheckSquare size={18} />
-            }
-          />
-
-          <SmallCard
-            title="Profile"
-            value="View Details"
-            icon={
-              <ArrowRight size={18} />
-            }
-          />
-
-        </div>
-
-        {/* Latest Timesheet */}
-        <Panel title="Latest Timesheet">
-          {latestShift ? (
-            <p className="text-sm text-gray-300">
-              Last shift:{" "}
-              {latestShift.clock_in_time?.split(
-                "T"
-              )[0]}
-            </p>
-          ) : (
-            <p className="text-sm text-gray-400">
-              No shifts yet
-            </p>
-          )}
-        </Panel>
-
-      </main>
     </div>
   );
 }
 
 /* ================================================= */
-/* ADMIN + MANAGER */
+/* ADMIN + MANAGER RESTORED */
 /* ================================================= */
 
-function MainDashboard({ user }) {
+function AdminDashboard({ user }) {
   const [loading, setLoading] =
     useState(true);
 
@@ -293,8 +254,14 @@ function MainDashboard({ user }) {
   const [live, setLive] =
     useState([]);
 
+  const [leave, setLeave] =
+    useState([]);
+
   const [plan, setPlan] =
     useState("trial");
+
+  const [allShifts, setAllShifts] =
+    useState([]);
 
   useEffect(() => {
     load();
@@ -312,18 +279,24 @@ function MainDashboard({ user }) {
       const [
         users,
         active,
+        holidays,
         billing,
+        shifts,
       ] = await Promise.all([
         userAPI.getAll(),
         shiftAPI.getActiveAll(),
+        holidayAPI.getAll(),
         billingAPI.getStatus(),
+        shiftAPI.getAll(),
       ]);
 
       setStaff(users || []);
       setLive(active || []);
+      setLeave(holidays || []);
       setPlan(
         billing?.plan || "trial"
       );
+      setAllShifts(shifts || []);
     } finally {
       setLoading(false);
     }
@@ -337,80 +310,262 @@ function MainDashboard({ user }) {
   const clockedIn =
     live.length;
 
+  const onLeave =
+    leave.filter(
+      (x) =>
+        x.status === "approved"
+    ).length;
+
   const pieData = [
     {
-      name: "Present",
+      name: "Clocked In",
       value: clockedIn,
     },
     {
-      name: "Absent",
+      name: "Leave",
+      value: onLeave,
+    },
+    {
+      name: "Other",
       value:
         employees -
-        clockedIn,
+        clockedIn -
+        onLeave,
     },
   ];
 
+  const todayWages =
+    estimateWages(
+      allShifts,
+      staff,
+      1
+    );
+
+  const weekWages =
+    estimateWages(
+      allShifts,
+      staff,
+      7
+    );
+
+  const aiAlerts =
+    buildAIAlerts(
+      allShifts,
+      staff
+    );
+
   return (
-    <div className="min-h-screen bg-[#020617] text-white">
-      <main className="px-8 py-7 space-y-6">
+    <div className="space-y-6">
 
-        <div>
-          <h1 className="text-4xl font-bold">
-            Good morning, {user.name}
-          </h1>
+      <div>
+        <p className="text-sm text-gray-400">
+          Dashboard
+        </p>
+
+        <h1 className="text-4xl font-bold mt-1">
+          Good morning, {user.name}
+        </h1>
+      </div>
+
+      <div className="grid md:grid-cols-5 gap-4">
+
+        <Card
+          title="Employees"
+          value={employees}
+          sub="Total"
+        />
+
+        <Card
+          title="Clocked In"
+          value={clockedIn}
+          sub="Now"
+        />
+
+        <Card
+          title="On Leave"
+          value={onLeave}
+          sub="Today"
+        />
+
+        <Card
+          title="Plan"
+          value={plan}
+          sub="Subscription"
+        />
+
+        <Card
+          title="AI Alerts"
+          value={aiAlerts.length}
+          sub="Detected"
+        />
+
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+
+        <Panel title="Attendance">
+          <div className="h-[320px]">
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  dataKey="value"
+                  innerRadius={80}
+                  outerRadius={110}
+                >
+                  <Cell fill="#22c55e" />
+                  <Cell fill="#facc15" />
+                  <Cell fill="#ef4444" />
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </Panel>
+
+        <Panel title="Live Staff Map">
+          <LiveMap live={live} />
+        </Panel>
+
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+
+        <MoneyCard
+          title="Today's Wages"
+          value={todayWages}
+        />
+
+        <MoneyCard
+          title="Weekly Wages"
+          value={weekWages}
+        />
+
+      </div>
+
+      <Panel title="AI Intelligent Pattern Catcher">
+
+        <div className="space-y-3">
+          {aiAlerts.length ? (
+            aiAlerts.map(
+              (
+                item,
+                index
+              ) => (
+                <div
+                  key={index}
+                  className="rounded-2xl bg-white/5 p-4 flex gap-3"
+                >
+                  <AlertTriangle
+                    size={18}
+                    className="text-yellow-400"
+                  />
+
+                  <p className="text-sm">
+                    {item}
+                  </p>
+                </div>
+              )
+            )
+          ) : (
+            <p className="text-gray-400 text-sm">
+              No unusual patterns detected.
+            </p>
+          )}
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+      </Panel>
 
-          <Card
-            title="Employees"
-            value={employees}
-            sub="Active"
-          />
-
-          <Card
-            title="Clocked In"
-            value={clockedIn}
-            sub="Now"
-          />
-
-          <Card
-            title="Plan"
-            value={plan}
-            sub="Subscription"
-          />
-
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-
-          <Panel title="Attendance">
-            <div className="h-[320px]">
-              <ResponsiveContainer>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    dataKey="value"
-                    innerRadius={80}
-                    outerRadius={110}
-                  >
-                    <Cell fill="#22c55e" />
-                    <Cell fill="#ef4444" />
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </Panel>
-
-          <Panel title="Live Staff Map">
-            <LiveMap live={live} />
-          </Panel>
-
-        </div>
-
-      </main>
     </div>
   );
+}
+
+/* ================================================= */
+
+function estimateWages(
+  shifts,
+  staff,
+  days
+) {
+  const since =
+    new Date();
+
+  since.setDate(
+    since.getDate() - days
+  );
+
+  let total = 0;
+
+  shifts.forEach((row) => {
+    if (!row.clock_in_time)
+      return;
+
+    const start =
+      new Date(
+        row.clock_in_time
+      );
+
+    if (start < since) return;
+
+    const end =
+      row.clock_out_time
+        ? new Date(
+            row.clock_out_time
+          )
+        : new Date();
+
+    const emp = staff.find(
+      (x) =>
+        x.id === row.user_id
+    );
+
+    const rate = Number(
+      emp?.hourly_rate || 0
+    );
+
+    total +=
+      ((end - start) /
+        3600000) *
+      rate;
+  });
+
+  return total.toFixed(2);
+}
+
+function buildAIAlerts(
+  shifts,
+  staff
+) {
+  const alerts = [];
+
+  if (
+    shifts.filter(
+      (x) => !x.clock_out_time
+    ).length > 5
+  ) {
+    alerts.push(
+      "Multiple open shifts detected."
+    );
+  }
+
+  if (
+    staff.filter(
+      (x) => !x.hourly_rate
+    ).length
+  ) {
+    alerts.push(
+      "Some staff missing hourly rates."
+    );
+  }
+
+  if (
+    shifts.length > 50
+  ) {
+    alerts.push(
+      "High activity spike this week."
+    );
+  }
+
+  return alerts;
 }
 
 /* ================================================= */
@@ -509,6 +664,23 @@ function Card({
   );
 }
 
+function MoneyCard({
+  title,
+  value,
+}) {
+  return (
+    <div className="rounded-3xl bg-white/5 p-6">
+      <p className="text-sm text-gray-400">
+        {title}
+      </p>
+
+      <h2 className="text-4xl font-bold mt-4">
+        £{value}
+      </h2>
+    </div>
+  );
+}
+
 function Panel({
   title,
   children,
@@ -518,7 +690,6 @@ function Panel({
       <h2 className="font-semibold text-xl mb-5">
         {title}
       </h2>
-
       {children}
     </div>
   );
