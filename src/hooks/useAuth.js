@@ -380,6 +380,11 @@ const logout =
 
   /* ===================================================== */
 
+    const reloadUser =
+          useCallback(async () => {
+          await loadProfile();
+  }, []);
+
   return {
     user,
     loading,
