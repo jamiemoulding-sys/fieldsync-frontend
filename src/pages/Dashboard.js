@@ -57,6 +57,12 @@ export default function Dashboard() {
 /* EMPLOYEE DASHBOARD */
 /* ================================================= */
 
+/* ONLY FIXED CLOCK IN BUTTONS — NOTHING ELSE CHANGED */
+
+/* ================================================= */
+/* EMPLOYEE DASHBOARD */
+/* ================================================= */
+
 function EmployeeDashboard({ user }) {
   const navigate = useNavigate();
 
@@ -131,6 +137,24 @@ function EmployeeDashboard({ user }) {
     }
   }
 
+  async function handleClockButton() {
+    try {
+      if (activeShift) {
+        navigate("/work-session");
+        return;
+      }
+
+      await shiftAPI.clockIn();
+      await load();
+      navigate("/work-session");
+    } catch (err) {
+      alert(
+        err?.message ||
+          "Clock in failed"
+      );
+    }
+  }
+
   if (loading) return <Loading />;
 
   const weekHours = shifts
@@ -180,9 +204,7 @@ function EmployeeDashboard({ user }) {
       </div>
 
       <button
-        onClick={() =>
-          navigate("/work-session")
-        }
+        onClick={handleClockButton}
         className="w-full py-5 rounded-3xl bg-indigo-600 text-lg font-semibold"
       >
         {activeShift
