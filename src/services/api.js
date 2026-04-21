@@ -385,6 +385,10 @@ export const holidayAPI = {
 SHIFTS
 ===================================================== */
 
+/* =====================================================
+SHIFTS
+===================================================== */
+
 export const shiftAPI = {
   getAll: async () => {
     const companyId = await getCompanyId();
@@ -392,16 +396,13 @@ export const shiftAPI = {
     const { data, error } = await supabase
       .from("shifts")
       .select(`
-  *,
-  users(
-    name,
-    email,
-    hourly_rate,
-    hourly_wage,
-    wage,
-    pay_rate
-  )
-`)
+        *,
+        users(
+          name,
+          email,
+          hourly_rate
+        )
+      `)
       .eq("company_id", companyId)
       .order("clock_in_time", {
         ascending: false,
@@ -448,16 +449,13 @@ export const shiftAPI = {
     const { data, error } = await supabase
       .from("shifts")
       .select(`
-  *,
-  users(
-    name,
-    email,
-    hourly_rate,
-    hourly_wage,
-    wage,
-    pay_rate
-  )
-`)
+        *,
+        users(
+          name,
+          email,
+          hourly_rate
+        )
+      `)
       .eq("company_id", companyId)
       .is("clock_out_time", null);
 
@@ -526,8 +524,6 @@ export const shiftAPI = {
   },
 
   endBreak: async () => {
-    const user = await getCurrentUser();
-
     const active =
       await shiftAPI.getActive();
 
