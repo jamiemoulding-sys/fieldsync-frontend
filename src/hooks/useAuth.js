@@ -365,18 +365,12 @@ export function useAuth() {
       [navigate]
     );
 
-const logout =
-  useCallback(async () => {
-    try {
-      await supabase.auth.signOut({
-        scope: "global",
-      });
-    } catch (e) {}
-
-    setUser(null);
-
-    window.location.href = "/login";
-  }, []);
+const logout = useCallback(async () => {
+  await supabase.auth.signOut();
+  localStorage.clear();
+  sessionStorage.clear();
+  window.location.href = "/login";
+}, []);
 
   /* ===================================================== */
 

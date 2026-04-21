@@ -596,19 +596,19 @@ function buildAIAlerts(
 function LiveMap({ live }) {
   const points = live.filter(
     (x) =>
-      x.live_latitude &&
-      x.live_longitude
+      x.latitude &&
+      x.longitude
   );
 
   const center = points.length
     ? [
         Number(
           points[0]
-            .live_latitude
+            .latitude
         ),
         Number(
           points[0]
-            .live_longitude
+            .longitude
         ),
       ]
     : [51.5072, -0.1276];
@@ -630,10 +630,10 @@ function LiveMap({ live }) {
             key={row.id}
             position={[
               Number(
-                row.live_latitude
+                row.latitude
               ),
               Number(
-                row.live_longitude
+                row.longitude
               ),
             ]}
           >

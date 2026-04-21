@@ -496,8 +496,6 @@ clockIn: async (payload = {}) => {
       );
     });
 
-  const now = new Date();
-
   const { error } = await supabase
     .from("shifts")
     .insert({
@@ -505,16 +503,9 @@ clockIn: async (payload = {}) => {
       user_id: user.id,
       company_id: user.company_id,
       location_id: defaultLocationId,
-
-      /* FIXED */
-      clock_in_time: now.toISOString(),
-
-      /* write BOTH old + new fields */
+      clock_in_time: new Date().toISOString(),
       latitude: position.lat,
       longitude: position.lng,
-      live_latitude: position.lat,
-      live_longitude: position.lng,
-      last_ping_at: now.toISOString(),
     });
 
   if (error) throw error;
@@ -597,24 +588,23 @@ clockIn: async (payload = {}) => {
     return true;
   },
 
-  updateLiveLocation: async (
-    shiftId,
-    lat,
-    lng
-  ) => {
-    const { error } = await supabase
-      .from("shifts")
-      .update({
-        live_latitude: lat,
-        live_longitude: lng,
-        last_ping_at:
-          new Date().toISOString(),
-      })
-      .eq("id", shiftId);
+updateLiveLocation: async (
+  shiftId,
+  lat,
+  lng
+) => {
+  const { error } = await supabase
+    .from("shifts")
+    .update({
+      latitude: lat,
+      longitude: lng,
+    })
+    .eq("id", shiftId);
 
-    if (error) throw error;
-    return true;
-  },
+  if (error) throw error;
+
+  return true;
+},
 
   checkIntoJob: async (
     shiftId,
