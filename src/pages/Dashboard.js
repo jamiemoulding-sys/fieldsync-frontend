@@ -610,6 +610,50 @@ function AdminDashboard({ user }) {
 
       </div>
 
+      {/* AI INSIGHTS */}
+<div className="rounded-3xl bg-white/5 p-6">
+  <h2 className="text-xl font-semibold mb-5">
+    AI Insights
+  </h2>
+
+  <div className="grid md:grid-cols-3 gap-4">
+
+    {aiAlerts.length ? (
+      aiAlerts.map((item, i) => (
+        <div
+          key={i}
+          className="rounded-2xl bg-[#020617] border border-white/10 p-4"
+        >
+          <p className="text-sm text-indigo-300">
+            {item}
+          </p>
+        </div>
+      ))
+    ) : (
+      <>
+        <div className="rounded-2xl bg-[#020617] border border-white/10 p-4">
+          <p className="text-sm text-green-400">
+            No staffing risks detected.
+          </p>
+        </div>
+
+        <div className="rounded-2xl bg-[#020617] border border-white/10 p-4">
+          <p className="text-sm text-indigo-300">
+            Wage costs stable this week.
+          </p>
+        </div>
+
+        <div className="rounded-2xl bg-[#020617] border border-white/10 p-4">
+          <p className="text-sm text-yellow-400">
+            No anomalies found.
+          </p>
+        </div>
+      </>
+    )}
+
+  </div>
+</div>
+
     </div>
   );
 }
