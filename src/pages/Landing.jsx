@@ -13,97 +13,97 @@ import {
   Star,
   TrendingUp,
   Zap,
+  PoundSterling,
+  TimerReset,
+  Briefcase,
 } from "lucide-react";
 
 export default function Landing() {
   const navigate = useNavigate();
 
   const stats = [
-    { label: "Hours Tracked", value: "250k+" },
-    { label: "Staff Managed", value: "8,000+" },
-    { label: "Tasks Completed", value: "95k+" },
-    { label: "Businesses Growing", value: "420+" },
+    { label: "Admin Hours Saved", value: "10+ / week" },
+    { label: "Average Payroll Errors Reduced", value: "82%" },
+    { label: "Time To Build Rota", value: "Under 5 mins" },
+    { label: "Potential Annual Saving", value: "£12k+" },
   ];
 
   const features = [
     {
       icon: <Clock3 size={18} />,
       title: "Live Workforce Tracking",
-      text: "See who's clocked in, late, on break or active in real time.",
+      text: "See who is clocked in, late, on break, active or missing in real time.",
     },
     {
       icon: <Users size={18} />,
       title: "Smart Scheduling",
-      text: "Create shifts in seconds and fill gaps fast.",
+      text: "Build weekly rotas in minutes and instantly notify staff.",
     },
     {
       icon: <MapPinned size={18} />,
-      title: "GPS Attendance",
-      text: "Prevent buddy clock-ins and verify location.",
+      title: "GPS Clock In",
+      text: "Prevent false clock-ins and verify site attendance.",
     },
     {
       icon: <BarChart3 size={18} />,
-      title: "Profit Reports",
-      text: "Track labour cost, trends and team performance.",
+      title: "Reports & Insights",
+      text: "Wages, attendance, overtime, trends and labour costs instantly.",
     },
     {
       icon: <Shield size={18} />,
-      title: "Secure Roles",
-      text: "Admins, managers and staff all get correct access.",
+      title: "Role Permissions",
+      text: "Admins, managers and staff each get the right access.",
     },
     {
       icon: <Zap size={18} />,
-      title: "Built For Growth",
-      text: "Scale from 3 staff to 300+ without changing systems.",
+      title: "Everything Included",
+      text: "No locked features. Every plan includes the full system.",
     },
   ];
 
   const pricing = [
     {
       name: "Starter",
-      price: "£49",
-      included: "5 staff included",
-      extra: "+ £7 each extra staff",
+      price: "£39",
+      staff: "Up to 5 staff included",
+      extra: "+ £5 per extra employee",
       icon: <Users size={18} />,
       featured: false,
-      items: [
-        "Scheduling",
-        "Clock in / out",
-        "Holiday requests",
-        "Dashboard",
-        "Basic reports",
-      ],
     },
     {
-      name: "Pro",
-      price: "£89",
-      included: "15 staff included",
-      extra: "+ £8 each extra staff",
+      name: "Growth",
+      price: "£79",
+      staff: "Up to 15 staff included",
+      extra: "+ £5 per extra employee",
       icon: <Crown size={18} />,
       featured: true,
-      items: [
-        "Everything in Starter",
-        "Tasks system",
-        "Announcements",
-        "Advanced reports",
-        "Priority support",
-      ],
     },
     {
       name: "Business",
-      price: "£149",
-      included: "30 staff included",
-      extra: "+ £10 each extra staff",
+      price: "£129",
+      staff: "Up to 30 staff included",
+      extra: "+ £5 per extra employee",
       icon: <Building2 size={18} />,
       featured: false,
-      items: [
-        "Everything in Pro",
-        "Multi-site control",
-        "Payroll exports",
-        "Advanced permissions",
-        "Dedicated support",
-      ],
     },
+  ];
+
+  const allIncluded = [
+    "Unlimited scheduling",
+    "Clock in / out",
+    "GPS attendance",
+    "Break tracking",
+    "Holiday management",
+    "Tasks system",
+    "Announcements",
+    "Notifications",
+    "Reports dashboard",
+    "Payroll exports",
+    "Timesheets",
+    "Live attendance board",
+    "Employee mobile app",
+    "Manager controls",
+    "Offline mode",
   ];
 
   return (
@@ -111,14 +111,24 @@ export default function Landing() {
       {/* BACKGROUND */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[900px] bg-indigo-600/20 blur-3xl rounded-full" />
-        <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-cyan-500/10 blur-3xl rounded-full" />
+        <div className="absolute bottom-0 right-0 w-[700px] h-[700px] bg-cyan-500/10 blur-3xl rounded-full" />
       </div>
 
       {/* NAV */}
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-6 flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-semibold">FieldSync</h1>
-          <p className="text-xs text-gray-500">Workforce Operating System</p>
+        <div className="flex items-center gap-3">
+          <img
+            src="/logo192.png"
+            alt="FieldSync"
+            className="w-11 h-11 rounded-xl"
+          />
+
+          <div>
+            <h1 className="text-2xl font-semibold">FieldSync</h1>
+            <p className="text-xs text-gray-500">
+              Workforce Operating System
+            </p>
+          </div>
         </div>
 
         <div className="flex gap-3">
@@ -126,38 +136,41 @@ export default function Landing() {
             onClick={() => navigate("/login")}
             className="px-4 py-2 rounded-xl text-sm hover:bg-white/5"
           >
-            Sign In
+            Login
           </button>
 
           <button
             onClick={() => navigate("/signup")}
             className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-sm font-medium"
           >
-            Start Trial
+            Start Free Trial
           </button>
         </div>
       </div>
 
       {/* HERO */}
-      <div className="relative z-10 max-w-7xl mx-auto px-6 pt-16 pb-28">
+      <div className="relative z-10 max-w-7xl mx-auto px-6 pt-14 pb-24">
         <div className="grid lg:grid-cols-2 gap-14 items-center">
           <motion.div
             initial={{ opacity: 0, y: 25 }}
             animate={{ opacity: 1, y: 0 }}
           >
             <div className="inline-flex px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs mb-6">
-              Trusted by growing UK businesses
+              Built for trades, hospitality, retail, care & field teams
             </div>
 
             <h1 className="text-5xl md:text-7xl font-semibold leading-tight">
-              Replace chaos with
+              Run your workforce
               <br />
-              <span className="text-indigo-400">control</span>
+              <span className="text-indigo-400">
+                without the chaos
+              </span>
             </h1>
 
             <p className="mt-6 text-lg text-gray-400 max-w-xl leading-relaxed">
-              Scheduling, attendance, payroll-ready exports, tasks, staff
-              management and live reporting in one platform.
+              Scheduling, attendance, payroll-ready exports,
+              holidays, tasks, live dashboards and reporting —
+              all in one simple platform.
             </p>
 
             <div className="mt-8 flex gap-4 flex-wrap">
@@ -177,9 +190,11 @@ export default function Landing() {
               </button>
             </div>
 
-            <p className="mt-5 text-sm text-green-400">
-              Businesses commonly save 10+ admin hours every week
-            </p>
+            <div className="mt-6 space-y-2 text-sm text-green-400">
+              <p>✔ Save 10+ admin hours every week</p>
+              <p>✔ Reduce lateness & missed shifts</p>
+              <p>✔ Replace spreadsheets instantly</p>
+            </div>
           </motion.div>
 
           <motion.div
@@ -191,16 +206,24 @@ export default function Landing() {
             <div className="bg-[#020617] border border-white/10 rounded-3xl p-6">
               <div className="grid grid-cols-2 gap-4">
                 <Panel title="Clocked In" value="27" />
-                <Panel title="Tasks Today" value="84" />
                 <Panel title="Late Staff" value="2" />
-                <Panel title="Sites" value="11" />
+                <Panel title="Tasks Today" value="84" />
+                <Panel title="Sites Live" value="11" />
               </div>
 
-              <div className="mt-5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 p-4">
-                <div className="flex items-center gap-2 text-indigo-300 text-sm">
-                  <TrendingUp size={15} />
-                  Labour efficiency up 19%
-                </div>
+              <div className="mt-5 space-y-3">
+                <Insight
+                  icon={<TrendingUp size={15} />}
+                  text="Labour efficiency up 19%"
+                />
+                <Insight
+                  icon={<PoundSterling size={15} />}
+                  text="£3,240 saved this month"
+                />
+                <Insight
+                  icon={<TimerReset size={15} />}
+                  text="Rota built in 4 mins"
+                />
               </div>
             </div>
           </motion.div>
@@ -225,10 +248,11 @@ export default function Landing() {
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-24">
         <div className="text-center mb-14">
           <h2 className="text-4xl font-semibold">
-            Built to save time & grow revenue
+            Everything your business needs
           </h2>
+
           <p className="text-gray-400 mt-4">
-            Everything managers need in one clean system.
+            Replace multiple apps with one system.
           </p>
         </div>
 
@@ -242,8 +266,13 @@ export default function Landing() {
                 {item.icon}
               </div>
 
-              <h3 className="font-medium text-lg">{item.title}</h3>
-              <p className="text-sm text-gray-400 mt-2">{item.text}</p>
+              <h3 className="font-medium text-lg">
+                {item.title}
+              </h3>
+
+              <p className="text-sm text-gray-400 mt-2">
+                {item.text}
+              </p>
             </div>
           ))}
         </div>
@@ -254,11 +283,11 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-6 py-24">
           <div className="text-center mb-14">
             <h2 className="text-4xl font-semibold">
-              Pricing that scales with you
+              Simple pricing. Everything included.
             </h2>
 
             <p className="text-gray-400 mt-4">
-              14 day free trial • Cancel anytime
+              No hidden upgrades • No locked tools • 14 day free trial
             </p>
           </div>
 
@@ -284,25 +313,30 @@ export default function Landing() {
                     </div>
                   )}
 
-                  <p className="text-4xl font-bold mt-4">
+                  <p className="text-5xl font-bold mt-4">
                     {plan.price}
                     <span className="text-base text-gray-400 font-normal">
                       /month
                     </span>
                   </p>
 
-                  <p className="text-green-400 text-sm mt-2">
-                    {plan.included}
+                  <p className="text-green-400 text-sm mt-3">
+                    {plan.staff}
                   </p>
 
-                  <p className="text-gray-400 text-sm mt-1">{plan.extra}</p>
+                  <p className="text-gray-400 text-sm mt-1">
+                    {plan.extra}
+                  </p>
 
-                  <div className="space-y-3 mt-6 text-sm text-gray-300">
-                    {plan.items.map((item) => (
-                      <p key={item} className="flex gap-2">
+                  <div className="mt-6 space-y-3 text-sm text-gray-300">
+                    {allIncluded.map((item) => (
+                      <p
+                        key={item}
+                        className="flex gap-2"
+                      >
                         <CheckCircle2
                           size={16}
-                          className="text-green-400"
+                          className="text-green-400 mt-0.5"
                         />
                         {item}
                       </p>
@@ -320,15 +354,21 @@ export default function Landing() {
             ))}
           </div>
 
-          {/* VALUE BLOCK */}
+          {/* VALUE */}
           <div className="mt-14 rounded-3xl bg-white/5 border border-white/10 p-8 text-center">
-            <Star className="mx-auto text-yellow-400 mb-4" size={24} />
+            <Star
+              className="mx-auto text-yellow-400 mb-4"
+              size={24}
+            />
+
             <h3 className="text-2xl font-semibold">
-              Save hours every week with smarter workforce management
+              Most businesses recover the monthly fee in saved admin
+              time alone
             </h3>
+
             <p className="text-gray-400 mt-3">
-              Reduce admin, improve attendance, streamline scheduling and grow
-              with confidence.
+              Spend less time chasing staff, fixing rotas and
+              calculating hours.
             </p>
           </div>
         </div>
@@ -336,10 +376,13 @@ export default function Landing() {
 
       {/* CTA */}
       <div className="relative z-10 max-w-4xl mx-auto px-6 pb-24 text-center">
-        <h2 className="text-4xl font-semibold">Ready to grow faster?</h2>
+        <h2 className="text-4xl font-semibold">
+          Ready to run smarter?
+        </h2>
 
         <p className="text-gray-400 mt-4">
-          Launch your workspace today and run your team properly.
+          Join businesses saving time, cutting costs and growing
+          faster with FieldSync.
         </p>
 
         <button
@@ -358,6 +401,15 @@ function Panel({ title, value }) {
     <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
       <p className="text-xs text-gray-400">{title}</p>
       <h3 className="text-2xl font-semibold mt-2">{value}</h3>
+    </div>
+  );
+}
+
+function Insight({ icon, text }) {
+  return (
+    <div className="rounded-2xl bg-white/5 border border-white/10 p-3 flex items-center gap-2 text-sm text-indigo-300">
+      {icon}
+      {text}
     </div>
   );
 }
