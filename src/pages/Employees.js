@@ -114,25 +114,30 @@ export default function Employees() {
     });
   }
 
-  async function saveEditor() {
-    try {
-      setSaving(true);
+async function saveEditor() {
+  try {
+    setSaving(true);
 
-      await userAPI.update(editor.id, {
-        ...form,
-        hourly_rate: num(form.hourly_rate),
-        overtime_rate: num(form.overtime_rate),
-        night_rate: num(form.night_rate),
-        contracted_hours: num(form.contracted_hours),
-        holiday_allowance: num(form.holiday_allowance),
-      });
+    await userAPI.update(editor.id, {
+      ...form,
 
-      setEditor(null);
-      await load();
-    } finally {
-      setSaving(false);
-    }
+      start_date:
+        form.start_date || null,
+
+      hourly_rate: num(form.hourly_rate),
+      overtime_rate: num(form.overtime_rate),
+      night_rate: num(form.night_rate),
+      contracted_hours: num(form.contracted_hours),
+      holiday_allowance: num(form.holiday_allowance),
+    });
+
+    setEditor(null);
+    await load();
+
+  } finally {
+    setSaving(false);
   }
+}
 
   async function removeUser(id, name) {
     const first = window.confirm(`Delete ${name}?`);
