@@ -1001,7 +1001,7 @@ function estimateWages(
     total += hours * rate;
   });
 
-  return `£${total.toFixed(2)}`;
+  return total.toFixed(2);
 }
 
 
