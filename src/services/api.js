@@ -515,7 +515,7 @@ clockIn: async (payload = {}) => {
 
   const { data: locations } = await supabase
     .from("locations")
-    .select("id")
+    .select("*")
     .eq("company_id", user.company_id)
     .limit(1);
 
@@ -523,25 +523,34 @@ clockIn: async (payload = {}) => {
     payload.location_id ||
     locations?.[0]?.id;
 
-  const position =
-    await new Promise((resolve) => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) =>
-          resolve({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-          }),
-        () =>
-          resolve({
-            lat: null,
-            lng: null,
-          }),
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-        }
-      );
-    });
+  let finalLat = payload.latitude || null;
+  let finalLng = payload.longitude || null;
+
+  // only fetch GPS if frontend didn't send coords
+  if (!finalLat || !finalLng) {
+    const position =
+      await new Promise((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) =>
+            resolve({
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+            }),
+          () =>
+            resolve({
+              lat: null,
+              lng: null,
+            }),
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+          }
+        );
+      });
+
+    finalLat = position.lat;
+    finalLng = position.lng;
+  }
 
   const { error } = await supabase
     .from("shifts")
@@ -551,8 +560,8 @@ clockIn: async (payload = {}) => {
       company_id: user.company_id,
       location_id: defaultLocationId,
       clock_in_time: nowISO(),
-      latitude: position.lat,
-      longitude: position.lng,
+      latitude: finalLat,
+      longitude: finalLng,
     });
 
   if (error) throw error;

@@ -249,85 +249,82 @@ export default function WorkSession() {
   /* ACTIONS */
   /* ========================================= */
 
-  async function clockInSite() {
-    if (!selectedLocation) {
-      alert("Select site");
-      return;
-    }
+async function clockInSite() {
+  if (!selectedLocation) {
+    alert("Select site");
+    return;
+  }
 
-    const site = locations.find(
-      (x) =>
-        String(x.id) ===
-        String(selectedLocation)
-    );
+  const site = locations.find(
+    (x) => String(x.id) === String(selectedLocation)
+  );
 
-    if (!site) {
-      alert("Site not found");
-      return;
-    }
+  if (!site) {
+    alert("Site not found");
+    return;
+  }
 
-    setSaving(true);
+  setSaving(true);
 
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const distance =
-            getDistanceMeters(
-              pos.coords.latitude,
-              pos.coords.longitude,
-              Number(site.latitude),
-              Number(site.longitude)
-            );
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      try {
+        const userLat = pos.coords.latitude;
+        const userLng = pos.coords.longitude;
 
-          const allowed =
-            Number(
-              site.radius_meters ||
-                site.radius ||
-                250
-            );
+        const siteLat = Number(site.latitude);
+        const siteLng = Number(site.longitude);
 
-          if (distance > allowed) {
-            alert(
-              `Too far from site (${distance}m away). Allowed ${allowed}m`
-            );
+        const distance = getDistanceMeters(
+          userLat,
+          userLng,
+          siteLat,
+          siteLng
+        );
 
-            setSaving(false);
-            return;
-          }
+        const allowed = Number(
+          site.radius_meters ||
+          site.radius ||
+          250
+        );
 
-          await shiftAPI.clockIn({
-            location_id:
-              selectedLocation,
-            latitude:
-              pos.coords.latitude,
-            longitude:
-              pos.coords.longitude,
-            shift_type: "site",
-          });
+        if (distance > allowed) {
+          setSaving(false);
 
-          setStatusText(
-            "On Site"
+          alert(
+            `Outside geofence. You are ${distance}m away. Allowed ${allowed}m.`
           );
 
-          await load();
-        } catch (err) {
-          alert(err.message);
-        } finally {
-          setSaving(false);
+          return;
         }
-      },
-      () => {
-        alert(
-          "GPS required for site clock in"
-        );
+
+        await shiftAPI.clockIn({
+          location_id: selectedLocation,
+          latitude: siteLat,
+          longitude: siteLng,
+          shift_type: "site",
+          verified: true,
+        });
+
+        setStatusText("On Site");
+
+        await load();
+      } catch (err) {
+        alert(err.message);
+      } finally {
         setSaving(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
       }
-    );
-  }
+    },
+    () => {
+      alert("GPS required for site clock in");
+      setSaving(false);
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+    }
+  );
+}
 
   async function clockInOpen() {
     setSaving(true);
