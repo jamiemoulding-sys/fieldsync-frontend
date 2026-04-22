@@ -800,22 +800,24 @@ export const shiftAPI = {
   ========================================= */
 
   async clockOut(sync = false) {
-    const offline =
-      shiftAPI.getOfflineShift();
+  const offline = shiftAPI.getOfflineShift();
 
-    if (
-      offline &&
-      !navigator.onLine &&
-      !sync
-    ) {
-      shiftAPI.addQueue(
-        "clockOut"
-      );
+  if (offline && !navigator.onLine && !sync) {
+    shiftAPI.addQueue("clockOut");
 
-      shiftAPI.clearOfflineShift();
+    localStorage.setItem(
+      "offlineClockedOutAt",
+      nowISO()
+    );
 
-      return true;
-    }
+    shiftAPI.clearOfflineShift();
+
+    window.dispatchEvent(
+      new Event("shiftUpdated")
+    );
+
+    return true;
+  }
 
     const active =
       await shiftAPI.getActive();
@@ -854,15 +856,20 @@ export const shiftAPI = {
   ========================================= */
 
   async startBreak(sync = false) {
-    if (
-      !navigator.onLine &&
-      !sync
-    ) {
-      shiftAPI.addQueue(
-        "startBreak"
-      );
-      return true;
-    }
+  if (!navigator.onLine && !sync) {
+    localStorage.setItem(
+      "offlineBreakStartedAt",
+      nowISO()
+    );
+
+    shiftAPI.addQueue("startBreak");
+
+    window.dispatchEvent(
+      new Event("shiftUpdated")
+    );
+
+    return true;
+  }
 
     const active =
       await shiftAPI.getActive();
@@ -881,15 +888,19 @@ export const shiftAPI = {
   },
 
   async endBreak(sync = false) {
-    if (
-      !navigator.onLine &&
-      !sync
-    ) {
-      shiftAPI.addQueue(
-        "endBreak"
-      );
-      return true;
-    }
+  if (!navigator.onLine && !sync) {
+    localStorage.removeItem(
+      "offlineBreakStartedAt"
+    );
+
+    shiftAPI.addQueue("endBreak");
+
+    window.dispatchEvent(
+      new Event("shiftUpdated")
+    );
+
+    return true;
+  }
 
     const active =
       await shiftAPI.getActive();

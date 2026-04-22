@@ -83,12 +83,35 @@ function EmployeeDashboard({ user }) {
   const [activeShift, setActiveShift] =
     useState(null);
 
+  /* ====================================== */
+  /* FIRST LOAD + AUTO REFRESH */
+  /* ====================================== */
+
   useEffect(() => {
     load();
 
     const t = setInterval(load, 15000);
 
     return () => clearInterval(t);
+  }, []);
+
+  /* ====================================== */
+  /* LIVE SHIFT REFRESH (offline buttons fix)
+  /* ====================================== */
+
+  useEffect(() => {
+    const refresh = () => load();
+
+    window.addEventListener(
+      "shiftUpdated",
+      refresh
+    );
+
+    return () =>
+      window.removeEventListener(
+        "shiftUpdated",
+        refresh
+      );
   }, []);
 
   async function load() {
@@ -134,6 +157,9 @@ function EmployeeDashboard({ user }) {
       setHolidays(myHolidays);
       setTasks(myTasks);
       setActiveShift(live || null);
+
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -171,7 +197,7 @@ function EmployeeDashboard({ user }) {
   );
 
   /* ====================================== */
-  /* HOURS FIX */
+  /* HOURS */
   /* ====================================== */
 
   const totalHours = weekShifts.reduce(
