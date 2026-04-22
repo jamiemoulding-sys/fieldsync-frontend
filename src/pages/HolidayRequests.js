@@ -74,27 +74,29 @@ export default function HolidayRequests() {
         Array.isArray(u) ? u : [];
 
       const mapped =
-        (Array.isArray(h) ? h : []).map(
-          (row) => {
-            const emp =
-              safeUsers.find(
-                (x) =>
-                  x.id === row.user_id
-              ) || {};
+  (Array.isArray(h) ? h : []).map(
+    (row) => {
+      const emp =
+        safeUsers.find(
+          (x) =>
+            x.id === row.user_id
+        ) || {};
 
-            return {
-              ...row,
-              name:
-                emp.name ||
-                row.name ||
-                "Unknown",
-              holiday_days:
-                Number(
-                  emp.holiday_days || 0
-                ),
-            };
-          }
-        );
+      return {
+        ...row,
+        name:
+          emp.name ||
+          row.name ||
+          "Unknown",
+
+        holiday_days: Number(
+          emp.holiday_allowance ??
+          emp.holiday_days ??
+          20
+        ),
+      };
+    }
+  );
 
       const rota =
         (Array.isArray(s) ? s : []).map(
