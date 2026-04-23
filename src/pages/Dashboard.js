@@ -706,246 +706,342 @@ function AttendanceTable({
     return String(v).slice(0, 5);
   }
 
- function getStatus(emp) {
-  const shift = live.find(
-    (x) =>
-      String(x.user_id) ===
-      String(emp.id)
-  );
+  function mapLink(lat, lng) {
+    if (!lat || !lng) return null;
 
-  const sched = schedules.find(
-    (x) =>
-      String(x.user_id) ===
-      String(emp.id)
-  );
+    return `https://www.google.com/maps?q=${lat},${lng}`;
+  }
 
-  const scheduleText = sched?.start_time
-    ? `${timeOnly(
-        sched.start_time
-      )}-${timeOnly(
-        sched.end_time
-      )}`
-    : "--";
+  function shortLocation(lat, lng) {
+    if (!lat || !lng) return "--";
 
-  const now = new Date();
+    return "View Location";
+  }
 
-  /* ===================================== */
-  /* IF SHIFT EXISTS */
-  /* ===================================== */
+  function getStatus(emp) {
+    const shift = live.find(
+      (x) =>
+        String(x.user_id) ===
+        String(emp.id)
+    );
 
-  if (shift) {
-    const clockIn = shift.clock_in_time
-      ? new Date(shift.clock_in_time)
-      : null;
+    const sched = schedules.find(
+      (x) =>
+        String(x.user_id) ===
+        String(emp.id)
+    );
 
-    const clockOut =
-      shift.clock_out_time
-        ? new Date(
-            shift.clock_out_time
-          )
-        : null;
+    const scheduleText =
+      sched?.start_time
+        ? `${timeOnly(
+            sched.start_time
+          )}-${timeOnly(
+            sched.end_time
+          )}`
+        : "--";
 
-    /* build schedule start/end */
-    let startToday = null;
-    let endToday = null;
+    const now = new Date();
 
-    if (sched?.start_time) {
-      const [sh, sm] =
-        sched.start_time
-          .slice(0, 5)
-          .split(":");
+    if (shift) {
+      const clockIn =
+        shift.clock_in_time
+          ? new Date(
+              shift.clock_in_time
+            )
+          : null;
 
-      startToday = new Date();
-      startToday.setHours(
-        Number(sh),
-        Number(sm),
-        0,
-        0
-      );
-    }
+      const clockOut =
+        shift.clock_out_time
+          ? new Date(
+              shift.clock_out_time
+            )
+          : null;
 
-    if (sched?.end_time) {
-      const [eh, em] =
-        sched.end_time
-          .slice(0, 5)
-          .split(":");
+      let startToday = null;
+      let endToday = null;
 
-      endToday = new Date();
-      endToday.setHours(
-        Number(eh),
-        Number(em),
-        0,
-        0
-      );
-    }
+      if (sched?.start_time) {
+        const [sh, sm] =
+          sched.start_time
+            .slice(0, 5)
+            .split(":");
 
-    /* CLOCKED OUT */
+        startToday = new Date();
 
-    if (clockOut) {
-      if (
-        endToday &&
-        clockOut < endToday
-      ) {
+        startToday.setHours(
+          Number(sh),
+          Number(sm),
+          0,
+          0
+        );
+      }
+
+      if (sched?.end_time) {
+        const [eh, em] =
+          sched.end_time
+            .slice(0, 5)
+            .split(":");
+
+        endToday = new Date();
+
+        endToday.setHours(
+          Number(eh),
+          Number(em),
+          0,
+          0
+        );
+      }
+
+      if (clockOut) {
         return {
-          status: "Clocked Out Early",
+          status:
+            endToday &&
+            clockOut < endToday
+              ? "Clocked Out Early"
+              : "Completed",
+
+          color:
+            endToday &&
+            clockOut < endToday
+              ? "text-amber-400"
+              : "text-blue-400",
+
+          clock: timeOnly(
+            shift.clock_in_time
+          ),
+
+          out: timeOnly(
+            shift.clock_out_time
+          ),
+
+          schedule:
+            scheduleText,
+
+          inLat:
+            shift.clock_in_lat,
+          inLng:
+            shift.clock_in_lng,
+
+          outLat:
+            shift.clock_out_lat,
+          outLng:
+            shift.clock_out_lng,
+        };
+      }
+
+      if (
+        startToday &&
+        clockIn &&
+        clockIn > startToday
+      ) {
+        const mins =
+          Math.floor(
+            (clockIn -
+              startToday) /
+              60000
+          );
+
+        return {
+          status: `Late ${mins}m`,
           color:
             "text-amber-400",
           clock: timeOnly(
             shift.clock_in_time
           ),
+          out: "--",
+          schedule:
+            scheduleText,
+
+          inLat:
+            shift.clock_in_lat,
+          inLng:
+            shift.clock_in_lng,
+        };
+      }
+
+      return {
+        status: "On Shift",
+        color:
+          "text-green-400",
+        clock: timeOnly(
+          shift.clock_in_time
+        ),
+        out: "--",
+        schedule:
+          scheduleText,
+
+        inLat:
+          shift.clock_in_lat,
+        inLng:
+          shift.clock_in_lng,
+      };
+    }
+
+    if (sched?.start_time) {
+      const [h, m] =
+        sched.start_time
+          .slice(0, 5)
+          .split(":");
+
+      const startToday =
+        new Date();
+
+      startToday.setHours(
+        Number(h),
+        Number(m),
+        0,
+        0
+      );
+
+      const minsLate =
+        Math.floor(
+          (now -
+            startToday) /
+            60000
+        );
+
+      if (minsLate >= 60) {
+        return {
+          status: "Absent",
+          color:
+            "text-red-400",
+          clock: "--",
+          out: "--",
+          schedule:
+            scheduleText,
+        };
+      }
+
+      if (minsLate > 0) {
+        return {
+          status: `Late ${minsLate}m`,
+          color:
+            "text-amber-400",
+          clock: "--",
+          out: "--",
           schedule:
             scheduleText,
         };
       }
 
       return {
-        status: "Completed",
+        status: "Scheduled",
         color:
-          "text-blue-400",
-        clock: timeOnly(
-          shift.clock_in_time
-        ),
-        schedule:
-          scheduleText,
-      };
-    }
-
-    /* ACTIVE SHIFT */
-
-    if (
-      startToday &&
-      clockIn &&
-      clockIn > startToday
-    ) {
-      const mins = Math.floor(
-        (clockIn - startToday) /
-          60000
-      );
-
-      return {
-        status: `Late ${mins}m`,
-        color:
-          "text-amber-400",
-        clock: timeOnly(
-          shift.clock_in_time
-        ),
+          "text-indigo-300",
+        clock: "--",
+        out: "--",
         schedule:
           scheduleText,
       };
     }
 
     return {
-      status: "On Shift",
+      status: "Off",
       color:
-        "text-green-400",
-      clock: timeOnly(
-        shift.clock_in_time
-      ),
-      schedule:
-        scheduleText,
-    };
-  }
-
-  /* ===================================== */
-  /* NO SHIFT BUT HAS SCHEDULE */
-  /* ===================================== */
-
-  if (sched?.start_time) {
-    const [h, m] =
-      sched.start_time
-        .slice(0, 5)
-        .split(":");
-
-    const startToday =
-      new Date();
-
-    startToday.setHours(
-      Number(h),
-      Number(m),
-      0,
-      0
-    );
-
-    const minsLate = Math.floor(
-      (now - startToday) / 60000
-    );
-
-    if (minsLate >= 60) {
-      return {
-        status: "Absent",
-        color:
-          "text-red-400",
-        clock: "--",
-        schedule:
-          scheduleText,
-      };
-    }
-
-    if (minsLate > 0) {
-      return {
-        status: `Late ${minsLate}m`,
-        color:
-          "text-amber-400",
-        clock: "--",
-        schedule:
-          scheduleText,
-      };
-    }
-
-    return {
-      status: "Scheduled",
-      color:
-        "text-indigo-300",
+        "text-gray-500",
       clock: "--",
-      schedule:
-        scheduleText,
+      out: "--",
+      schedule: "--",
     };
   }
-
-  /* ===================================== */
-  /* NO SHIFT / NO SCHEDULE */
-  /* ===================================== */
-
-  return {
-    status: "Off",
-    color:
-      "text-gray-500",
-    clock: "--",
-    schedule: "--",
-  };
-}
 
   return (
-    <div className="space-y-2 max-h-[390px] overflow-y-auto pr-1">
-      {staff.map((emp) => {
-        const row =
-          getStatus(emp);
+    <div className="rounded-3xl bg-white/5 overflow-hidden">
+      <table className="w-full text-sm">
+        <thead className="bg-white/5 text-gray-400">
+          <tr>
+            <th className="p-4 text-left">
+              Employee
+            </th>
+            <th className="p-4 text-left">
+              In
+            </th>
+            <th className="p-4 text-left">
+              Out
+            </th>
+            <th className="p-4 text-left">
+              Schedule
+            </th>
+            <th className="p-4 text-left">
+              Status
+            </th>
+          </tr>
+        </thead>
 
-        return (
-          <div
-            key={emp.id}
-            className="grid grid-cols-4 gap-2 text-sm bg-white/5 rounded-xl p-3 items-center"
-          >
-            <span className="truncate font-medium">
-              {emp.name}
-            </span>
+        <tbody>
+          {staff.map((emp) => {
+            const row =
+              getStatus(emp);
 
-            <span className="text-center">
-              {row.clock}
-            </span>
+            return (
+              <tr
+                key={emp.id}
+                className="border-t border-white/5"
+              >
+                <td className="p-4 font-medium">
+                  {emp.name}
+                </td>
 
-            <span className="text-center text-xs">
-              {row.schedule}
-            </span>
+                <td className="p-4">
+                  <div>
+                    {row.clock}
+                  </div>
 
-            <span
-              className={`text-right font-medium ${row.color}`}
-            >
-              {row.status}
-            </span>
-          </div>
-        );
-      })}
+                  {row.inLat &&
+                    row.inLng && (
+                      <a
+                        href={mapLink(
+                          row.inLat,
+                          row.inLng
+                        )}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs text-indigo-300 hover:underline"
+                      >
+                        {shortLocation(
+                          row.inLat,
+                          row.inLng
+                        )}
+                      </a>
+                    )}
+                </td>
+
+                <td className="p-4">
+                  <div>{row.out}</div>
+
+                  {row.outLat &&
+                    row.outLng && (
+                      <a
+                        href={mapLink(
+                          row.outLat,
+                          row.outLng
+                        )}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs text-indigo-300 hover:underline"
+                      >
+                        {shortLocation(
+                          row.outLat,
+                          row.outLng
+                        )}
+                      </a>
+                    )}
+                </td>
+
+                <td className="p-4">
+                  {row.schedule}
+                </td>
+
+                <td
+                  className={`p-4 font-medium ${row.color}`}
+                >
+                  {row.status}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
