@@ -1548,60 +1548,128 @@ export const locationAPI = {
 };
 
 /* =====================================================
-PERFORMANCE
+PERFORMANCE REAL DATA
 ===================================================== */
 
 export const performanceAPI = {
   getAll: async () => {
     const companyId = await getCompanyId();
 
-    const { data, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("company_id", companyId);
+    const { data: users, error: userErr } =
+      await supabase
+        .from("users")
+        .select("*")
+        .eq("company_id", companyId);
 
-    if (error) throw error;
+    if (userErr) throw userErr;
 
-    return data || [];
+    const { data: shifts, error: shiftErr } =
+      await supabase
+        .from("shifts")
+        .select("*")
+        .eq("company_id", companyId);
+
+    if (shiftErr) throw shiftErr;
+
+    const { data: tasks } =
+      await supabase
+        .from("tasks")
+        .select("*")
+        .eq("company_id", companyId)
+        .catch(() => ({ data: [] }));
+
+    return (users || []).map((user) => {
+      const myShifts = (shifts || []).filter(
+        (x) => x.user_id === user.id
+      );
+
+      const completed = myShifts.filter(
+        (x) => x.clock_out_time
+      );
+
+      const totalHours = completed.reduce(
+        (sum, row) => {
+          const start = new Date(
+            row.clock_in_time
+          );
+
+          const end = new Date(
+            row.clock_out_time
+          );
+
+          const hrs =
+            (end - start) / 3600000 -
+            (row.total_break_seconds || 0) /
+              3600;
+
+          return sum + Math.max(hrs, 0);
+        },
+        0
+      );
+
+      const lateCount = completed.filter(
+        (x) => Number(x.late_minutes || 0) > 0
+      ).length;
+
+      const myTasks = (tasks || []).filter(
+        (t) =>
+          t.assigned_to === user.id &&
+          t.status === "completed"
+      ).length;
+
+      const avgShift =
+        completed.length > 0
+          ? totalHours / completed.length
+          : 0;
+
+      return {
+        ...user,
+        total_shifts: completed.length,
+        hours_worked: totalHours,
+        average_shift_hours: avgShift,
+        late_count: lateCount,
+        tasks_completed: myTasks,
+      };
+    });
   },
 
   getSummary: async () => {
-    const users = await performanceAPI
-      .getAll()
-      .catch(() => []);
+    const rows =
+      await performanceAPI.getAll();
 
-    const shifts = await shiftAPI
-      .getAll()
-      .catch(() => []);
+    const totalHours = rows.reduce(
+      (sum, x) =>
+        sum + Number(x.hours_worked || 0),
+      0
+    );
 
-    const holidays = await holidayAPI
-      .getAll()
-      .catch(() => []);
+    const totalLate = rows.reduce(
+      (sum, x) =>
+        sum + Number(x.late_count || 0),
+      0
+    );
+
+    const totalTasks = rows.reduce(
+      (sum, x) =>
+        sum +
+        Number(
+          x.tasks_completed || 0
+        ),
+      0
+    );
 
     return {
-      topPerformers: users
-        .slice(0, 5)
-        .map((u) => ({
-          name: u.name,
-          score: 100,
-        })),
-
-      lowPerformers: [],
-
-      attendanceScore:
-        users.length > 0
-          ? Math.round(
-              ((users.length -
-                holidays.length) /
-                users.length) *
-                100
-            )
-          : 100,
-
-      productivityScore:
-        shifts.length > 0
-          ? 100
-          : 0,
+      employees: rows.length,
+      totalHours,
+      totalLate,
+      totalTasks,
+      topPerformers: rows
+        .sort(
+          (a, b) =>
+            b.hours_worked -
+            a.hours_worked
+        )
+        .slice(0, 5),
     };
   },
 };

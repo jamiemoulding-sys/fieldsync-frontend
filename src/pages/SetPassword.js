@@ -6,20 +6,11 @@ import api from "../services/api";
 export default function SetPassword() {
   const navigate = useNavigate();
 
-  const [email, setEmail] =
-    useState("");
-
-  const [password, setPassword] =
-    useState("");
-
-  const [confirm, setConfirm] =
-    useState("");
-
-  const [loading, setLoading] =
-    useState(false);
-
-  const [ready, setReady] =
-    useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     loadInvite();
@@ -27,62 +18,56 @@ export default function SetPassword() {
 
   async function loadInvite() {
     try {
-      /* HANDLE TOKEN FROM INVITE URL */
-      const hash =
-        window.location.hash;
+      /* =====================================
+         NEW SUPABASE INVITE LINKS (?code=)
+      ===================================== */
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get("code");
 
-      if (
-        hash.includes(
-          "access_token"
-        )
-      ) {
-        const params =
-          new URLSearchParams(
-            hash.replace("#", "")
-          );
+      if (code) {
+        await supabase.auth.exchangeCodeForSession(code);
+      }
+
+      /* =====================================
+         OLD HASH TOKEN LINKS (#access_token=)
+      ===================================== */
+      const hash = window.location.hash;
+
+      if (hash.includes("access_token")) {
+        const params = new URLSearchParams(
+          hash.replace("#", "")
+        );
 
         const access_token =
-          params.get(
-            "access_token"
-          );
+          params.get("access_token");
 
         const refresh_token =
-          params.get(
-            "refresh_token"
-          );
+          params.get("refresh_token");
 
-        if (
-          access_token &&
-          refresh_token
-        ) {
-          await supabase.auth.setSession(
-            {
-              access_token,
-              refresh_token,
-            }
-          );
+        if (access_token && refresh_token) {
+          await supabase.auth.setSession({
+            access_token,
+            refresh_token,
+          });
         }
       }
 
+      /* =====================================
+         GET SESSION
+      ===================================== */
       const {
         data: { session },
-      } =
-        await supabase.auth.getSession();
+      } = await supabase.auth.getSession();
 
-      if (
-        !session?.user
-      ) {
+      if (!session?.user) {
         navigate("/login");
         return;
       }
 
-      setEmail(
-        session.user.email ||
-          ""
-      );
-
+      setEmail(session.user.email || "");
       setReady(true);
-    } catch {
+    } catch (err) {
+      console.error(err);
       navigate("/login");
     }
   }
@@ -90,56 +75,35 @@ export default function SetPassword() {
   async function submit(e) {
     e.preventDefault();
 
-    if (
-      !password ||
-      !confirm
-    ) {
-      return alert(
-        "Fill all fields"
-      );
+    if (!password || !confirm) {
+      return alert("Fill all fields");
     }
 
-    if (
-      password.length < 6
-    ) {
-      return alert(
-        "Password must be at least 6 characters"
-      );
+    if (password.length < 6) {
+      return alert("Password too short");
     }
 
-    if (
-      password !== confirm
-    ) {
-      return alert(
-        "Passwords do not match"
-      );
+    if (password !== confirm) {
+      return alert("Passwords do not match");
     }
 
     try {
       setLoading(true);
 
       const { error } =
-        await supabase.auth.updateUser(
-          {
-            password,
-          }
-        );
+        await supabase.auth.updateUser({
+          password,
+        });
 
-      if (error)
-        throw error;
+      if (error) throw error;
 
-      await api.post(
-        "/auth/set-password",
-        {
-          email,
-        }
-      );
+      await api.post("/auth/set-password", {
+        email,
+      });
 
-      alert(
-        "Account activated"
-      );
+      alert("Account activated");
 
-      navigate("/login");
+      navigate("/dashboard");
     } catch (err) {
       alert(
         err?.message ||
@@ -165,7 +129,7 @@ export default function SetPassword() {
         className="w-full max-w-md rounded-2xl bg-[#0f172a] p-8 space-y-4"
       >
         <h1 className="text-2xl font-semibold">
-          Set Password
+          Create Password
         </h1>
 
         <p className="text-sm text-gray-400">
@@ -177,9 +141,7 @@ export default function SetPassword() {
           placeholder="New password"
           value={password}
           onChange={(e) =>
-            setPassword(
-              e.target.value
-            )
+            setPassword(e.target.value)
           }
           className="w-full px-4 py-3 rounded-xl bg-white/5"
         />
@@ -189,9 +151,7 @@ export default function SetPassword() {
           placeholder="Confirm password"
           value={confirm}
           onChange={(e) =>
-            setConfirm(
-              e.target.value
-            )
+            setConfirm(e.target.value)
           }
           className="w-full px-4 py-3 rounded-xl bg-white/5"
         />
