@@ -1542,12 +1542,17 @@ export const performanceAPI = {
 
     if (shiftErr) throw shiftErr;
 
-    const { data: tasks } =
-      await supabase
-        .from("tasks")
-        .select("*")
-        .eq("company_id", companyId)
-        .catch(() => ({ data: [] }));
+   const { data: tasks, error } =
+  await supabase
+    .from("tasks")
+    .select("*")
+    .eq("company_id", companyId);
+
+if (error) {
+  console.error(error);
+}
+
+const safeTasks = tasks || [];
 
     return (users || []).map((user) => {
       const myShifts = (shifts || []).filter(
