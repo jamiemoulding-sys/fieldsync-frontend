@@ -18,6 +18,7 @@ import {
   useState,
 } from "react";
 
+import { Toaster } from "react-hot-toast";
 import { useAuth } from "./hooks/useAuth";
 
 /* PUBLIC */
@@ -81,6 +82,8 @@ function ExpiredPage() {
     </div>
   );
 }
+
+
 
 /* ================================================= */
 
@@ -185,14 +188,10 @@ function ProtectedRoute({
   if (loading)
     return <ScreenLoader />;
 
-  if (!user) {
-    return (
-      <Navigate
-        to="/login"
-        replace
-      />
-    );
-  }
+  if (!user && !loading) {
+  return <Navigate to="/login" replace />;
+}
+  
 
   const hasAccess =
     getHasAccess(user);
@@ -302,12 +301,23 @@ export default function App() {
 
   if (!ready)
     return <ScreenLoader />;
+return (
+  <Router>
+    <VisibilityRefresh />
 
-  return (
-    <Router>
-      <VisibilityRefresh />
+    <Toaster
+      position="top-right"
+      toastOptions={{
+        duration: 5000,
+        style: {
+          background: "#020617",
+          color: "#fff",
+          border: "1px solid #334155",
+        },
+      }}
+    />
 
-      <Routes>
+    <Routes>
 
         {/* PUBLIC */}
 

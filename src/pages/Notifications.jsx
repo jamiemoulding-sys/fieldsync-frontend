@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { notificationAPI } from "../services/api";
+import toast from "react-hot-toast";
 
 export default function Notifications() {
   const [rows, setRows] = useState([]);
@@ -23,19 +24,34 @@ export default function Notifications() {
   }, []);
 
   async function load() {
-    try {
-      setLoading(true);
+  try {
+    setLoading(true);
 
-      const data =
-        await notificationAPI.getAll();
+    const data =
+      await notificationAPI.getAll();
 
-      setRows(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    data.forEach((item) => {
+      if (!item.read) {
+        toast(
+          item.title + " - " + item.message
+        );
+      }
+    });
+
+    setRows(data);
+
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setLoading(false);
   }
+}
+
+  data.forEach((item) => {
+  if (!item.read) {
+    toast(item.title + " - " + item.message);
+  }
+});
 
   async function markRead(id) {
     await notificationAPI.markRead(id);
