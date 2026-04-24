@@ -529,7 +529,11 @@ function AdminDashboard({ user }) {
         scheduleAPI.getAll(),
       ]);
 
-      setStaff(users || []);
+      setStaff(
+  Array.isArray(users)
+    ? users
+    : users?.users || []
+);
       setLive(active || []);
       setLeave(holidays || []);
       setPlan(
@@ -1133,14 +1137,14 @@ function buildAIAlerts(
 function LiveMap({ live }) {
   const points = live.filter(
     (x) =>
-      x.latitude &&
-      x.longitude
+      x.clock_in_lat &&
+      x.clock_in_lng
   );
 
   const center = points.length
     ? [
-        Number(points[0].latitude),
-        Number(points[0].longitude),
+        Number(points[0].clock_in_lat),
+        Number(points[0].clock_in_lng),
       ]
     : [51.5072, -0.1276];
 
@@ -1160,13 +1164,12 @@ function LiveMap({ live }) {
           <Marker
             key={row.id}
             position={[
-              Number(row.latitude),
-              Number(row.longitude),
+              Number(row.clock_in_lat),
+              Number(row.clock_in_lng),
             ]}
           >
             <Popup>
-              {row.users?.name ||
-                "Staff"}
+              {row.users?.name || "Staff"}
             </Popup>
           </Marker>
         ))}

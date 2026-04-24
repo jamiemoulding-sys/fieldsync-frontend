@@ -22,66 +22,47 @@ export default function SetPassword() {
     try {
       const url = new URL(window.location.href);
 
-      const code =
-        url.searchParams.get("code");
+      /* NEW INVITE LINK */
+      const code = url.searchParams.get("code");
 
       if (code) {
         const { error } =
-          await supabase.auth.exchangeCodeForSession(
-            code
-          );
+          await supabase.auth.exchangeCodeForSession(code);
 
         if (error) throw error;
       }
 
-      const hash =
-        window.location.hash || "";
+      /* OLD HASH INVITE LINK */
+      const hash = window.location.hash || "";
 
-      if (
-        hash.includes(
-          "access_token"
-        )
-      ) {
-        const params =
-          new URLSearchParams(
-            hash.replace(
-              "#",
-              ""
-            )
-          );
+      if (hash.includes("access_token")) {
+        const params = new URLSearchParams(
+          hash.replace("#", "")
+        );
 
         const access_token =
-          params.get(
-            "access_token"
-          );
+          params.get("access_token");
 
         const refresh_token =
-          params.get(
-            "refresh_token"
-          );
+          params.get("refresh_token");
 
-        if (
-          access_token &&
-          refresh_token
-        ) {
-          await supabase.auth.setSession(
-            {
+        if (access_token && refresh_token) {
+          const { error } =
+            await supabase.auth.setSession({
               access_token,
               refresh_token,
-            }
-          );
+            });
+
+          if (error) throw error;
         }
       }
 
       const {
         data: { session },
-      } =
-        await supabase.auth.getSession();
+      } = await supabase.auth.getSession();
 
       if (!session?.user) {
-        setError(
-          "Invite expired"
-        );
+        setError("Invite expired");
 
         setTimeout(() => {
           navigate("/login");
@@ -90,18 +71,14 @@ export default function SetPassword() {
         return;
       }
 
-      setEmail(
-        session.user.email ||
-          ""
-      );
-
+      setEmail(session.user.email || "");
       setReady(true);
+
     } catch (err) {
       console.error(err);
 
       setError(
-        err?.message ||
-          "Invalid invite"
+        err?.message || "Invalid invite"
       );
 
       setTimeout(() => {
@@ -115,76 +92,64 @@ export default function SetPassword() {
 
     if (loading) return;
 
-    if (
-      !password ||
-      !confirm
-    ) {
-      return alert(
-        "Fill all fields"
-      );
+    if (!password || !confirm) {
+      return alert("Fill all fields");
     }
 
-    if (
-      password.length < 6
-    ) {
+    if (password.length < 6) {
       return alert(
         "Password must be at least 6 characters"
       );
     }
 
-    if (
-      password !== confirm
-    ) {
-      return alert(
-        "Passwords do not match"
-      );
+    if (password !== confirm) {
+      return alert("Passwords do not match");
     }
 
     try {
       setLoading(true);
 
-      /* STEP 1 */
+      /* STEP 1 - UPDATE SUPABASE PASSWORD */
       const {
-        error:
-          passwordError,
-      } =
-        await supabase.auth.updateUser(
-          {
-            password,
-          }
-        );
+        error: passwordError,
+      } = await supabase.auth.updateUser({
+        password,
+      });
 
-      if (passwordError)
-        throw passwordError;
+      if (passwordError) throw passwordError;
 
-      /* STEP 2 */
+      /* STEP 2 - UPDATE BACKEND PASSWORD */
       await Promise.race([
-  api.post("/auth/set-password", {
-    email,
-    password,
-  }),
-  new Promise((_, reject) =>
-    setTimeout(
-      () => reject(new Error("Server timeout")),
-      8000
-    )
-  ),
-]);
+        api.post("/auth/set-password", {
+          email,
+          password,
+        }),
 
-      /* STEP 3 FORCE REFRESH SESSION */
+        new Promise((_, reject) =>
+          setTimeout(
+            () =>
+              reject(
+                new Error(
+                  "Server timeout"
+                )
+              ),
+            8000
+          )
+        ),
+      ]);
+
+      /* STEP 3 - REFRESH SESSION */
       await supabase.auth.refreshSession();
 
-      alert(
-        "Account activated"
-      );
+      /* STEP 4 - HARD REDIRECT */
+      window.location.href =
+        "/dashboard";
 
-      window.location.href = "/dashboard";
     } catch (err) {
       console.error(err);
 
       alert(
-        err?.response?.data
-          ?.error ||
+        err?.response?.data?.error ||
           err?.message ||
           "Failed to activate account"
       );
@@ -196,8 +161,7 @@ export default function SetPassword() {
   if (!ready) {
     return (
       <div className="min-h-screen bg-[#020617] text-white flex items-center justify-center">
-        {error ||
-          "Loading invite..."}
+        {error || "Loading invite..."}
       </div>
     );
   }
