@@ -47,11 +47,6 @@ export default function Notifications() {
   }
 }
 
-  data.forEach((item) => {
-  if (!item.read) {
-    toast(item.title + " - " + item.message);
-  }
-});
 
   async function markRead(id) {
     await notificationAPI.markRead(id);
