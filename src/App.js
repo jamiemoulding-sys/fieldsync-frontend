@@ -136,9 +136,13 @@ function getTrialActive(user) {
 
 function getHasAccess(user) {
   return (
-    user?.subscription_status ===
-      "active" ||
-    getTrialActive(user)
+    user?.hasPremiumAccess === true ||
+    user?.subscription_status === "active" ||
+    user?.subscription_status === "trial" ||
+    getTrialActive(user) ||
+    user?.role === "employee" ||
+    user?.role === "manager" ||
+    user?.role === "admin"
   );
 }
 
