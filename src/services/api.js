@@ -53,22 +53,34 @@ async function getAuthUser() {
 async function getCurrentUser() {
   const authUser = await getAuthUser();
 
-  console.log("AUTH USER ID:", authUser.id);
-
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("users")
     .select("*")
     .eq("id", authUser.id)
     .maybeSingle();
 
-  if (!data) {
-    throw new Error(
-      "No matching row in users table for auth user: " +
-        authUser.id
-    );
-  }
+  if (data) return data;
 
-  return data;
+  /* auto create missing invited row */
+  const meta = authUser.user_metadata || {};
+
+  const insert = await supabase
+    .from("users")
+    .insert({
+      id: authUser.id,
+      email: authUser.email,
+      name: meta.name || "Employee",
+      role: meta.role || "employee",
+      company_id: meta.company_id || null,
+      phone: "",
+      job_title: "",
+    })
+    .select()
+    .single();
+
+  if (insert.error) throw insert.error;
+
+  return insert.data;
 }
 
 async function getCompanyId() {
@@ -140,75 +152,28 @@ USERS
 
 export const userAPI = {
   getAll: async () => {
-    const companyId = await getCompanyId();
-
-    const { data, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("company_id", companyId)
-      .order("name");
-
-    if (error) throw error;
-
-    return data || [];
+    const res = await api.get("/users");
+    return res.data || [];
   },
 
   getById: async (id) => {
-    const companyId = await getCompanyId();
-
-    const { data, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("id", id)
-      .eq("company_id", companyId)
-      .single();
-
-    if (error) throw error;
-
-    return data;
+    const res = await api.get(`/users/${id}`);
+    return res.data;
   },
 
   create: async (payload) => {
-    const companyId = await getCompanyId();
-
-    const { error } = await supabase
-      .from("users")
-      .insert({
-        ...payload,
-        company_id: companyId,
-      });
-
-    if (error) throw error;
-
-    return true;
+    const res = await api.post("/users", payload);
+    return res.data;
   },
 
   update: async (id, payload) => {
-    const companyId = await getCompanyId();
-
-    const { error } = await supabase
-      .from("users")
-      .update(payload)
-      .eq("id", id)
-      .eq("company_id", companyId);
-
-    if (error) throw error;
-
-    return true;
+    const res = await api.put(`/users/${id}`, payload);
+    return res.data;
   },
 
   delete: async (id) => {
-    const companyId = await getCompanyId();
-
-    const { error } = await supabase
-      .from("users")
-      .delete()
-      .eq("id", id)
-      .eq("company_id", companyId);
-
-    if (error) throw error;
-
-    return true;
+    const res = await api.delete(`/users/${id}`);
+    return res.data;
   },
 };
 
