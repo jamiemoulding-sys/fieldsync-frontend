@@ -79,11 +79,13 @@ export default function HolidayRequests() {
       const emp =
         safeUsers.find(
           (x) =>
-            x.id === row.user_id
+            String(x.id).trim() ===
+            String(row.user_id).trim()
         ) || {};
 
       return {
         ...row,
+
         name:
           emp.name ||
           row.name ||
@@ -92,6 +94,9 @@ export default function HolidayRequests() {
         holiday_days: Number(
           emp.holiday_allowance ??
           emp.holiday_days ??
+          emp.annual_leave ??
+          emp.allowance ??
+          emp.holiday_entitlement ??
           20
         ),
       };
