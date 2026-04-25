@@ -151,10 +151,27 @@ export default function Schedule() {
   const monthEnd = moment(date).endOf("month");
 
   const monthShifts = useMemo(() => {
-    return shifts.filter((s) =>
-      moment(s.date).isBetween(monthStart, monthEnd, null, "[]")
+  return shifts.filter((s) => {
+    const inMonth = moment(s.date).isBetween(
+      monthStart,
+      monthEnd,
+      null,
+      "[]"
     );
-  }, [shifts, date]);
+
+    if (!inMonth) return false;
+
+    const onHoliday = holidays.some(
+      (h) =>
+        h.user_id === s.user_id &&
+        h.status === "approved" &&
+        s.date >= h.start_date &&
+        s.date <= h.end_date
+    );
+
+    return !onHoliday;
+  });
+}, [shifts, holidays, date]);
 
   const monthHours = monthShifts.reduce((sum, s) => {
     return (
@@ -413,7 +430,19 @@ function MonthView({
         {days.map((day) => {
           const ds = day.format("YYYY-MM-DD");
 
-          const dayShifts = shifts.filter((x) => x.date === ds);
+          const dayShifts = shifts.filter((x) => {
+  if (x.date !== ds) return false;
+
+  const onHoliday = holidays.some(
+    (h) =>
+      h.user_id === x.user_id &&
+      h.status === "approved" &&
+      ds >= h.start_date &&
+      ds <= h.end_date
+  );
+
+  return !onHoliday;
+});
 
           const dayHol = holidays.filter(
             (h) =>
@@ -500,7 +529,19 @@ function WeekView({
         {days.map((day) => {
           const ds = day.format("YYYY-MM-DD");
 
-          const dayShifts = shifts.filter((x) => x.date === ds);
+          const dayShifts = shifts.filter((x) => {
+  if (x.date !== ds) return false;
+
+  const onHoliday = holidays.some(
+    (h) =>
+      h.user_id === x.user_id &&
+      h.status === "approved" &&
+      ds >= h.start_date &&
+      ds <= h.end_date
+  );
+
+  return !onHoliday;
+});
 
           const dayHol = holidays.filter(
             (h) =>

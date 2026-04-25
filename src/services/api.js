@@ -356,7 +356,16 @@ export const holidayAPI = {
     if (error) throw error;
   },
 
-  approve: async (id, days) => {
+approve: async (id, days) => {
+  const { data: holiday, error: getErr } = await supabase
+    .from("holidays")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (getErr) throw getErr;
+
+  /* approve holiday first */
   const { error } = await supabase
     .from("holidays")
     .update({
@@ -366,6 +375,17 @@ export const holidayAPI = {
     .eq("id", id);
 
   if (error) throw error;
+
+  /* remove scheduled shifts covered by leave */
+  const { error: deleteErr } = await supabase
+    .from("schedules")
+    .delete()
+    .eq("user_id", holiday.user_id)
+    .gte("date", holiday.start_date)
+    .lte("date", holiday.end_date);
+
+  if (deleteErr) throw deleteErr;
+
   return true;
 },
 
