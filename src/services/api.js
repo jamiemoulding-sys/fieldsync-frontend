@@ -1246,33 +1246,54 @@ REPORTS
 
 export const reportAPI = {
   getSummary: async () => {
-    const users =
-      await userAPI.getAll();
-
-    const tasks =
-      await taskAPI.getAll();
-
-    const shifts =
-      await shiftAPI.getAll();
+    const users = await userAPI.getAll();
+    const tasks = await taskAPI.getAll();
+    const shifts = await shiftAPI.getAll();
 
     return {
       users: users.length,
       tasks: tasks.length,
       totalShifts: shifts.length,
-      activeUsers:
-        shifts.filter(
-          (x) => !x.clock_out_time
-        ).length,
-
-      completedTasks:
-        tasks.filter(
-          (x) => x.completed
-        ).length,
+      activeUsers: shifts.filter(
+        (x) => !x.clock_out_time
+      ).length,
+      completedTasks: tasks.filter(
+        (x) => x.completed
+      ).length,
     };
   },
 
   getTimesheets: async () =>
     await shiftAPI.getAll(),
+
+  getRouteLogs: async () => {
+    const companyId = await getCompanyId();
+
+    const { data, error } = await supabase
+      .from("shift_routes")
+      .select(`
+        *,
+        shifts!inner(
+          id,
+          user_id,
+          company_id
+        )
+      `)
+      .eq("shifts.company_id", companyId)
+      .order("created_at", {
+        ascending: true,
+      });
+
+    if (error) {
+      console.error(error);
+      return [];
+    }
+
+    return (data || []).map((row) => ({
+      ...row,
+      user_id: row.shifts?.user_id,
+    }));
+  },
 };
 
 /* =====================================================
