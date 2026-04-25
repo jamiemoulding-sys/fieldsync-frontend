@@ -102,10 +102,9 @@ export default function Schedule() {
   }
 
   async function deleteShift(id) {
-    if (!window.confirm("Delete shift?")) return;
-    await scheduleAPI.delete(id);
-    load();
-  }
+  await scheduleAPI.delete(id);
+  load();
+}
 
   async function createBulk() {
     if (
