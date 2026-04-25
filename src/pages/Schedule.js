@@ -17,6 +17,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Trash2,
 } from "lucide-react";
 
 const inputStyle =
@@ -31,6 +32,7 @@ export default function Schedule() {
   const [view, setView] = useState("month");
   const [date, setDate] = useState(new Date());
   const [showAdd, setShowAdd] = useState(false);
+  const [editMode, setEditMode] = useState(false);
 
   const [form, setForm] = useState({
     from: "",
@@ -186,15 +188,24 @@ export default function Schedule() {
       <div className="rounded-2xl border border-white/10 bg-[#020617] p-5 flex flex-wrap items-center justify-between gap-4">
 
         <div className="flex gap-2">
-          <button onClick={() => setDate(new Date())} className="px-4 py-2 rounded-xl bg-[#111827] border border-white/10">
+          <button
+            onClick={() => setDate(new Date())}
+            className="px-4 py-2 rounded-xl bg-[#111827] border border-white/10"
+          >
             Today
           </button>
 
-          <button onClick={prev} className="px-4 py-2 rounded-xl bg-[#111827] border border-white/10">
+          <button
+            onClick={prev}
+            className="px-4 py-2 rounded-xl bg-[#111827] border border-white/10"
+          >
             <ChevronLeft size={16} />
           </button>
 
-          <button onClick={next} className="px-4 py-2 rounded-xl bg-[#111827] border border-white/10">
+          <button
+            onClick={next}
+            className="px-4 py-2 rounded-xl bg-[#111827] border border-white/10"
+          >
             <ChevronRight size={16} />
           </button>
         </div>
@@ -208,6 +219,7 @@ export default function Schedule() {
         </div>
 
         <div className="flex gap-2">
+
           <button
             onClick={() => setView("month")}
             className={`px-4 py-2 rounded-xl ${
@@ -227,12 +239,22 @@ export default function Schedule() {
           </button>
 
           <button
+            onClick={() => setEditMode(!editMode)}
+            className={`px-4 py-2 rounded-xl ${
+              editMode ? "bg-red-600" : "bg-[#111827]"
+            }`}
+          >
+            {editMode ? "Done" : "Edit"}
+          </button>
+
+          <button
             onClick={() => setShowAdd(true)}
             className="px-5 py-2 rounded-xl bg-emerald-600"
           >
             <Plus size={16} className="inline mr-2" />
             Add
           </button>
+
         </div>
       </div>
 
@@ -245,6 +267,7 @@ export default function Schedule() {
           getUser={getUser}
           getLocation={getLocation}
           deleteShift={deleteShift}
+          editMode={editMode}
         />
       )}
 
@@ -257,13 +280,14 @@ export default function Schedule() {
           getUser={getUser}
           getLocation={getLocation}
           deleteShift={deleteShift}
+          editMode={editMode}
         />
       )}
 
       {/* ADD MODAL */}
       {showAdd && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-5xl rounded-3xl bg-[#020617] border border-white/10 p-8 space-y-6">
+          <div className="w-full max-w-5xl rounded-3xl bg-[#020617] border border-white/10 p-8 space-y-6 max-h-[95vh] overflow-auto">
 
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-semibold">
@@ -278,6 +302,7 @@ export default function Schedule() {
               </button>
             </div>
 
+            {/* FULL FORM KEPT */}
             <div className="grid md:grid-cols-2 gap-4">
 
               <div>
@@ -328,123 +353,6 @@ export default function Schedule() {
                 />
               </div>
 
-              <div>
-                <p className="text-sm text-gray-400 mb-2">Location</p>
-                <select
-                  className={inputStyle}
-                  value={form.location_id}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      location_id: e.target.value,
-                    })
-                  }
-                >
-                  <option value="">Select Location</option>
-
-                  {locations.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <label className="rounded-xl bg-[#111827] px-4 py-3 flex items-center gap-3 mt-7">
-                <input
-                  type="checkbox"
-                  checked={form.allow_overtime}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      allow_overtime: e.target.checked,
-                    })
-                  }
-                />
-                Allow Overtime
-              </label>
-            </div>
-
-            {/* DAYS */}
-            <div>
-              <p className="text-sm text-gray-400 mb-3">
-                Days To Repeat
-              </p>
-
-              <div className="grid grid-cols-7 gap-2">
-                {[
-                  ["Sun", 0],
-                  ["Mon", 1],
-                  ["Tue", 2],
-                  ["Wed", 3],
-                  ["Thu", 4],
-                  ["Fri", 5],
-                  ["Sat", 6],
-                ].map(([label, val]) => (
-                  <label
-                    key={val}
-                    className="rounded-xl bg-[#111827] p-3 text-center"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={form.days.includes(val)}
-                      onChange={() => {
-                        if (form.days.includes(val)) {
-                          setForm({
-                            ...form,
-                            days: form.days.filter(
-                              (x) => x !== val
-                            ),
-                          });
-                        } else {
-                          setForm({
-                            ...form,
-                            days: [...form.days, val],
-                          });
-                        }
-                      }}
-                    />
-                    <div className="mt-2">{label}</div>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* STAFF */}
-            <div>
-              <p className="text-sm text-gray-400 mb-3">
-                Staff
-              </p>
-
-              <div className="grid md:grid-cols-3 gap-2 max-h-56 overflow-auto">
-                {users.map((u) => (
-                  <label
-                    key={u.id}
-                    className="rounded-xl bg-[#111827] px-4 py-3 flex gap-3"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={form.user_ids.includes(u.id)}
-                      onChange={() => {
-                        if (form.user_ids.includes(u.id)) {
-                          setForm({
-                            ...form,
-                            user_ids: form.user_ids.filter(
-                              (x) => x !== u.id
-                            ),
-                          });
-                        } else {
-                          setForm({
-                            ...form,
-                            user_ids: [...form.user_ids, u.id],
-                          });
-                        }
-                      }}
-                    />
-                    {u.name}
-                  </label>
-                ))}
-              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -466,6 +374,7 @@ export default function Schedule() {
           </div>
         </div>
       )}
+
     </div>
   );
 }
@@ -477,6 +386,7 @@ function MonthView({
   getUser,
   getLocation,
   deleteShift,
+  editMode,
 }) {
   const start = moment(date).startOf("month").startOf("week");
   const end = moment(date).endOf("month").endOf("week");
@@ -532,15 +442,23 @@ function MonthView({
               ))}
 
               {dayShifts.slice(0, 3).map((s) => (
-                <button
+                <div
                   key={s.id}
-                  onDoubleClick={() => deleteShift(s.id)}
-                  className="w-full text-left rounded-lg bg-indigo-600 px-2 py-1 text-xs"
+                  className="relative rounded-lg bg-indigo-600 px-2 py-1 text-xs"
                 >
+                  {editMode && (
+                    <button
+                      onClick={() => deleteShift(s.id)}
+                      className="absolute top-1 right-1"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  )}
+
                   {getUser(s.user_id).name} •{" "}
                   {getLocation(s.location_id).name ||
                     "No Location"}
-                </button>
+                </div>
               ))}
             </div>
           );
@@ -557,6 +475,7 @@ function WeekView({
   getUser,
   getLocation,
   deleteShift,
+  editMode,
 }) {
   const start = moment(date).startOf("week");
 
@@ -606,11 +525,19 @@ function WeekView({
               ))}
 
               {dayShifts.map((s) => (
-                <button
+                <div
                   key={s.id}
-                  onDoubleClick={() => deleteShift(s.id)}
-                  className="w-full text-left rounded-xl bg-indigo-600 px-3 py-2 text-sm"
+                  className="relative rounded-xl bg-indigo-600 px-3 py-2 text-sm"
                 >
+                  {editMode && (
+                    <button
+                      onClick={() => deleteShift(s.id)}
+                      className="absolute top-2 right-2"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+
                   {getUser(s.user_id).name}
                   <br />
                   {moment(s.start_time).format("HH:mm")} -{" "}
@@ -618,7 +545,7 @@ function WeekView({
                   <br />
                   {getLocation(s.location_id).name ||
                     "No Location"}
-                </button>
+                </div>
               ))}
             </div>
           );
