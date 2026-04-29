@@ -111,12 +111,16 @@ export default function RouteReplay() {
     return data;
   }, [rows, employee, date]);
 
-  const points = filtered.map(
-    (x) => [
-      Number(x.latitude),
-      Number(x.longitude),
-    ]
-  );
+ const points = filtered
+  .filter(
+    (x) =>
+      x.latitude &&
+      x.longitude
+  )
+  .map((x) => [
+    Number(x.latitude),
+    Number(x.longitude),
+  ]);
 
   function kmBetween(
     lat1,

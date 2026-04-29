@@ -129,72 +129,94 @@ export default function WorkSession() {
   }
 
   /* ========================================= */
-  /* GPS TRACKING */
-  /* ========================================= */
+/* GPS TRACKING ULTRA FIX */
+/* ========================================= */
 
-  useEffect(() => {
-    if (!activeShift) {
-      stopTracking();
-      return;
-    }
+const intervalRef = useRef(null);
 
-    if (activeShift.break_started_at) {
-      stopTracking();
-      return;
-    }
-
-    startTracking();
-
-    return () => stopTracking();
-  }, [activeShift]);
-
-  function stopTracking() {
-    if (
-      watchRef.current !== null &&
-      navigator.geolocation
-    ) {
-      navigator.geolocation.clearWatch(
-        watchRef.current
-      );
-
-      watchRef.current = null;
-    }
+useEffect(() => {
+  if (!activeShift) {
+    stopTracking();
+    return;
   }
 
-  function startTracking() {
-    if (!navigator.geolocation) return;
-    if (watchRef.current !== null) return;
-    if (!activeShift?.id) return;
-
-    watchRef.current =
-      navigator.geolocation.watchPosition(
-        async (pos) => {
-          try {
-            await shiftAPI.updateLiveLocation(
-              activeShift.id,
-              pos.coords.latitude,
-              pos.coords.longitude
-            );
-
-            setGpsText(
-              "GPS tracking active"
-            );
-          } catch (err) {
-            console.error(err);
-          }
-        },
-        () => {
-          setGpsText(
-            "GPS signal unavailable"
-          );
-        },
-        {
-          enableHighAccuracy: true,
-          maximumAge: 5000,
-          timeout: 10000,
-        }
-      );
+  if (activeShift.break_started_at) {
+    stopTracking();
+    return;
   }
+
+  startTracking();
+
+  return () => stopTracking();
+}, [activeShift]);
+
+function stopTracking() {
+  if (
+    watchRef.current !== null &&
+    navigator.geolocation
+  ) {
+    navigator.geolocation.clearWatch(
+      watchRef.current
+    );
+    watchRef.current = null;
+  }
+
+  if (intervalRef.current) {
+    clearInterval(intervalRef.current);
+    intervalRef.current = null;
+  }
+}
+
+function savePoint(pos) {
+  shiftAPI.updateLiveLocation(
+    activeShift.id,
+    pos.coords.latitude,
+    pos.coords.longitude
+  );
+
+  setGpsText("GPS tracking active");
+}
+
+function startTracking() {
+  if (!navigator.geolocation) return;
+  if (!activeShift?.id) return;
+
+  /* instant point */
+  navigator.geolocation.getCurrentPosition(
+    savePoint,
+    () =>
+      setGpsText("GPS unavailable"),
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+    }
+  );
+
+  /* movement watcher */
+  watchRef.current =
+    navigator.geolocation.watchPosition(
+      savePoint,
+      () =>
+        setGpsText("GPS weak signal"),
+      {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 10000,
+      }
+    );
+
+  /* forced save every 60 sec */
+  intervalRef.current = setInterval(() => {
+    navigator.geolocation.getCurrentPosition(
+      savePoint,
+      () => {},
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+      }
+    );
+  }, 60000);
+}
 
   /* ========================================= */
   /* TIMER */
