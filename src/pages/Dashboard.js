@@ -1146,29 +1146,108 @@ function estimateWages(
 }
 
 
-function buildAIAlerts(
-  shifts,
-  staff
-) {
+function buildAIAlerts(shifts, staff) {
   const alerts = [];
+
+  const today = new Date()
+    .toISOString()
+    .split("T")[0];
+
+  const now = new Date();
+
+  staff.forEach((emp) => {
+    const empShifts = shifts.filter(
+      (x) =>
+        String(x.user_id) ===
+        String(emp.id)
+    );
+
+    const recent = empShifts.slice(-10);
+
+    let lateCount = 0;
+    let missedCount = 0;
+
+    recent.forEach((row) => {
+      if (!row.clock_in_time) {
+        missedCount++;
+        return;
+      }
+
+      const start = new Date(
+        row.clock_in_time
+      );
+
+      const scheduled =
+        row.start_time
+          ? new Date(
+              row.start_time
+            )
+          : null;
+
+      if (
+        scheduled &&
+        start > scheduled
+      ) {
+        const mins =
+          (start - scheduled) /
+          60000;
+
+        if (mins > 5) lateCount++;
+      }
+    });
+
+    if (lateCount >= 3) {
+      alerts.push(
+        `${emp.name} has been late ${lateCount} times recently.`
+      );
+    }
+
+    if (missedCount >= 2) {
+      alerts.push(
+        `${emp.name} missed ${missedCount} recent shifts.`
+      );
+    }
+
+    const todayShift = empShifts.find(
+      (x) =>
+        x.date === today
+    );
+
+    if (
+      todayShift &&
+      !todayShift.clock_in_time
+    ) {
+      const sched =
+        todayShift.start_time
+          ? new Date(
+              todayShift.start_time
+            )
+          : null;
+
+      if (
+        sched &&
+        now >
+          new Date(
+            sched.getTime() +
+              30 * 60000
+          )
+      ) {
+        alerts.push(
+          `${emp.name} has not clocked in for today's shift.`
+        );
+      }
+    }
+  });
 
   if (
     shifts.filter(
-      (x) => !x.clock_out_time
+      (x) =>
+        x.clock_in_time &&
+        !x.clock_out_time
     ).length > 5
   ) {
     alerts.push(
       "Multiple open shifts detected."
-    );
-  }
-
-  if (
-    staff.filter(
-      (x) => !x.hourly_rate
-    ).length
-  ) {
-    alerts.push(
-      "Some staff missing wage rates."
     );
   }
 
