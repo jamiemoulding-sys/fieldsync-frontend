@@ -515,7 +515,7 @@ function AdminDashboard({ user }) {
   try {
     const results = await Promise.allSettled([
       userAPI.getAll(),
-      shiftAPI.getActiveAll(),
+      shiftAPI.getAll(),
       holidayAPI.getAll(),
       billingAPI.getStatus(),
       shiftAPI.getAll(),
@@ -553,7 +553,15 @@ function AdminDashboard({ user }) {
         : [];
 
     setStaff(Array.isArray(users) ? users : []);
-    setLive(active);
+    const today = new Date().toISOString().split("T")[0];
+
+const todayRows = (active || []).filter(
+  (x) =>
+    x.clock_in_time &&
+    x.clock_in_time.startsWith(today)
+);
+
+setLive(todayRows);
     setLeave(holidays);
     setPlan(billing?.plan || "starter");
     setShifts(allShifts);
@@ -742,164 +750,54 @@ function AttendanceTable({
     return "View Location";
   }
 
-  function getStatus(emp) {
-    const shift = live.find(
+function getStatus(emp) {
+  const rows = live
+    .filter(
       (x) =>
         String(x.user_id) ===
         String(emp.id)
+    )
+    .sort(
+      (a, b) =>
+        new Date(b.clock_in_time) -
+        new Date(a.clock_in_time)
     );
 
-    const sched = schedules.find(
-      (x) =>
-        String(x.user_id) ===
-        String(emp.id)
-    );
+  const shift = rows[0];
 
-    const scheduleText =
-      sched?.start_time
-        ? `${timeOnly(
-            sched.start_time
-          )}-${timeOnly(
-            sched.end_time
-          )}`
-        : "--";
+  const sched = schedules.find(
+    (x) =>
+      String(x.user_id) ===
+      String(emp.id)
+  );
 
-    const now = new Date();
-
-    if (shift) {
-      const clockIn =
-        shift.clock_in_time
-          ? new Date(
-              shift.clock_in_time
-            )
-          : null;
-
-      const clockOut =
-        shift.clock_out_time
-          ? new Date(
-              shift.clock_out_time
-            )
-          : null;
-
-      let startToday = null;
-      let endToday = null;
-
-      if (sched?.start_time) {
-        const [sh, sm] =
+  const scheduleText =
+    sched?.start_time
+      ? `${timeOnly(
           sched.start_time
-            .slice(0, 5)
-            .split(":");
-
-        startToday = new Date();
-
-        startToday.setHours(
-          Number(sh),
-          Number(sm),
-          0,
-          0
-        );
-      }
-
-      if (sched?.end_time) {
-        const [eh, em] =
+        )}-${timeOnly(
           sched.end_time
-            .slice(0, 5)
-            .split(":");
+        )}`
+      : "--";
 
-        endToday = new Date();
+  const now = new Date();
 
-        endToday.setHours(
-          Number(eh),
-          Number(em),
-          0,
-          0
-        );
-      }
-
-      if (clockOut) {
-        return {
-          status:
-            endToday &&
-            clockOut < endToday
-              ? "Clocked Out Early"
-              : "Completed",
-
-          color:
-            endToday &&
-            clockOut < endToday
-              ? "text-amber-400"
-              : "text-blue-400",
-
-          clock: timeOnly(
-            shift.clock_in_time
-          ),
-
-          out: timeOnly(
-            shift.clock_out_time
-          ),
-
-          schedule:
-            scheduleText,
-
-          inLat:
-            shift.clock_in_lat,
-          inLng:
-            shift.clock_in_lng,
-
-          outLat:
-            shift.clock_out_lat,
-          outLng:
-            shift.clock_out_lng,
-        };
-      }
-
-      if (
-        startToday &&
-        clockIn &&
-        clockIn > startToday
-      ) {
-        const mins =
-          Math.floor(
-            (clockIn -
-              startToday) /
-              60000
-          );
-
-        return {
-          status: `Late ${mins}m`,
-          color:
-            "text-amber-400",
-          clock: timeOnly(
-            shift.clock_in_time
-          ),
-          out: "--",
-          schedule:
-            scheduleText,
-
-          inLat:
-            shift.clock_in_lat,
-          inLng:
-            shift.clock_in_lng,
-        };
-      }
-
-      return {
-        status: "On Shift",
-        color:
-          "text-green-400",
-        clock: timeOnly(
+  if (shift) {
+    const clockIn = shift.clock_in_time
+      ? new Date(
           shift.clock_in_time
-        ),
-        out: "--",
-        schedule:
-          scheduleText,
+        )
+      : null;
 
-        inLat:
-          shift.clock_in_lat,
-        inLng:
-          shift.clock_in_lng,
-      };
-    }
+    const clockOut =
+      shift.clock_out_time
+        ? new Date(
+            shift.clock_out_time
+          )
+        : null;
+
+    let startToday = null;
+    let endToday = null;
 
     if (sched?.start_time) {
       const [h, m] =
@@ -907,8 +805,7 @@ function AttendanceTable({
           .slice(0, 5)
           .split(":");
 
-      const startToday =
-        new Date();
+      startToday = new Date();
 
       startToday.setHours(
         Number(h),
@@ -916,42 +813,155 @@ function AttendanceTable({
         0,
         0
       );
+    }
 
-      const minsLate =
-        Math.floor(
-          (now -
-            startToday) /
-            60000
-        );
+    if (sched?.end_time) {
+      const [h, m] =
+        sched.end_time
+          .slice(0, 5)
+          .split(":");
 
-      if (minsLate >= 60) {
+      endToday = new Date();
+
+      endToday.setHours(
+        Number(h),
+        Number(m),
+        0,
+        0
+      );
+    }
+
+    /* CLOCKED OUT */
+    if (clockOut) {
+      const worked =
+        (clockOut - clockIn) /
+        3600000;
+
+      if (
+        endToday &&
+        clockOut < endToday
+      ) {
         return {
-          status: "Absent",
+          status: "Left Early",
           color:
-            "text-red-400",
-          clock: "--",
-          out: "--",
+            "text-amber-400",
+          clock: timeOnly(
+            shift.clock_in_time
+          ),
+          out: timeOnly(
+            shift.clock_out_time
+          ),
           schedule:
             scheduleText,
         };
       }
 
-      if (minsLate > 0) {
+      if (
+        worked > 10
+      ) {
         return {
-          status: `Late ${minsLate}m`,
+          status: "Overtime",
           color:
-            "text-amber-400",
-          clock: "--",
-          out: "--",
+            "text-purple-400",
+          clock: timeOnly(
+            shift.clock_in_time
+          ),
+          out: timeOnly(
+            shift.clock_out_time
+          ),
           schedule:
             scheduleText,
         };
       }
 
       return {
-        status: "Scheduled",
+        status: "Completed",
         color:
-          "text-indigo-300",
+          "text-green-400",
+        clock: timeOnly(
+          shift.clock_in_time
+        ),
+        out: timeOnly(
+          shift.clock_out_time
+        ),
+        schedule:
+          scheduleText,
+      };
+    }
+
+    /* ACTIVE SHIFT */
+    const liveHours =
+      (now - clockIn) /
+      3600000;
+
+    if (
+      liveHours > 10
+    ) {
+      return {
+        status: "Long Shift",
+        color:
+          "text-red-400",
+        clock: timeOnly(
+          shift.clock_in_time
+        ),
+        out: "--",
+        schedule:
+          scheduleText,
+      };
+    }
+
+    return {
+      status: "On Shift",
+      color:
+        "text-green-400",
+      clock: timeOnly(
+        shift.clock_in_time
+      ),
+      out: "--",
+      schedule:
+        scheduleText,
+    };
+  }
+
+  if (sched?.start_time) {
+    const [h, m] =
+      sched.start_time
+        .slice(0, 5)
+        .split(":");
+
+    const startToday =
+      new Date();
+
+    startToday.setHours(
+      Number(h),
+      Number(m),
+      0,
+      0
+    );
+
+    const minsLate =
+      Math.floor(
+        (now - startToday) /
+        60000
+      );
+
+    if (minsLate >= 60) {
+      return {
+        status: "Absent",
+        color:
+          "text-red-400",
+        clock: "--",
+        out: "--",
+        schedule:
+          scheduleText,
+      };
+    }
+
+    if (minsLate > 0) {
+      return {
+        status: `Late ${minsLate}m`,
+        color:
+          "text-amber-400",
         clock: "--",
         out: "--",
         schedule:
@@ -960,14 +970,25 @@ function AttendanceTable({
     }
 
     return {
-      status: "Off",
+      status: "Scheduled",
       color:
-        "text-gray-500",
+        "text-indigo-300",
       clock: "--",
       out: "--",
-      schedule: "--",
+      schedule:
+        scheduleText,
     };
   }
+
+  return {
+    status: "Off",
+    color:
+      "text-gray-500",
+    clock: "--",
+    out: "--",
+    schedule: "--",
+  };
+}
 
   return (
     <div className="rounded-3xl bg-white/5 overflow-hidden">
